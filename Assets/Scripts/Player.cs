@@ -46,7 +46,10 @@ public class Player : Character
 
     protected override void OnDeath()
     {
-        // Sem isso o Animator ficaria preso em "andando" porque o Update para de rodar
         anim.SetBool("isMoving", false);
+
+        // Notifica o GameManager que o jogador morreu
+        if (GameManager.Instance != null)
+            GameManager.Instance.GameOver();
     }
 }
