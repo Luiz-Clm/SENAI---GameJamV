@@ -1,14 +1,20 @@
 #if UNITY_EDITOR
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using WitchShmup.Boss;
 using WitchShmup.CameraSystem;
 using WitchShmup.Combat;
+using WitchShmup.Cutscenes;
+using WitchShmup.Enemies;
 using WitchShmup.Environment;
 using WitchShmup.Player;
+using WitchShmup.Spawners;
 using WitchShmup.UI;
+using WitchShmup.Utils;
 
 namespace WitchShmup.Editor
 {
@@ -22,31 +28,65 @@ namespace WitchShmup.Editor
         {
             EnsureFoldersExist();
 
-            Sprite wizardSprite = CreateAndSaveWizardSprite();
-            Sprite iceBulletSprite = CreateAndSaveIceBulletSprite();
-            Sprite fireBulletSprite = CreateAndSaveFireBulletSprite();
-            Sprite heartSprite = CreateAndSaveHeartSprite();
-            Sprite brickSprite = CreateAndSaveBrickSprite();
-            Sprite spikesSprite = CreateAndSaveSpikesSprite();
+            // Reimport existing sprites with crisp pixel settings
+            EnsureSpriteImportSettings("MAGO.png", 16f);
+            EnsureSpriteImportSettings("MorcegoDeFogoEnemy.png", 16f);
+            EnsureSpriteImportSettings("Wizard.png", 16f);
+            EnsureSpriteImportSettings("IceBullet.png", 16f);
+            EnsureSpriteImportSettings("FireBullet.png", 16f);
+            EnsureSpriteImportSettings("Heart.png", 16f);
+            EnsureSpriteImportSettings("BrickWall.png", 16f, true);
+            EnsureSpriteImportSettings("Spikes.png", 16f, true);
+            EnsureSpriteImportSettings("Bat.png", 16f);
+            EnsureSpriteImportSettings("Rusher.png", 16f);
+            EnsureSpriteImportSettings("Golem_Head.png", 16f);
+            EnsureSpriteImportSettings("Golem_Body.png", 16f);
+            EnsureSpriteImportSettings("BigRock.png", 16f);
+            EnsureSpriteImportSettings("StoneWall_Block.png", 16f);
+            EnsureSpriteImportSettings("MiniStone.png", 16f);
 
             AssetDatabase.Refresh();
 
-            // Create Projectile Prefabs
-            CreateProjectilePrefab("Projectile_Ice", iceBulletSprite, ElementType.Ice, new Color(0.35f, 0.85f, 1f, 1f), 18f, 1.2f, 2);
-            CreateProjectilePrefab("Projectile_Fire", fireBulletSprite, ElementType.Fire, new Color(1f, 0.55f, 0.15f, 1f), 14f, 2.5f, 1);
+            // 1. Projéteis do Player
+            Sprite iceBulletSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/IceBullet.png");
+            Sprite fireBulletSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/FireBullet.png");
+            CreateProjectilePrefab("Projectile_Ice", iceBulletSprite, ElementType.Ice, 18f, 1.2f, 2, true);
+            CreateProjectilePrefab("Projectile_Fire", fireBulletSprite, ElementType.Fire, 14f, 2.5f, 1, true);
+
+            // 2. Projétil de Fogo do Morcego
+            CreateProjectilePrefab("Enemy_Fireball", fireBulletSprite, ElementType.Enemy, 8f, 1f, 1, false);
+
+            // 3. Inimigo Rusher Prefab
+            Sprite rusherSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Rusher.png");
+            CreateRusherPrefab(rusherSprite);
+
+            // 4. Inimigo Morcego Prefab
+            Sprite batSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Bat.png");
+            GameObject fireballPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Enemy_Fireball.prefab");
+            CreateBatPrefab(batSprite, fireballPrefab);
+
+            // 5. Boss Prefabs: Pedra Gigante, Pedra Orbital, Parede de Pedra
+            Sprite bigRockSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/BigRock.png");
+            CreateBigRockPrefab(bigRockSprite);
+
+            Sprite miniStoneSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/MiniStone.png");
+            CreateOrbitingStonePrefab(miniStoneSprite);
+
+            Sprite stoneBlockSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/StoneWall_Block.png");
+            CreateStoneWallPrefab(stoneBlockSprite);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            EditorUtility.DisplayDialog("Witch Shmup", "Sprites e Prefabs gerados com sucesso em Assets/Sprites e Assets/Prefabs!", "OK");
+            EditorUtility.DisplayDialog("Witch Shmup", "Sprites e Prefabs gerados e configurados com sucesso em Assets/Prefabs!", "OK");
         }
 
-        [MenuItem("Tools/Witch Shmup/2. Montar Cena Atual (Player + Parallax + HUD)")]
+        [MenuItem("Tools/Witch Shmup/2. Montar Cena Atual (Player + Parallax + Inimigos + Boss + Cutscene + HUD)")]
         public static void SetupCurrentScene()
         {
             GenerateSpritesAndPrefabs();
 
-            // 1. Setup Camera
+            // 1. Setup Camera com ScreenShake
             Camera cam = Camera.main;
             if (cam == null)
             {
@@ -63,10 +103,10 @@ namespace WitchShmup.Editor
             cam.transform.position = new Vector3(0f, 0f, -10f);
 
             var camBounds = cam.GetComponent<CameraBounds>();
-            if (camBounds == null)
-            {
-                camBounds = cam.gameObject.AddComponent<CameraBounds>();
-            }
+            if (camBounds == null) camBounds = cam.gameObject.AddComponent<CameraBounds>();
+
+            var screenShake = cam.GetComponent<ScreenShake>();
+            if (screenShake == null) screenShake = cam.gameObject.AddComponent<ScreenShake>();
 
             // 2. Setup Parallax Background
             SetupParallaxHierarchy(cam);
@@ -74,31 +114,198 @@ namespace WitchShmup.Editor
             // 3. Setup Player
             SetupPlayer();
 
-            // 4. Setup HUD
+            // 4. Setup HUD com barra de vida do Boss
             SetupHUD();
 
-            EditorUtility.DisplayDialog("Witch Shmup", "Cena configurada com sucesso!\n\nPressione PLAY para testar:\n- Movimento: WASD ou Setas\n- Atirar: Barra de Espaço ou Clique Esquerdo\n- Trocar Elemento: Q, E, Tab, Botão Direito do Mouse, ou 1 e 2", "Jogar!");
+            // 5. Setup Golem Boss e Cutscene
+            SetupBossAndCutscene();
+
+            // 6. Setup Wave Spawner
+            SetupWaveSpawner();
+
+            EditorUtility.DisplayDialog("Witch Shmup", "Cena configurada com sucesso!\n\nNovidades implementadas:\n- Inimigos Rushers (investem contra o jogador)\n- Morcegos atiradores de fogo que desviam dos tiros\n- Golem de Pedra com mini-pedras orbitais\n- Ataque de Pedra Gigante e Parede Destrutível\n- Cutscene do Mago com medo e Golem rugindo\n\nAtalho útil: Pressione 'B' no Play Mode para acionar a Cutscene do Boss imediatamente!", "Jogar!");
         }
 
         private static void EnsureFoldersExist()
         {
-            if (!AssetDatabase.IsValidFolder(SpritesPath))
+            if (!AssetDatabase.IsValidFolder(SpritesPath)) AssetDatabase.CreateFolder("Assets", "Sprites");
+            if (!AssetDatabase.IsValidFolder(PrefabsPath)) AssetDatabase.CreateFolder("Assets", "Prefabs");
+        }
+
+        private static void EnsureSpriteImportSettings(string filename, float pixelsPerUnit, bool repeat = false)
+        {
+            string path = $"{SpritesPath}/{filename}";
+            if (!File.Exists(path)) return;
+
+            TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer != null)
             {
-                AssetDatabase.CreateFolder("Assets", "Sprites");
+                bool needReimport = false;
+                if (importer.textureType != TextureImporterType.Sprite) { importer.textureType = TextureImporterType.Sprite; needReimport = true; }
+                if (importer.filterMode != FilterMode.Point) { importer.filterMode = FilterMode.Point; needReimport = true; }
+                if (importer.spritePixelsPerUnit != pixelsPerUnit) { importer.spritePixelsPerUnit = pixelsPerUnit; needReimport = true; }
+                if (importer.textureCompression != TextureImporterCompression.Uncompressed) { importer.textureCompression = TextureImporterCompression.Uncompressed; needReimport = true; }
+
+                var wrap = repeat ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
+                if (importer.wrapMode != wrap) { importer.wrapMode = wrap; needReimport = true; }
+
+                if (needReimport) importer.SaveAndReimport();
             }
-            if (!AssetDatabase.IsValidFolder(PrefabsPath))
+        }
+
+        private static void CreateProjectilePrefab(string name, Sprite sprite, ElementType element, float speed, float damage, int pierce, bool isPlayerShot)
+        {
+            string prefabPath = $"{PrefabsPath}/{name}.prefab";
+
+            GameObject obj = new GameObject(name);
+            var sr = obj.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.color = Color.white;
+            sr.sortingOrder = 6;
+
+            var col = obj.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size = new Vector2(0.8f, 0.35f);
+
+            var proj = obj.AddComponent<Projectile>();
+            proj.Initialize(Vector2.right, speed, damage, element, isPlayerShot);
+
+            PrefabUtility.SaveAsPrefabAsset(obj, prefabPath);
+            Object.DestroyImmediate(obj);
+        }
+
+        private static void CreateRusherPrefab(Sprite sprite)
+        {
+            string path = $"{PrefabsPath}/Enemy_Rusher.prefab";
+            GameObject obj = new GameObject("Enemy_Rusher");
+            obj.tag = "Enemy";
+
+            var sr = obj.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.sortingOrder = 8;
+
+            var col = obj.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size = new Vector2(1.2f, 0.8f);
+
+            obj.AddComponent<RusherEnemy>();
+
+            PrefabUtility.SaveAsPrefabAsset(obj, path);
+            Object.DestroyImmediate(obj);
+        }
+
+        private static void CreateBatPrefab(Sprite sprite, GameObject fireballPrefab)
+        {
+            string path = $"{PrefabsPath}/Enemy_Bat.prefab";
+            GameObject obj = new GameObject("Enemy_Bat");
+            obj.tag = "Enemy";
+
+            var sr = obj.AddComponent<SpriteRenderer>();
+
+            // Verifica se há frames de animação do MorcegoDeFogoEnemy
+            var batAssets = AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/MorcegoDeFogoEnemy.png");
+            List<Sprite> batFrames = new List<Sprite>();
+            foreach (var asset in batAssets)
             {
-                AssetDatabase.CreateFolder("Assets", "Prefabs");
+                if (asset is Sprite s) batFrames.Add(s);
             }
+
+            if (batFrames.Count > 0)
+            {
+                sr.sprite = batFrames[0];
+                var anim = obj.AddComponent<SimpleSpriteAnimator>();
+                anim.SetFrames(batFrames.ToArray(), 6f);
+            }
+            else
+            {
+                sr.sprite = sprite;
+            }
+
+            sr.sortingOrder = 8;
+
+            var col = obj.AddComponent<CircleCollider2D>();
+            col.isTrigger = true;
+            col.radius = 0.55f;
+
+            var bat = obj.AddComponent<BatEnemy>();
+            SerializedObject so = new SerializedObject(bat);
+            so.FindProperty("fireballPrefab").objectReferenceValue = fireballPrefab;
+            so.ApplyModifiedProperties();
+
+            PrefabUtility.SaveAsPrefabAsset(obj, path);
+            Object.DestroyImmediate(obj);
+        }
+
+        private static void CreateBigRockPrefab(Sprite sprite)
+        {
+            string path = $"{PrefabsPath}/Boss_BigRock.prefab";
+            GameObject obj = new GameObject("Boss_BigRock");
+
+            var sr = obj.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.sortingOrder = 8;
+
+            var col = obj.AddComponent<CircleCollider2D>();
+            col.isTrigger = true;
+            col.radius = 1.0f;
+
+            obj.AddComponent<BigRockProjectile>();
+
+            PrefabUtility.SaveAsPrefabAsset(obj, path);
+            Object.DestroyImmediate(obj);
+        }
+
+        private static void CreateOrbitingStonePrefab(Sprite sprite)
+        {
+            string path = $"{PrefabsPath}/Boss_OrbitingStone.prefab";
+            GameObject obj = new GameObject("Boss_OrbitingStone");
+
+            var sr = obj.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.sortingOrder = 9;
+
+            var col = obj.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size = new Vector2(0.8f, 0.8f);
+
+            obj.AddComponent<OrbitingStone>();
+
+            PrefabUtility.SaveAsPrefabAsset(obj, path);
+            Object.DestroyImmediate(obj);
+        }
+
+        private static void CreateStoneWallPrefab(Sprite blockSprite)
+        {
+            string path = $"{PrefabsPath}/Boss_StoneWall.prefab";
+            GameObject wall = new GameObject("Boss_StoneWall");
+            wall.AddComponent<StoneWallObstacle>();
+
+            float[] yOffsets = { -2.2f, 0f, 2.2f };
+            for (int i = 0; i < yOffsets.Length; i++)
+            {
+                GameObject seg = new GameObject($"StoneSegment_{i}");
+                seg.transform.SetParent(wall.transform);
+                seg.transform.localPosition = new Vector3(0f, yOffsets[i], 0f);
+
+                var sr = seg.AddComponent<SpriteRenderer>();
+                sr.sprite = blockSprite;
+                sr.sortingOrder = 7;
+
+                var col = seg.AddComponent<BoxCollider2D>();
+                col.isTrigger = true;
+                col.size = new Vector2(1.2f, 2.0f);
+
+                seg.AddComponent<StoneWallSegment>();
+            }
+
+            PrefabUtility.SaveAsPrefabAsset(wall, path);
+            Object.DestroyImmediate(wall);
         }
 
         private static void SetupParallaxHierarchy(Camera cam)
         {
             var existingBg = GameObject.Find("Environment_Parallax");
-            if (existingBg != null)
-            {
-                Object.DestroyImmediate(existingBg);
-            }
+            if (existingBg != null) Object.DestroyImmediate(existingBg);
 
             GameObject bgRoot = new GameObject("Environment_Parallax");
             var bgController = bgRoot.AddComponent<ParallaxBackgroundController>();
@@ -113,7 +320,6 @@ namespace WitchShmup.Editor
                 layerBricks.transform.SetParent(bgRoot.transform);
                 var pl1 = layerBricks.AddComponent<ParallaxLayer>();
 
-                // Create 2 segments
                 float segWidth = 24f;
                 for (int i = 0; i < 2; i++)
                 {
@@ -182,17 +388,20 @@ namespace WitchShmup.Editor
         private static void SetupPlayer()
         {
             var existingPlayer = GameObject.FindWithTag("Player");
-            if (existingPlayer != null)
-            {
-                Object.DestroyImmediate(existingPlayer);
-            }
+            if (existingPlayer != null) Object.DestroyImmediate(existingPlayer);
 
             GameObject playerObj = new GameObject("Player_Wizard");
             playerObj.tag = "Player";
             playerObj.transform.position = new Vector3(-6f, 0f, 0f);
 
             var sr = playerObj.AddComponent<SpriteRenderer>();
-            Sprite wizardSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Wizard.png");
+            Sprite wizardSprite = null;
+            var magoAssets = AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/MAGO.png");
+            foreach (var asset in magoAssets)
+            {
+                if (asset is Sprite s) { wizardSprite = s; break; }
+            }
+            if (wizardSprite == null) wizardSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Wizard.png");
             sr.sprite = wizardSprite;
             sr.sortingOrder = 10;
 
@@ -203,11 +412,9 @@ namespace WitchShmup.Editor
 
             var col = playerObj.AddComponent<BoxCollider2D>();
             col.size = new Vector2(1.2f, 0.8f);
-            col.offset = new Vector2(0f, 0f);
 
             playerObj.AddComponent<PlayerController>();
-            var health = playerObj.AddComponent<PlayerHealth>();
-
+            playerObj.AddComponent<PlayerHealth>();
             var shooting = playerObj.AddComponent<PlayerShooting>();
 
             // Setup fire points
@@ -219,7 +426,6 @@ namespace WitchShmup.Editor
             muzzleBot.transform.SetParent(playerObj.transform);
             muzzleBot.transform.localPosition = new Vector3(0.8f, -0.2f, 0f);
 
-            // Assign prefabs to shooting configs
             GameObject icePrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Projectile_Ice.prefab");
             GameObject firePrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Projectile_Fire.prefab");
 
@@ -237,10 +443,7 @@ namespace WitchShmup.Editor
         private static void SetupHUD()
         {
             var existingCanvas = GameObject.Find("HUD_Canvas");
-            if (existingCanvas != null)
-            {
-                Object.DestroyImmediate(existingCanvas);
-            }
+            if (existingCanvas != null) Object.DestroyImmediate(existingCanvas);
 
             GameObject canvasObj = new GameObject("HUD_Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
@@ -270,7 +473,7 @@ namespace WitchShmup.Editor
             scoreRect.anchorMax = new Vector2(0.04f, 0.5f);
             scoreRect.pivot = new Vector2(0f, 0.5f);
             var scoreTmp = scoreObj.AddComponent<TextMeshProUGUI>();
-            scoreTmp.text = "SCORE 0012480";
+            scoreTmp.text = "SCORE 0000000";
             scoreTmp.fontSize = 32;
             scoreTmp.fontStyle = FontStyles.Bold;
             scoreTmp.color = Color.white;
@@ -283,10 +486,37 @@ namespace WitchShmup.Editor
             stageRect.anchorMax = new Vector2(0.5f, 0.5f);
             stageRect.pivot = new Vector2(0.5f, 0.5f);
             var stageTmp = stageObj.AddComponent<TextMeshProUGUI>();
-            stageTmp.text = "FASE 1 - FLORESTA SOMBRIA";
+            stageTmp.text = "FASE 1 - RUÍNAS DE PEDRA";
             stageTmp.fontSize = 28;
             stageTmp.fontStyle = FontStyles.Bold;
             stageTmp.color = new Color(0.9f, 0.85f, 1f, 1f);
+
+            // Boss Health Bar Container (no topo direito, como no mockup!)
+            GameObject bossBarObj = new GameObject("BossHealthBar");
+            bossBarObj.transform.SetParent(topBar.transform, false);
+            var bossBarRect = bossBarObj.AddComponent<RectTransform>();
+            bossBarRect.anchorMin = new Vector2(0.96f, 0.5f);
+            bossBarRect.anchorMax = new Vector2(0.96f, 0.5f);
+            bossBarRect.pivot = new Vector2(1f, 0.5f);
+            bossBarRect.sizeDelta = new Vector2(360f, 26f);
+
+            // Fundo escuro da barra
+            var bossBgImg = bossBarObj.AddComponent<Image>();
+            bossBgImg.color = new Color(0.18f, 0.08f, 0.14f, 0.9f);
+
+            // Fill vermelho da barra
+            GameObject fillObj = new GameObject("Fill");
+            fillObj.transform.SetParent(bossBarObj.transform, false);
+            var fillRect = fillObj.AddComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = Vector2.one;
+            fillRect.sizeDelta = Vector2.zero;
+            var fillImg = fillObj.AddComponent<Image>();
+            fillImg.color = new Color(0.97f, 0.3f, 0.35f, 1f); // Vermelho vibrante
+            fillImg.type = Image.Type.Filled;
+            fillImg.fillMethod = Image.FillMethod.Horizontal;
+            fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
+            fillImg.fillAmount = 1f;
 
             // --- Bottom Bar ---
             GameObject bottomBar = new GameObject("BottomBar");
@@ -388,284 +618,138 @@ namespace WitchShmup.Editor
             hudSo.FindProperty("fireText").objectReferenceValue = fireTmp;
             hudSo.FindProperty("scoreText").objectReferenceValue = scoreTmp;
             hudSo.FindProperty("stageText").objectReferenceValue = stageTmp;
+            hudSo.FindProperty("bossBarContainer").objectReferenceValue = bossBarObj;
+            hudSo.FindProperty("bossHealthFill").objectReferenceValue = fillImg;
             hudSo.ApplyModifiedProperties();
         }
 
-        private static void CreateProjectilePrefab(string name, Sprite sprite, ElementType element, Color tint, float speed, float damage, int pierce)
+        private static void SetupBossAndCutscene()
         {
-            string prefabPath = $"{PrefabsPath}/{name}.prefab";
+            var existingBoss = GameObject.Find("Boss_Golem");
+            if (existingBoss != null) Object.DestroyImmediate(existingBoss);
 
-            GameObject obj = new GameObject(name);
-            var sr = obj.AddComponent<SpriteRenderer>();
-            sr.sprite = sprite;
-            sr.color = Color.white;
-            sr.sortingOrder = 6;
+            var existingCutscene = GameObject.Find("Cutscene_Manager");
+            if (existingCutscene != null) Object.DestroyImmediate(existingCutscene);
 
-            var col = obj.AddComponent<BoxCollider2D>();
+            // 1. Criar Boss GameObject
+            GameObject bossObj = new GameObject("Boss_Golem");
+            bossObj.tag = "Boss";
+            bossObj.transform.position = new Vector3(14f, 0f, 0f); // Inicia fora da tela
+
+            Sprite headSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Golem_Head.png");
+            Sprite bodySprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Golem_Body.png");
+            Sprite stoneBlockSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/StoneWall_Block.png");
+
+            // Aura circular roxa no fundo (fiel à imagem!)
+            GameObject aura = new GameObject("Aura");
+            aura.transform.SetParent(bossObj.transform);
+            aura.transform.localPosition = Vector3.zero;
+            var auraSr = aura.AddComponent<SpriteRenderer>();
+            auraSr.sortingOrder = 1;
+            auraSr.color = new Color(0.24f, 0.12f, 0.35f, 0.85f); // Roxo escuro
+            // Gera círculo de aura
+            Texture2D auraTex = new Texture2D(64, 64, TextureFormat.RGBA32, false);
+            auraTex.filterMode = FilterMode.Point;
+            Color[] auraCols = new Color[64 * 64];
+            for (int x = 0; x < 64; x++)
+            {
+                for (int y = 0; y < 64; y++)
+                {
+                    float d = Vector2.Distance(new Vector2(x, y), new Vector2(32, 32));
+                    auraCols[y * 64 + x] = (d <= 30f) ? Color.white : Color.clear;
+                }
+            }
+            auraTex.SetPixels(auraCols);
+            auraTex.Apply();
+            auraSr.sprite = Sprite.Create(auraTex, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 12f);
+
+            // Corpo central
+            GameObject body = new GameObject("Body");
+            body.transform.SetParent(bossObj.transform);
+            body.transform.localPosition = new Vector3(0f, -0.4f, 0f);
+            var bodySr = body.AddComponent<SpriteRenderer>();
+            bodySr.sprite = bodySprite;
+            bodySr.sortingOrder = 3;
+
+            // Cabeça
+            GameObject head = new GameObject("Head");
+            head.transform.SetParent(bossObj.transform);
+            head.transform.localPosition = new Vector3(0f, 2.0f, 0f);
+            var headSr = head.AddComponent<SpriteRenderer>();
+            headSr.sprite = headSprite;
+            headSr.sortingOrder = 4;
+
+            // Ombro / Braço esquerdo e direito
+            if (stoneBlockSprite != null)
+            {
+                GameObject leftShoulder = new GameObject("Left_Plate");
+                leftShoulder.transform.SetParent(bossObj.transform);
+                leftShoulder.transform.localPosition = new Vector3(-2.2f, 0.4f, 0f);
+                var lsSr = leftShoulder.AddComponent<SpriteRenderer>();
+                lsSr.sprite = stoneBlockSprite;
+                lsSr.sortingOrder = 2;
+
+                GameObject rightShoulder = new GameObject("Right_Plate");
+                rightShoulder.transform.SetParent(bossObj.transform);
+                rightShoulder.transform.localPosition = new Vector3(2.2f, 0.4f, 0f);
+                var rsSr = rightShoulder.AddComponent<SpriteRenderer>();
+                rsSr.sprite = stoneBlockSprite;
+                rsSr.sortingOrder = 2;
+            }
+
+            // Collider principal do Boss
+            var col = bossObj.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
-            col.size = new Vector2(0.8f, 0.35f);
+            col.size = new Vector2(3.5f, 4.8f);
 
-            var proj = obj.AddComponent<Projectile>();
-            proj.Initialize(Vector2.right, speed, damage, element, true);
+            var golem = bossObj.AddComponent<GolemBoss>();
 
-            PrefabUtility.SaveAsPrefabAsset(obj, prefabPath);
-            Object.DestroyImmediate(obj);
+            // Conectar prefabs de ataques no GolemBoss
+            GameObject bigRockPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Boss_BigRock.prefab");
+            GameObject stoneWallPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Boss_StoneWall.prefab");
+            GameObject miniStonePrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Boss_OrbitingStone.prefab");
+
+            SerializedObject golemSo = new SerializedObject(golem);
+            golemSo.FindProperty("bigRockPrefab").objectReferenceValue = bigRockPrefab;
+            golemSo.FindProperty("stoneWallPrefab").objectReferenceValue = stoneWallPrefab;
+            golemSo.FindProperty("orbitingStonePrefab").objectReferenceValue = miniStonePrefab;
+            golemSo.FindProperty("mainBodyRenderer").objectReferenceValue = bodySr;
+            golemSo.ApplyModifiedProperties();
+
+            // 2. Criar Cutscene Manager
+            GameObject cutsceneObj = new GameObject("Cutscene_Manager");
+            var cutscene = cutsceneObj.AddComponent<BossIntroCutscene>();
+
+            var player = GameObject.FindWithTag("Player");
+            SerializedObject csSo = new SerializedObject(cutscene);
+            csSo.FindProperty("golemBoss").objectReferenceValue = golem;
+            if (player != null)
+            {
+                csSo.FindProperty("playerController").objectReferenceValue = player.GetComponent<PlayerController>();
+                csSo.FindProperty("playerShooting").objectReferenceValue = player.GetComponent<PlayerShooting>();
+                csSo.FindProperty("playerTransform").objectReferenceValue = player.transform;
+            }
+            csSo.ApplyModifiedProperties();
         }
 
-        private static Sprite CreateAndSaveWizardSprite()
+        private static void SetupWaveSpawner()
         {
-            int w = 32, h = 24;
-            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Point;
-            Color[] pixels = new Color[w * h];
-            for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.clear;
+            var existingSpawner = GameObject.Find("WaveSpawner");
+            if (existingSpawner != null) Object.DestroyImmediate(existingSpawner);
 
-            Color hatColor = new Color(0.48f, 0.32f, 0.68f, 1f);     // Witch Hat Purple
-            Color robeColor = new Color(0.24f, 0.45f, 0.88f, 1f);    // Blue Robe
-            Color skinColor = new Color(1.0f, 0.85f, 0.72f, 1f);     // Skin
-            Color woodColor = new Color(0.68f, 0.46f, 0.22f, 1f);    // Broom wood
-            Color bristleColor = new Color(0.92f, 0.78f, 0.32f, 1f); // Yellow bristles
-            Color magicGlow = new Color(0.35f, 0.90f, 1.0f, 1f);     // Cyan lantern glow
+            GameObject spawnerObj = new GameObject("WaveSpawner");
+            var spawner = spawnerObj.AddComponent<WaveSpawner>();
 
-            // Broom handle
-            for (int x = 2; x < 28; x++)
-            {
-                SetPixel(pixels, w, x, 7, woodColor);
-                SetPixel(pixels, w, x, 8, woodColor);
-            }
-            // Broom bristles
-            for (int x = 0; x < 5; x++)
-            {
-                for (int y = 5; y < 11; y++)
-                {
-                    SetPixel(pixels, w, x, y, bristleColor);
-                }
-            }
-            // Wizard body / robe
-            for (int x = 10; x < 20; x++)
-            {
-                for (int y = 9; y < 17; y++)
-                {
-                    SetPixel(pixels, w, x, y, robeColor);
-                }
-            }
-            // Wizard face
-            for (int x = 12; x < 18; x++)
-            {
-                for (int y = 14; y < 18; y++)
-                {
-                    SetPixel(pixels, w, x, y, skinColor);
-                }
-            }
-            // Wizard Hat
-            for (int x = 8; x < 22; x++) SetPixel(pixels, w, x, 18, hatColor);
-            for (int x = 10; x < 20; x++) SetPixel(pixels, w, x, 19, hatColor);
-            for (int x = 11; x < 19; x++) SetPixel(pixels, w, x, 20, hatColor);
-            for (int x = 12; x < 17; x++) SetPixel(pixels, w, x, 21, hatColor);
-            for (int x = 13; x < 16; x++) SetPixel(pixels, w, x, 22, hatColor);
-            for (int x = 14; x < 16; x++) SetPixel(pixels, w, x, 23, hatColor);
+            GameObject rusherPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Enemy_Rusher.prefab");
+            GameObject batPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Enemy_Bat.prefab");
+            var cutscene = Object.FindFirstObjectByType<BossIntroCutscene>();
 
-            // Magic orb / lantern at front of broom
-            for (int x = 23; x < 27; x++)
-            {
-                for (int y = 10; y < 14; y++)
-                {
-                    SetPixel(pixels, w, x, y, magicGlow);
-                }
-            }
-
-            tex.SetPixels(pixels);
-            tex.Apply();
-
-            return SaveTextureAsSprite(tex, $"{SpritesPath}/Wizard.png", 16f);
-        }
-
-        private static Sprite CreateAndSaveIceBulletSprite()
-        {
-            int w = 16, h = 6;
-            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Point;
-            Color[] pixels = new Color[w * h];
-            for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.clear;
-
-            Color cyan = new Color(0.25f, 0.85f, 1f, 1f);
-            Color white = Color.white;
-
-            for (int x = 0; x < w; x++)
-            {
-                for (int y = 1; y < 5; y++)
-                {
-                    SetPixel(pixels, w, x, y, (x > 8 && y >= 2 && y <= 3) ? white : cyan);
-                }
-            }
-            tex.SetPixels(pixels);
-            tex.Apply();
-
-            return SaveTextureAsSprite(tex, $"{SpritesPath}/IceBullet.png", 16f);
-        }
-
-        private static Sprite CreateAndSaveFireBulletSprite()
-        {
-            int w = 16, h = 6;
-            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Point;
-            Color[] pixels = new Color[w * h];
-            for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.clear;
-
-            Color orange = new Color(1f, 0.5f, 0.1f, 1f);
-            Color yellow = new Color(1f, 0.95f, 0.3f, 1f);
-
-            for (int x = 0; x < w; x++)
-            {
-                for (int y = 1; y < 5; y++)
-                {
-                    SetPixel(pixels, w, x, y, (x > 8 && y >= 2 && y <= 3) ? yellow : orange);
-                }
-            }
-            tex.SetPixels(pixels);
-            tex.Apply();
-
-            return SaveTextureAsSprite(tex, $"{SpritesPath}/FireBullet.png", 16f);
-        }
-
-        private static Sprite CreateAndSaveHeartSprite()
-        {
-            int w = 16, h = 16;
-            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Point;
-            Color[] pixels = new Color[w * h];
-            for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.clear;
-
-            Color red = Color.white; // We tint it in Image/SpriteRenderer
-            // Draw pixel heart
-            int[] rowStarts = { 7, 6, 5, 4, 3, 2, 2, 1, 1, 1, 1, 2, 2, 3 };
-            for (int y = 2; y <= 13; y++)
-            {
-                int r = y - 2;
-                if (r < rowStarts.Length)
-                {
-                    int span = 8 - rowStarts[r];
-                    for (int dx = -span; dx <= span; dx++)
-                    {
-                        // top notch indentation
-                        if (y >= 12 && dx >= -1 && dx <= 1) continue;
-                        SetPixel(pixels, w, 8 + dx, y, red);
-                    }
-                }
-            }
-            tex.SetPixels(pixels);
-            tex.Apply();
-
-            return SaveTextureAsSprite(tex, $"{SpritesPath}/Heart.png", 16f);
-        }
-
-        private static Sprite CreateAndSaveBrickSprite()
-        {
-            int size = 64;
-            Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Point;
-            tex.wrapMode = TextureWrapMode.Repeat;
-            Color[] pixels = new Color[size * size];
-
-            Color darkMortar = new Color(0.10f, 0.08f, 0.16f, 1f);
-            Color brickColor1 = new Color(0.16f, 0.13f, 0.25f, 1f);
-            Color brickColor2 = new Color(0.20f, 0.16f, 0.30f, 1f);
-
-            int brickHeight = 16;
-            int brickWidth = 32;
-
-            for (int y = 0; y < size; y++)
-            {
-                int row = y / brickHeight;
-                bool isMortarY = (y % brickHeight == 0);
-
-                int xOffset = (row % 2 == 0) ? 0 : brickWidth / 2;
-
-                for (int x = 0; x < size; x++)
-                {
-                    int adjustedX = (x + xOffset) % size;
-                    bool isMortarX = (adjustedX % brickWidth == 0);
-
-                    if (isMortarY || isMortarX)
-                    {
-                        pixels[y * size + x] = darkMortar;
-                    }
-                    else
-                    {
-                        pixels[y * size + x] = ((x + y) % 5 == 0) ? brickColor2 : brickColor1;
-                    }
-                }
-            }
-
-            tex.SetPixels(pixels);
-            tex.Apply();
-
-            return SaveTextureAsSprite(tex, $"{SpritesPath}/BrickWall.png", 16f, true);
-        }
-
-        private static Sprite CreateAndSaveSpikesSprite()
-        {
-            int w = 32, h = 24;
-            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Point;
-            tex.wrapMode = TextureWrapMode.Repeat;
-            Color[] pixels = new Color[w * h];
-            for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.clear;
-
-            Color spikeColor = new Color(0.22f, 0.18f, 0.32f, 1f);
-            Color edgeColor = new Color(0.35f, 0.28f, 0.48f, 1f);
-
-            // Two pointed stalagmites
-            int[] peakXs = { 8, 24 };
-            foreach (int peak in peakXs)
-            {
-                for (int y = 0; y < h; y++)
-                {
-                    int halfW = (int)((1f - (float)y / h) * 7f);
-                    for (int dx = -halfW; dx <= halfW; dx++)
-                    {
-                        int px = peak + dx;
-                        if (px >= 0 && px < w)
-                        {
-                            Color c = (dx == -halfW || dx == halfW || y == h - 1) ? edgeColor : spikeColor;
-                            SetPixel(pixels, w, px, y, c);
-                        }
-                    }
-                }
-            }
-
-            tex.SetPixels(pixels);
-            tex.Apply();
-
-            return SaveTextureAsSprite(tex, $"{SpritesPath}/Spikes.png", 16f, true);
-        }
-
-        private static void SetPixel(Color[] pixels, int width, int x, int y, Color color)
-        {
-            if (x >= 0 && x < width && y >= 0 && y < (pixels.Length / width))
-            {
-                pixels[y * width + x] = color;
-            }
-        }
-
-        private static Sprite SaveTextureAsSprite(Texture2D tex, string path, float pixelsPerUnit, bool repeat = false)
-        {
-            byte[] bytes = tex.EncodeToPNG();
-            File.WriteAllBytes(path, bytes);
-            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
-
-            TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
-            if (importer != null)
-            {
-                importer.textureType = TextureImporterType.Sprite;
-                importer.spritePixelsPerUnit = pixelsPerUnit;
-                importer.filterMode = FilterMode.Point;
-                importer.textureCompression = TextureImporterCompression.Uncompressed;
-                importer.wrapMode = repeat ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
-                importer.SaveAndReimport();
-            }
-
-            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            SerializedObject so = new SerializedObject(spawner);
+            so.FindProperty("rusherPrefab").objectReferenceValue = rusherPrefab;
+            so.FindProperty("batPrefab").objectReferenceValue = batPrefab;
+            so.FindProperty("bossCutscene").objectReferenceValue = cutscene;
+            so.FindProperty("stageDuration").floatValue = 35f; // 35 segundos de fase antes do Boss
+            so.ApplyModifiedProperties();
         }
     }
 }

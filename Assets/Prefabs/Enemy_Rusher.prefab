@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &6907729001500122334
+--- !u!1 &4988725476289440318
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,24 +8,24 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 4907512387735644182}
-  - component: {fileID: 5715942609916664924}
-  - component: {fileID: 7455454819604419336}
-  - component: {fileID: 3937953225079712236}
+  - component: {fileID: 2289960353939126579}
+  - component: {fileID: 4574889779284125256}
+  - component: {fileID: 6321087902091965777}
+  - component: {fileID: 265145900467086097}
   m_Layer: 0
-  m_Name: Projectile_Ice
-  m_TagString: Hazard
+  m_Name: Enemy_Rusher
+  m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &4907512387735644182
+--- !u!4 &2289960353939126579
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6907729001500122334}
+  m_GameObject: {fileID: 4988725476289440318}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -34,14 +34,14 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!212 &5715942609916664924
+--- !u!212 &4574889779284125256
 SpriteRenderer:
   serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6907729001500122334}
+  m_GameObject: {fileID: 4988725476289440318}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -81,25 +81,25 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 6
+  m_SortingOrder: 8
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -1354289510649468934, guid: b8f5a1e839ba7014f950d641b1fb4c2e, type: 3}
+  m_Sprite: {fileID: -1916520715410566601, guid: 5727d9117f55ead46a47e35a65b25565, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 1, y: 0.375}
+  m_Size: {x: 1.0625, y: 0.875}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!61 &7455454819604419336
+--- !u!61 &6321087902091965777
 BoxCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6907729001500122334}
+  m_GameObject: {fileID: 4988725476289440318}
   m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
@@ -131,31 +131,38 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 0.375}
-    newSize: {x: 1, y: 0.375}
+    oldSize: {x: 1.0625, y: 0.875}
+    newSize: {x: 1.0625, y: 0.875}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.8, y: 0.35}
+  m_Size: {x: 1.2, y: 0.8}
   m_EdgeRadius: 0
---- !u!114 &3937953225079712236
+--- !u!114 &265145900467086097
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6907729001500122334}
+  m_GameObject: {fileID: 4988725476289440318}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 84ccf0f2db2696049b8233776bd490e5, type: 3}
+  m_Script: {fileID: 11500000, guid: 2a1725256de40d94ab28078c64a5fb53, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Combat.Projectile
-  direction: {x: 1, y: 0}
-  speed: 18
-  damage: 1.2
-  element: 1
-  isPlayerProjectile: 1
-  pierceCount: 1
-  lifetime: 3.5
-  hitEffectPrefab: {fileID: 0}
+  m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Enemies.RusherEnemy
+  maxHealth: 3
+  currentHealth: 0
+  scoreValue: 100
+  contactDamage: 1
+  weakElement: 0
+  weaknessDamageMultiplier: 2
+  spriteRenderer: {fileID: 0}
+  damageFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
+  deathEffectPrefab: {fileID: 0}
+  approachSpeed: 3
+  chargeSpeed: 16
+  approachDuration: 1.2
+  telegraphDuration: 0.5
+  telegraphColor: {r: 1, g: 0.2, b: 0.2, a: 1}
+  shakeIntensity: 0.08
