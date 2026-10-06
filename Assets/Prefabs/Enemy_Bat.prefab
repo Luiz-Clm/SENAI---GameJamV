@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 8605139204301252380}
   - component: {fileID: 2659443302639292228}
   - component: {fileID: 4728635590523384620}
+  - component: {fileID: 5337472530964855739}
   - component: {fileID: 4615053356276838585}
   m_Layer: 0
   m_Name: Enemy_Bat
@@ -145,8 +146,35 @@ CircleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: -0.12525117, y: -0.10205829}
-  m_Radius: 0.77730954
+  m_Offset: {x: 0, y: 0}
+  m_Radius: 0.55
+--- !u!50 &5337472530964855739
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3838460074559408029}
+  m_BodyType: 1
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 0
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
 --- !u!114 &4615053356276838585
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -168,6 +196,12 @@ MonoBehaviour:
   spriteRenderer: {fileID: 0}
   damageFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
   deathEffectPrefab: {fileID: 0}
+  fireHeartDropPrefab: {fileID: 4564538101699445348, guid: e84576b1058d72249a30caa2d58c0d42, type: 3}
+  fireHeartDropChance: 0.4
+  healthPotionDropPrefab: {fileID: 5928424389976600072, guid: ada803e6703f6f1428dc77aa6c3d3022, type: 3}
+  healthPotionDropChance: 0.25
+  skillPointDropPrefab: {fileID: 8771554972207094783, guid: aa5f32342019cda4bafec4220899e705, type: 3}
+  skillPointDropChance: 0.35
   horizontalSpeed: 2.5
   waveFrequency: 3
   waveAmplitude: 1.2

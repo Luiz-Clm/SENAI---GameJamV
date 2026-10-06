@@ -72,6 +72,13 @@ namespace WitchShmup.Player
             OnHealthChanged?.Invoke(currentHealth, maxHealth);
         }
 
+        public void IncreaseMaxHealth(int amount)
+        {
+            maxHealth += amount;
+            currentHealth += amount;
+            OnHealthChanged?.Invoke(currentHealth, maxHealth);
+        }
+
         private IEnumerator InvincibilityRoutine()
         {
             isInvincible = true;

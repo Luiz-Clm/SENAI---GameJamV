@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using WitchShmup.CameraSystem;
 using WitchShmup.Combat;
+using WitchShmup.Core;
 using WitchShmup.UI;
 
 namespace WitchShmup.Boss
 {
+    [RequireComponent(typeof(Collider2D), typeof(Rigidbody2D))]
     public class GolemBoss : MonoBehaviour, IDamageable
     {
         public enum BossState
@@ -22,6 +24,10 @@ namespace WitchShmup.Boss
         [SerializeField] private float maxHealth = 70f;
         [SerializeField] private float currentHealth;
         [SerializeField] private float contactDamage = 1f;
+
+        [Header("Boss Drops")]
+        [SerializeField] private GameObject bossCoreDropPrefab;
+        [SerializeField] private GameObject skillPointDropPrefab;
 
         [Header("Hover Movement")]
         [SerializeField] private float hoverSpeed = 1.5f;
@@ -67,6 +73,14 @@ namespace WitchShmup.Boss
         {
             currentHealth = maxHealth;
             hoverBaseY = transform.position.y;
+
+            var rb = GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.gravityScale = 0f;
+                rb.bodyType = RigidbodyType2D.Kinematic;
+            }
+
             if (mainBodyRenderer == null)
             {
                 mainBodyRenderer = GetComponentInChildren<SpriteRenderer>();
@@ -295,6 +309,25 @@ namespace WitchShmup.Boss
             if (hud != null)
             {
                 hud.HideBossBar();
+            }
+
+            // Drops do Boss
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.AddScore(2500);
+            }
+
+            if (bossCoreDropPrefab != null)
+            {
+                Instantiate(bossCoreDropPrefab, transform.position, Quaternion.identity);
+            }
+            if (skillPointDropPrefab != null)
+            {
+                for (int s = 0; s < 3; s++)
+                {
+                    Vector3 offset = new Vector3(UnityEngine.Random.Range(-1.5f, 1.5f), UnityEngine.Random.Range(-1.5f, 1.5f), 0f);
+                    Instantiate(skillPointDropPrefab, transform.position + offset, Quaternion.identity);
+                }
             }
 
             OnBossDefeated?.Invoke();

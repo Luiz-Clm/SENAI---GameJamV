@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace WitchShmup.Combat
 {
-    [RequireComponent(typeof(Collider2D))]
+    [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
     public class Projectile : MonoBehaviour
     {
         [Header("Movement")]
@@ -21,6 +21,18 @@ namespace WitchShmup.Combat
 
         private int currentHits = 0;
         private float timer = 0f;
+        private Rigidbody2D rb;
+
+        private void Awake()
+        {
+            rb = GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.gravityScale = 0f;
+                rb.bodyType = RigidbodyType2D.Kinematic;
+                rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            }
+        }
 
         public void Initialize(Vector2 dir, float spd, float dmg, ElementType elem, bool playerShot)
         {
@@ -51,15 +63,23 @@ namespace WitchShmup.Combat
         private void OnTriggerEnter2D(Collider2D other)
         {
             // If player projectile, do not hit player
-            if (isPlayerProjectile && other.CompareTag("Player"))
-                return;
+            if (isPlayerProjectile)
+            {
+                if (other.CompareTag("Player") || other.GetComponentInParent<WitchShmup.Player.PlayerController>() != null)
+                    return;
+            }
 
-            // If enemy projectile, do not hit enemies
-            if (!isPlayerProjectile && (other.CompareTag("Enemy") || other.CompareTag("Boss")))
-                return;
+            // If enemy projectile, do not hit enemies or boss
+            if (!isPlayerProjectile)
+            {
+                if (other.CompareTag("Enemy") || other.CompareTag("Boss") ||
+                    other.GetComponentInParent<WitchShmup.Enemies.EnemyBase>() != null ||
+                    other.GetComponentInParent<WitchShmup.Boss.GolemBoss>() != null)
+                    return;
+            }
 
-            // Check if object is damageable
-            var damageable = other.GetComponent<IDamageable>();
+            // Check if object (or any of its parents) is damageable
+            var damageable = other.GetComponentInParent<IDamageable>();
             if (damageable != null)
             {
                 damageable.TakeDamage(damage, element);

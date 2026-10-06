@@ -8,6 +8,7 @@ TagManager:
   - Undefined
   - Hazard
   - Boss
+  - Obstacle
   layers:
   - Default
   - TransparentFX

@@ -30,6 +30,11 @@ namespace WitchShmup.Player
 
         public Vector2 MoveInput => moveInput;
 
+        public void MultiplySpeed(float mult)
+        {
+            moveSpeed *= mult;
+        }
+
         private void Awake()
         {
             rb = GetComponent<Rigidbody2D>();

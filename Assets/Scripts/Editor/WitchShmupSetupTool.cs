@@ -8,7 +8,9 @@ using TMPro;
 using WitchShmup.Boss;
 using WitchShmup.CameraSystem;
 using WitchShmup.Combat;
+using WitchShmup.Core;
 using WitchShmup.Cutscenes;
+using WitchShmup.Drops;
 using WitchShmup.Enemies;
 using WitchShmup.Environment;
 using WitchShmup.Player;
@@ -44,6 +46,12 @@ namespace WitchShmup.Editor
             EnsureSpriteImportSettings("BigRock.png", 16f);
             EnsureSpriteImportSettings("StoneWall_Block.png", 16f);
             EnsureSpriteImportSettings("MiniStone.png", 16f);
+            EnsureSpriteImportSettings("FireHeart.png", 16f);
+            EnsureSpriteImportSettings("HealthPotion.png", 16f);
+            EnsureSpriteImportSettings("SkillPoint.png", 16f);
+            EnsureSpriteImportSettings("BossCore.png", 16f);
+            EnsureSpriteImportSettings("Staff_Basic.png", 16f);
+            EnsureSpriteImportSettings("Staff_Evolved.png", 16f);
 
             AssetDatabase.Refresh();
 
@@ -56,16 +64,27 @@ namespace WitchShmup.Editor
             // 2. Projétil de Fogo do Morcego
             CreateProjectilePrefab("Enemy_Fireball", fireBulletSprite, ElementType.Enemy, 8f, 1f, 1, false);
 
-            // 3. Inimigo Rusher Prefab
+            // 3. Drops Coletáveis
+            Sprite fireHeartSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/FireHeart.png");
+            Sprite potionSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/HealthPotion.png");
+            Sprite skillPointSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/SkillPoint.png");
+            Sprite bossCoreSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/BossCore.png");
+
+            CreatePickupPrefab("Pickup_FireHeart", fireHeartSprite, PickupType.FireHeart);
+            CreatePickupPrefab("Pickup_HealthPotion", potionSprite, PickupType.HealthPotion);
+            CreatePickupPrefab("Pickup_SkillPoint", skillPointSprite, PickupType.SkillPoint);
+            CreatePickupPrefab("Pickup_BossCore", bossCoreSprite, PickupType.BossCore, 5f);
+
+            // 4. Inimigo Rusher Prefab
             Sprite rusherSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Rusher.png");
             CreateRusherPrefab(rusherSprite);
 
-            // 4. Inimigo Morcego Prefab
+            // 5. Inimigo Morcego Prefab
             Sprite batSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Bat.png");
             GameObject fireballPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Enemy_Fireball.prefab");
             CreateBatPrefab(batSprite, fireballPrefab);
 
-            // 5. Boss Prefabs: Pedra Gigante, Pedra Orbital, Parede de Pedra
+            // 6. Boss Prefabs: Pedra Gigante, Pedra Orbital, Parede de Pedra
             Sprite bigRockSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/BigRock.png");
             CreateBigRockPrefab(bigRockSprite);
 
@@ -81,7 +100,7 @@ namespace WitchShmup.Editor
             EditorUtility.DisplayDialog("Witch Shmup", "Sprites e Prefabs gerados e configurados com sucesso em Assets/Prefabs!", "OK");
         }
 
-        [MenuItem("Tools/Witch Shmup/2. Montar Cena Atual (Player + Parallax + Inimigos + Boss + Cutscene + HUD)")]
+        [MenuItem("Tools/Witch Shmup/2. Montar Cena Atual (Completa com Drops, Evolução e Derrota)")]
         public static void SetupCurrentScene()
         {
             GenerateSpritesAndPrefabs();
@@ -114,7 +133,7 @@ namespace WitchShmup.Editor
             // 3. Setup Player
             SetupPlayer();
 
-            // 4. Setup HUD com barra de vida do Boss
+            // 4. Setup HUD, GameOverUI, EvolutionUI e GameManager
             SetupHUD();
 
             // 5. Setup Golem Boss e Cutscene
@@ -123,7 +142,17 @@ namespace WitchShmup.Editor
             // 6. Setup Wave Spawner
             SetupWaveSpawner();
 
-            EditorUtility.DisplayDialog("Witch Shmup", "Cena configurada com sucesso!\n\nNovidades implementadas:\n- Inimigos Rushers (investem contra o jogador)\n- Morcegos atiradores de fogo que desviam dos tiros\n- Golem de Pedra com mini-pedras orbitais\n- Ataque de Pedra Gigante e Parede Destrutível\n- Cutscene do Mago com medo e Golem rugindo\n\nAtalho útil: Pressione 'B' no Play Mode para acionar a Cutscene do Boss imediatamente!", "Jogar!");
+            EditorUtility.DisplayDialog("Witch Shmup",
+                "Cena configurada com sucesso!\n\n" +
+                "Novidades implementadas:\n" +
+                "- Dano e morte funcionando em todos os inimigos e no Boss!\n" +
+                "- Sistema de Drops (Coração de Fogo, Poção de Cura, Skill Points, Cristal do Boss) com atração magnética!\n" +
+                "- Sistema de Pontuação funcionando em tempo real!\n" +
+                "- Tela de Derrota (Game Over) ao zerar os corações!\n" +
+                "- Tela de Evolução e Árvore de Habilidades em Y (Pressione 'E' para abrir e pausar o jogo)!\n\n" +
+                "Atalhos úteis no Play Mode:\n" +
+                "- 'E': Abre/Fecha Tela de Evolução\n" +
+                "- 'B': Chama a Cutscene do Boss imediatamente", "Jogar!");
         }
 
         private static void EnsureFoldersExist()
@@ -167,10 +196,38 @@ namespace WitchShmup.Editor
             col.isTrigger = true;
             col.size = new Vector2(0.8f, 0.35f);
 
+            var rb = obj.AddComponent<Rigidbody2D>();
+            rb.gravityScale = 0f;
+            rb.bodyType = RigidbodyType2D.Kinematic;
+            rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
             var proj = obj.AddComponent<Projectile>();
             proj.Initialize(Vector2.right, speed, damage, element, isPlayerShot);
 
             PrefabUtility.SaveAsPrefabAsset(obj, prefabPath);
+            Object.DestroyImmediate(obj);
+        }
+
+        private static void CreatePickupPrefab(string name, Sprite sprite, PickupType type, float magnetRadius = 3.5f)
+        {
+            string path = $"{PrefabsPath}/{name}.prefab";
+            GameObject obj = new GameObject(name);
+
+            var sr = obj.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.sortingOrder = 9;
+
+            var col = obj.AddComponent<CircleCollider2D>();
+            col.isTrigger = true;
+            col.radius = 0.5f;
+
+            var pickup = obj.AddComponent<PickupItem>();
+            SerializedObject so = new SerializedObject(pickup);
+            so.FindProperty("pickupType").enumValueIndex = (int)type;
+            so.FindProperty("magnetRadius").floatValue = magnetRadius;
+            so.ApplyModifiedProperties();
+
+            PrefabUtility.SaveAsPrefabAsset(obj, path);
             Object.DestroyImmediate(obj);
         }
 
@@ -188,7 +245,22 @@ namespace WitchShmup.Editor
             col.isTrigger = true;
             col.size = new Vector2(1.2f, 0.8f);
 
-            obj.AddComponent<RusherEnemy>();
+            var rb = obj.AddComponent<Rigidbody2D>();
+            rb.gravityScale = 0f;
+            rb.bodyType = RigidbodyType2D.Kinematic;
+
+            var rusher = obj.AddComponent<RusherEnemy>();
+
+            // Drops do Rusher
+            GameObject potionPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_HealthPotion.prefab");
+            GameObject skillPointPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_SkillPoint.prefab");
+
+            SerializedObject so = new SerializedObject(rusher);
+            so.FindProperty("healthPotionDropPrefab").objectReferenceValue = potionPrefab;
+            so.FindProperty("skillPointDropPrefab").objectReferenceValue = skillPointPrefab;
+            so.FindProperty("healthPotionDropChance").floatValue = 0.20f;
+            so.FindProperty("skillPointDropChance").floatValue = 0.25f;
+            so.ApplyModifiedProperties();
 
             PrefabUtility.SaveAsPrefabAsset(obj, path);
             Object.DestroyImmediate(obj);
@@ -227,9 +299,25 @@ namespace WitchShmup.Editor
             col.isTrigger = true;
             col.radius = 0.55f;
 
+            var rb = obj.AddComponent<Rigidbody2D>();
+            rb.gravityScale = 0f;
+            rb.bodyType = RigidbodyType2D.Kinematic;
+
             var bat = obj.AddComponent<BatEnemy>();
+
+            // Drops do Morcego: Coração de Fogo, Poção de Cura, Skill Points
+            GameObject fireHeartPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_FireHeart.prefab");
+            GameObject potionPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_HealthPotion.prefab");
+            GameObject skillPointPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_SkillPoint.prefab");
+
             SerializedObject so = new SerializedObject(bat);
             so.FindProperty("fireballPrefab").objectReferenceValue = fireballPrefab;
+            so.FindProperty("fireHeartDropPrefab").objectReferenceValue = fireHeartPrefab;
+            so.FindProperty("healthPotionDropPrefab").objectReferenceValue = potionPrefab;
+            so.FindProperty("skillPointDropPrefab").objectReferenceValue = skillPointPrefab;
+            so.FindProperty("fireHeartDropChance").floatValue = 0.40f;
+            so.FindProperty("healthPotionDropChance").floatValue = 0.25f;
+            so.FindProperty("skillPointDropChance").floatValue = 0.35f;
             so.ApplyModifiedProperties();
 
             PrefabUtility.SaveAsPrefabAsset(obj, path);
@@ -249,6 +337,10 @@ namespace WitchShmup.Editor
             col.isTrigger = true;
             col.radius = 1.0f;
 
+            var rb = obj.AddComponent<Rigidbody2D>();
+            rb.gravityScale = 0f;
+            rb.bodyType = RigidbodyType2D.Kinematic;
+
             obj.AddComponent<BigRockProjectile>();
 
             PrefabUtility.SaveAsPrefabAsset(obj, path);
@@ -267,6 +359,10 @@ namespace WitchShmup.Editor
             var col = obj.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
             col.size = new Vector2(0.8f, 0.8f);
+
+            var rb = obj.AddComponent<Rigidbody2D>();
+            rb.gravityScale = 0f;
+            rb.bodyType = RigidbodyType2D.Kinematic;
 
             obj.AddComponent<OrbitingStone>();
 
@@ -294,6 +390,10 @@ namespace WitchShmup.Editor
                 var col = seg.AddComponent<BoxCollider2D>();
                 col.isTrigger = true;
                 col.size = new Vector2(1.2f, 2.0f);
+
+                var rb = seg.AddComponent<Rigidbody2D>();
+                rb.gravityScale = 0f;
+                rb.bodyType = RigidbodyType2D.Kinematic;
 
                 seg.AddComponent<StoneWallSegment>();
             }
@@ -512,7 +612,7 @@ namespace WitchShmup.Editor
             fillRect.anchorMax = Vector2.one;
             fillRect.sizeDelta = Vector2.zero;
             var fillImg = fillObj.AddComponent<Image>();
-            fillImg.color = new Color(0.97f, 0.3f, 0.35f, 1f); // Vermelho vibrante
+            fillImg.color = new Color(0.97f, 0.3f, 0.35f, 1f);
             fillImg.type = Image.Type.Filled;
             fillImg.fillMethod = Image.FillMethod.Horizontal;
             fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -621,6 +721,414 @@ namespace WitchShmup.Editor
             hudSo.FindProperty("bossBarContainer").objectReferenceValue = bossBarObj;
             hudSo.FindProperty("bossHealthFill").objectReferenceValue = fillImg;
             hudSo.ApplyModifiedProperties();
+
+            // --- GameManager ---
+            var existingGm = Object.FindFirstObjectByType<GameManager>();
+            if (existingGm == null)
+            {
+                var gmObj = new GameObject("GameManager");
+                existingGm = gmObj.AddComponent<GameManager>();
+            }
+
+            // --- GameOver Screen ---
+            GameObject gameOverPanel = SetupGameOverPanel(canvasObj.transform);
+
+            // --- Evolution Screen (Skill Tree & Staff) ---
+            GameObject evolutionPanel = SetupEvolutionPanel(canvasObj.transform);
+
+            // Connect panels to GameManager
+            SerializedObject gmSo = new SerializedObject(existingGm);
+            gmSo.FindProperty("hudController").objectReferenceValue = hud;
+            gmSo.FindProperty("gameOverPanel").objectReferenceValue = gameOverPanel;
+            gmSo.FindProperty("evolutionPanel").objectReferenceValue = evolutionPanel;
+            gmSo.ApplyModifiedProperties();
+        }
+
+        private static GameObject SetupGameOverPanel(Transform canvasTransform)
+        {
+            GameObject panel = new GameObject("Panel_GameOver");
+            panel.transform.SetParent(canvasTransform, false);
+            var rect = panel.AddComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.sizeDelta = Vector2.zero;
+
+            var bgImg = panel.AddComponent<Image>();
+            bgImg.color = new Color(0.06f, 0.04f, 0.08f, 0.92f);
+
+            var goUI = panel.AddComponent<GameOverUI>();
+
+            // Title
+            GameObject titleObj = new GameObject("Title");
+            titleObj.transform.SetParent(panel.transform, false);
+            var tRect = titleObj.AddComponent<RectTransform>();
+            tRect.anchoredPosition = new Vector2(0f, 120f);
+            var tTmp = titleObj.AddComponent<TextMeshProUGUI>();
+            tTmp.text = "VOCÊ FOI DERROTADO";
+            tTmp.fontSize = 52;
+            tTmp.fontStyle = FontStyles.Bold;
+            tTmp.alignment = TextAlignmentOptions.Center;
+            tTmp.color = new Color(0.98f, 0.28f, 0.35f, 1f);
+
+            // Score text
+            GameObject scoreObj = new GameObject("FinalScore");
+            scoreObj.transform.SetParent(panel.transform, false);
+            var sRect = scoreObj.AddComponent<RectTransform>();
+            sRect.anchoredPosition = new Vector2(0f, 20f);
+            var sTmp = scoreObj.AddComponent<TextMeshProUGUI>();
+            sTmp.text = "PONTUAÇÃO FINAL: 0000000";
+            sTmp.fontSize = 30;
+            sTmp.alignment = TextAlignmentOptions.Center;
+            sTmp.color = Color.white;
+
+            // Retry Button
+            GameObject btnObj = new GameObject("Btn_Retry");
+            btnObj.transform.SetParent(panel.transform, false);
+            var bRect = btnObj.AddComponent<RectTransform>();
+            bRect.anchoredPosition = new Vector2(0f, -80f);
+            bRect.sizeDelta = new Vector2(280f, 60f);
+            var btnImg = btnObj.AddComponent<Image>();
+            btnImg.color = new Color(0.2f, 0.75f, 0.5f, 1f);
+            var btn = btnObj.AddComponent<Button>();
+
+            GameObject btnTxtObj = new GameObject("Text");
+            btnTxtObj.transform.SetParent(btnObj.transform, false);
+            var btRect = btnTxtObj.AddComponent<RectTransform>();
+            btRect.anchorMin = Vector2.zero;
+            btRect.anchorMax = Vector2.one;
+            btRect.sizeDelta = Vector2.zero;
+            var btTmp = btnTxtObj.AddComponent<TextMeshProUGUI>();
+            btTmp.text = "TENTAR NOVAMENTE";
+            btTmp.fontSize = 24;
+            btTmp.fontStyle = FontStyles.Bold;
+            btTmp.alignment = TextAlignmentOptions.Center;
+            btTmp.color = Color.white;
+
+            SerializedObject goSo = new SerializedObject(goUI);
+            goSo.FindProperty("finalScoreText").objectReferenceValue = sTmp;
+            goSo.FindProperty("retryButton").objectReferenceValue = btn;
+            goSo.ApplyModifiedProperties();
+
+            panel.SetActive(false);
+            return panel;
+        }
+
+        private static GameObject SetupEvolutionPanel(Transform canvasTransform)
+        {
+            GameObject panel = new GameObject("Panel_Evolution");
+            panel.transform.SetParent(canvasTransform, false);
+            var rect = panel.AddComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.sizeDelta = Vector2.zero;
+
+            var bgImg = panel.AddComponent<Image>();
+            bgImg.color = new Color(0.10f, 0.18f, 0.16f, 0.95f); // Verde escuro elegante
+
+            var evoUI = panel.AddComponent<EvolutionUI>();
+
+            // Header Title
+            GameObject titleObj = new GameObject("HeaderTitle");
+            titleObj.transform.SetParent(panel.transform, false);
+            var tRect = titleObj.AddComponent<RectTransform>();
+            tRect.anchorMin = new Vector2(0.5f, 1f);
+            tRect.anchorMax = new Vector2(0.5f, 1f);
+            tRect.pivot = new Vector2(0.5f, 1f);
+            tRect.anchoredPosition = new Vector2(0f, -20f);
+            var tTmp = titleObj.AddComponent<TextMeshProUGUI>();
+            tTmp.text = "CENTRO DE EVOLUÇÃO (TECLA E PARA FECHAR)";
+            tTmp.fontSize = 32;
+            tTmp.fontStyle = FontStyles.Bold;
+            tTmp.alignment = TextAlignmentOptions.Center;
+            tTmp.color = new Color(0.6f, 0.95f, 0.8f, 1f);
+
+            // Close button
+            GameObject closeObj = new GameObject("Btn_Close");
+            closeObj.transform.SetParent(panel.transform, false);
+            var cRect = closeObj.AddComponent<RectTransform>();
+            cRect.anchorMin = new Vector2(0.96f, 0.96f);
+            cRect.anchorMax = new Vector2(0.96f, 0.96f);
+            cRect.sizeDelta = new Vector2(44f, 44f);
+            var cImg = closeObj.AddComponent<Image>();
+            cImg.color = new Color(0.8f, 0.2f, 0.2f, 1f);
+            var closeBtn = closeObj.AddComponent<Button>();
+
+            GameObject closeTxtObj = new GameObject("X");
+            closeTxtObj.transform.SetParent(closeObj.transform, false);
+            var ctRect = closeTxtObj.AddComponent<RectTransform>();
+            ctRect.anchorMin = Vector2.zero;
+            ctRect.anchorMax = Vector2.one;
+            ctRect.sizeDelta = Vector2.zero;
+            var ctTmp = closeTxtObj.AddComponent<TextMeshProUGUI>();
+            ctTmp.text = "✕";
+            ctTmp.fontSize = 26;
+            ctTmp.alignment = TextAlignmentOptions.Center;
+            ctTmp.color = Color.white;
+
+            // --- 1. Caixa de Evolução do Cajado (Topo) ---
+            GameObject staffBox = new GameObject("StaffEvolutionBox");
+            staffBox.transform.SetParent(panel.transform, false);
+            var sbRect = staffBox.AddComponent<RectTransform>();
+            sbRect.anchorMin = new Vector2(0.5f, 0.76f);
+            sbRect.anchorMax = new Vector2(0.5f, 0.76f);
+            sbRect.sizeDelta = new Vector2(860f, 170f);
+            var sbImg = staffBox.AddComponent<Image>();
+            sbImg.color = new Color(0.14f, 0.24f, 0.22f, 1f);
+
+            // Ícone Cajado Básico
+            Sprite basicStaffSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Staff_Basic.png");
+            GameObject bStaffObj = new GameObject("Staff_Basic");
+            bStaffObj.transform.SetParent(staffBox.transform, false);
+            var bsRect = bStaffObj.AddComponent<RectTransform>();
+            bsRect.anchoredPosition = new Vector2(-280f, 10f);
+            bsRect.sizeDelta = new Vector2(80f, 80f);
+            var bsImg = bStaffObj.AddComponent<Image>();
+            bsImg.sprite = basicStaffSprite;
+
+            // Seta
+            GameObject arrowObj = new GameObject("Arrow");
+            arrowObj.transform.SetParent(staffBox.transform, false);
+            var aRect = arrowObj.AddComponent<RectTransform>();
+            aRect.anchoredPosition = new Vector2(-170f, 10f);
+            var aTmp = arrowObj.AddComponent<TextMeshProUGUI>();
+            aTmp.text = "➔";
+            aTmp.fontSize = 44;
+            aTmp.alignment = TextAlignmentOptions.Center;
+            aTmp.color = new Color(0.5f, 1f, 0.7f, 1f);
+
+            // Ícone Cajado Evoluído
+            Sprite evolvedStaffSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Staff_Evolved.png");
+            GameObject eStaffObj = new GameObject("Staff_Evolved");
+            eStaffObj.transform.SetParent(staffBox.transform, false);
+            var esRect = eStaffObj.AddComponent<RectTransform>();
+            esRect.anchoredPosition = new Vector2(-60f, 10f);
+            esRect.sizeDelta = new Vector2(80f, 80f);
+            var esImg = eStaffObj.AddComponent<Image>();
+            esImg.sprite = evolvedStaffSprite;
+
+            // Status e Requisitos Texto
+            GameObject stTextObj = new GameObject("StaffStatus");
+            stTextObj.transform.SetParent(staffBox.transform, false);
+            var stRect = stTextObj.AddComponent<RectTransform>();
+            stRect.anchoredPosition = new Vector2(170f, 35f);
+            stRect.sizeDelta = new Vector2(340f, 30f);
+            var stTmp = stTextObj.AddComponent<TextMeshProUGUI>();
+            stTmp.text = "CAJADO DE MADEIRA (NÍVEL 1)";
+            stTmp.fontSize = 20;
+            stTmp.fontStyle = FontStyles.Bold;
+            stTmp.color = Color.white;
+
+            GameObject reqTextObj = new GameObject("StaffReqs");
+            reqTextObj.transform.SetParent(staffBox.transform, false);
+            var reqRect = reqTextObj.AddComponent<RectTransform>();
+            reqRect.anchoredPosition = new Vector2(170f, 5f);
+            reqRect.sizeDelta = new Vector2(340f, 30f);
+            var reqTmp = reqTextObj.AddComponent<TextMeshProUGUI>();
+            reqTmp.text = "Requer: 0/2 Corações de Fogo | 0/1 Núcleo do Boss";
+            reqTmp.fontSize = 16;
+            reqTmp.color = new Color(1f, 0.85f, 0.4f, 1f);
+
+            // Botão Evoluir Cajado
+            GameObject evoBtnObj = new GameObject("Btn_EvolveStaff");
+            evoBtnObj.transform.SetParent(staffBox.transform, false);
+            var ebRect = evoBtnObj.AddComponent<RectTransform>();
+            ebRect.anchoredPosition = new Vector2(170f, -38f);
+            ebRect.sizeDelta = new Vector2(260f, 40f);
+            var ebImg = evoBtnObj.AddComponent<Image>();
+            ebImg.color = new Color(0.2f, 0.7f, 0.45f, 1f);
+            var evoBtn = evoBtnObj.AddComponent<Button>();
+
+            GameObject ebTxtObj = new GameObject("Text");
+            ebTxtObj.transform.SetParent(evoBtnObj.transform, false);
+            var ebtRect = ebTxtObj.AddComponent<RectTransform>();
+            ebtRect.anchorMin = Vector2.zero;
+            ebtRect.anchorMax = Vector2.one;
+            ebtRect.sizeDelta = Vector2.zero;
+            var ebtTmp = ebTxtObj.AddComponent<TextMeshProUGUI>();
+            ebtTmp.text = "EVOLUIR CAJADO";
+            ebtTmp.fontSize = 18;
+            ebtTmp.fontStyle = FontStyles.Bold;
+            ebtTmp.alignment = TextAlignmentOptions.Center;
+            ebtTmp.color = Color.white;
+
+            // --- 2. Árvore de Habilidades em Y (Base) ---
+            GameObject treeBox = new GameObject("SkillTreeBox");
+            treeBox.transform.SetParent(panel.transform, false);
+            var tbRect = treeBox.AddComponent<RectTransform>();
+            tbRect.anchorMin = new Vector2(0.5f, 0.32f);
+            tbRect.anchorMax = new Vector2(0.5f, 0.32f);
+            tbRect.sizeDelta = new Vector2(860f, 400f);
+            var tbImg = treeBox.AddComponent<Image>();
+            tbImg.color = new Color(0.12f, 0.22f, 0.20f, 1f);
+
+            // Skill points text
+            GameObject spTextObj = new GameObject("SkillPointsText");
+            spTextObj.transform.SetParent(treeBox.transform, false);
+            var spRect = spTextObj.AddComponent<RectTransform>();
+            spRect.anchoredPosition = new Vector2(-240f, 160f);
+            var spTmp = spTextObj.AddComponent<TextMeshProUGUI>();
+            spTmp.text = "Skill Points: 0";
+            spTmp.fontSize = 24;
+            spTmp.fontStyle = FontStyles.Bold;
+            spTmp.color = new Color(1f, 0.9f, 0.3f, 1f);
+
+            // Container da árvore Y (esquerda)
+            GameObject yTree = new GameObject("Y_Tree_Nodes");
+            yTree.transform.SetParent(treeBox.transform, false);
+            var ytRect = yTree.AddComponent<RectTransform>();
+            ytRect.anchoredPosition = new Vector2(-150f, -20f);
+            ytRect.sizeDelta = new Vector2(400f, 320f);
+
+            // 5 Nós da Árvore
+            string[] skillIds = { "Vitality", "FlightSpeed", "AttackSpeed", "IcePower", "FirePower" };
+            string[] skillNames = { "Vitalidade Arcana", "Voo Ágil", "Cadência Mágica", "Mestre do Gelo", "Mestre do Fogo" };
+            string[] skillDescs = {
+                "+1 Coração de Vida Máxima permanente para o Bruxo.",
+                "+20% de Velocidade de Movimento e Manobra de Voo.",
+                "+25% de Velocidade de Ataque (tiros mais frequentes).",
+                "+50% de Dano em todos os feitiços e tiros de Gelo.",
+                "+50% de Dano em todos os feitiços e tiros de Fogo."
+            };
+            Vector2[] nodePositions = {
+                new Vector2(0f, -100f),    // Raiz (Vitalidade)
+                new Vector2(0f, -25f),     // Tronco (Voo)
+                new Vector2(0f, 50f),      // Bifurcação (Cadência)
+                new Vector2(-100f, 120f),  // Ramo Esquerdo (Gelo)
+                new Vector2(100f, 120f)    // Ramo Direito (Fogo)
+            };
+
+            EvolutionUI.SkillNodeData[] nodesData = new EvolutionUI.SkillNodeData[5];
+            for (int i = 0; i < 5; i++)
+            {
+                GameObject nObj = new GameObject($"Node_{skillIds[i]}");
+                nObj.transform.SetParent(yTree.transform, false);
+                var nRect = nObj.AddComponent<RectTransform>();
+                nRect.anchoredPosition = nodePositions[i];
+                nRect.sizeDelta = new Vector2(58f, 58f);
+
+                var nImg = nObj.AddComponent<Image>();
+                nImg.color = new Color(1f, 0.55f, 0.65f, 1f); // Rosa suave estilo diagrama do usuário!
+                var nBtn = nObj.AddComponent<Button>();
+
+                GameObject nTxtObj = new GameObject("Icon");
+                nTxtObj.transform.SetParent(nObj.transform, false);
+                var ntRect = nTxtObj.AddComponent<RectTransform>();
+                ntRect.anchorMin = Vector2.zero;
+                ntRect.anchorMax = Vector2.one;
+                ntRect.sizeDelta = Vector2.zero;
+                var ntTmp = nTxtObj.AddComponent<TextMeshProUGUI>();
+                ntTmp.text = (i + 1).ToString();
+                ntTmp.fontSize = 24;
+                ntTmp.fontStyle = FontStyles.Bold;
+                ntTmp.alignment = TextAlignmentOptions.Center;
+                ntTmp.color = Color.white;
+
+                nodesData[i] = new EvolutionUI.SkillNodeData
+                {
+                    skillId = skillIds[i],
+                    skillName = skillNames[i],
+                    description = skillDescs[i],
+                    nodeButton = nBtn,
+                    nodeImage = nImg
+                };
+            }
+
+            // Painel de Detalhes da Habilidade (direita)
+            GameObject detailBox = new GameObject("DetailBox");
+            detailBox.transform.SetParent(treeBox.transform, false);
+            var dbRect = detailBox.AddComponent<RectTransform>();
+            dbRect.anchoredPosition = new Vector2(240f, -15f);
+            dbRect.sizeDelta = new Vector2(300f, 290f);
+            var dbImg = detailBox.AddComponent<Image>();
+            dbImg.color = new Color(0.24f, 0.16f, 0.22f, 1f); // Rosa escuro elegante
+
+            GameObject dnObj = new GameObject("DetailName");
+            dnObj.transform.SetParent(detailBox.transform, false);
+            var dnRect = dnObj.AddComponent<RectTransform>();
+            dnRect.anchoredPosition = new Vector2(0f, 100f);
+            dnRect.sizeDelta = new Vector2(260f, 40f);
+            var dnTmp = dnObj.AddComponent<TextMeshProUGUI>();
+            dnTmp.text = "Nome da Habilidade";
+            dnTmp.fontSize = 20;
+            dnTmp.fontStyle = FontStyles.Bold;
+            dnTmp.alignment = TextAlignmentOptions.Center;
+            dnTmp.color = Color.white;
+
+            GameObject dcObj = new GameObject("DetailCost");
+            dcObj.transform.SetParent(detailBox.transform, false);
+            var dcRect = dcObj.AddComponent<RectTransform>();
+            dcRect.anchoredPosition = new Vector2(0f, 65f);
+            dcRect.sizeDelta = new Vector2(260f, 25f);
+            var dcTmp = dcObj.AddComponent<TextMeshProUGUI>();
+            dcTmp.text = "Custo: 1 Skill Point";
+            dcTmp.fontSize = 16;
+            dcTmp.alignment = TextAlignmentOptions.Center;
+            dcTmp.color = new Color(1f, 0.85f, 0.4f, 1f);
+
+            GameObject ddObj = new GameObject("DetailDesc");
+            ddObj.transform.SetParent(detailBox.transform, false);
+            var ddRect = ddObj.AddComponent<RectTransform>();
+            ddRect.anchoredPosition = new Vector2(0f, 0f);
+            ddRect.sizeDelta = new Vector2(260f, 80f);
+            var ddTmp = ddObj.AddComponent<TextMeshProUGUI>();
+            ddTmp.text = "Descrição do efeito da habilidade no jogo.";
+            ddTmp.fontSize = 15;
+            ddTmp.alignment = TextAlignmentOptions.Center;
+            ddTmp.color = new Color(0.9f, 0.9f, 0.9f, 1f);
+
+            // Botão Aprender Habilidade
+            GameObject learnBtnObj = new GameObject("Btn_Learn");
+            learnBtnObj.transform.SetParent(detailBox.transform, false);
+            var lbRect = learnBtnObj.AddComponent<RectTransform>();
+            lbRect.anchoredPosition = new Vector2(0f, -95f);
+            lbRect.sizeDelta = new Vector2(220f, 42f);
+            var lbImg = learnBtnObj.AddComponent<Image>();
+            lbImg.color = new Color(0.85f, 0.4f, 0.6f, 1f);
+            var learnBtn = learnBtnObj.AddComponent<Button>();
+
+            GameObject lbTxtObj = new GameObject("Text");
+            lbTxtObj.transform.SetParent(learnBtnObj.transform, false);
+            var lbtRect = lbTxtObj.AddComponent<RectTransform>();
+            lbtRect.anchorMin = Vector2.zero;
+            lbtRect.anchorMax = Vector2.one;
+            lbtRect.sizeDelta = Vector2.zero;
+            var lbtTmp = lbTxtObj.AddComponent<TextMeshProUGUI>();
+            lbtTmp.text = "APRENDER";
+            lbtTmp.fontSize = 18;
+            lbtTmp.fontStyle = FontStyles.Bold;
+            lbtTmp.alignment = TextAlignmentOptions.Center;
+            lbtTmp.color = Color.white;
+
+            // Wire EvolutionUI
+            SerializedObject evoSo = new SerializedObject(evoUI);
+            evoSo.FindProperty("staffRequirementsText").objectReferenceValue = reqTmp;
+            evoSo.FindProperty("staffStatusText").objectReferenceValue = stTmp;
+            evoSo.FindProperty("evolveStaffButton").objectReferenceValue = evoBtn;
+            evoSo.FindProperty("basicStaffImage").objectReferenceValue = bsImg;
+            evoSo.FindProperty("evolvedStaffImage").objectReferenceValue = esImg;
+
+            evoSo.FindProperty("skillPointsHeader").objectReferenceValue = spTmp;
+            evoSo.FindProperty("skillNameText").objectReferenceValue = dnTmp;
+            evoSo.FindProperty("skillCostText").objectReferenceValue = dcTmp;
+            evoSo.FindProperty("skillDescText").objectReferenceValue = ddTmp;
+            evoSo.FindProperty("learnSkillButton").objectReferenceValue = learnBtn;
+            evoSo.FindProperty("closeButton").objectReferenceValue = closeBtn;
+
+            SerializedProperty nodesProp = evoSo.FindProperty("skillNodes");
+            nodesProp.arraySize = 5;
+            for (int i = 0; i < 5; i++)
+            {
+                var elem = nodesProp.GetArrayElementAtIndex(i);
+                elem.FindPropertyRelative("skillId").stringValue = nodesData[i].skillId;
+                elem.FindPropertyRelative("skillName").stringValue = nodesData[i].skillName;
+                elem.FindPropertyRelative("description").stringValue = nodesData[i].description;
+                elem.FindPropertyRelative("nodeButton").objectReferenceValue = nodesData[i].nodeButton;
+                elem.FindPropertyRelative("nodeImage").objectReferenceValue = nodesData[i].nodeImage;
+            }
+            evoSo.ApplyModifiedProperties();
+
+            panel.SetActive(false);
+            return panel;
         }
 
         private static void SetupBossAndCutscene()
@@ -634,20 +1142,19 @@ namespace WitchShmup.Editor
             // 1. Criar Boss GameObject
             GameObject bossObj = new GameObject("Boss_Golem");
             bossObj.tag = "Boss";
-            bossObj.transform.position = new Vector3(14f, 0f, 0f); // Inicia fora da tela
+            bossObj.transform.position = new Vector3(14f, 0f, 0f);
 
             Sprite headSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Golem_Head.png");
             Sprite bodySprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Golem_Body.png");
             Sprite stoneBlockSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/StoneWall_Block.png");
 
-            // Aura circular roxa no fundo (fiel à imagem!)
+            // Aura circular roxa no fundo
             GameObject aura = new GameObject("Aura");
             aura.transform.SetParent(bossObj.transform);
             aura.transform.localPosition = Vector3.zero;
             var auraSr = aura.AddComponent<SpriteRenderer>();
             auraSr.sortingOrder = 1;
-            auraSr.color = new Color(0.24f, 0.12f, 0.35f, 0.85f); // Roxo escuro
-            // Gera círculo de aura
+            auraSr.color = new Color(0.24f, 0.12f, 0.35f, 0.85f);
             Texture2D auraTex = new Texture2D(64, 64, TextureFormat.RGBA32, false);
             auraTex.filterMode = FilterMode.Point;
             Color[] auraCols = new Color[64 * 64];
@@ -702,17 +1209,25 @@ namespace WitchShmup.Editor
             col.isTrigger = true;
             col.size = new Vector2(3.5f, 4.8f);
 
+            var rb = bossObj.AddComponent<Rigidbody2D>();
+            rb.gravityScale = 0f;
+            rb.bodyType = RigidbodyType2D.Kinematic;
+
             var golem = bossObj.AddComponent<GolemBoss>();
 
-            // Conectar prefabs de ataques no GolemBoss
+            // Conectar prefabs de ataques e drops no GolemBoss
             GameObject bigRockPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Boss_BigRock.prefab");
             GameObject stoneWallPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Boss_StoneWall.prefab");
             GameObject miniStonePrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Boss_OrbitingStone.prefab");
+            GameObject bossCorePrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_BossCore.prefab");
+            GameObject skillPointPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_SkillPoint.prefab");
 
             SerializedObject golemSo = new SerializedObject(golem);
             golemSo.FindProperty("bigRockPrefab").objectReferenceValue = bigRockPrefab;
             golemSo.FindProperty("stoneWallPrefab").objectReferenceValue = stoneWallPrefab;
             golemSo.FindProperty("orbitingStonePrefab").objectReferenceValue = miniStonePrefab;
+            golemSo.FindProperty("bossCoreDropPrefab").objectReferenceValue = bossCorePrefab;
+            golemSo.FindProperty("skillPointDropPrefab").objectReferenceValue = skillPointPrefab;
             golemSo.FindProperty("mainBodyRenderer").objectReferenceValue = bodySr;
             golemSo.ApplyModifiedProperties();
 
@@ -748,7 +1263,7 @@ namespace WitchShmup.Editor
             so.FindProperty("rusherPrefab").objectReferenceValue = rusherPrefab;
             so.FindProperty("batPrefab").objectReferenceValue = batPrefab;
             so.FindProperty("bossCutscene").objectReferenceValue = cutscene;
-            so.FindProperty("stageDuration").floatValue = 35f; // 35 segundos de fase antes do Boss
+            so.FindProperty("stageDuration").floatValue = 35f;
             so.ApplyModifiedProperties();
         }
     }

@@ -196,6 +196,28 @@ namespace WitchShmup.Player
             OnElementChanged?.Invoke(currentElement);
         }
 
+        public void UpgradeStaffBonus(float damageMultiplier)
+        {
+            iceConfig.damage *= damageMultiplier;
+            fireConfig.damage *= damageMultiplier;
+            iceConfig.projectileSpeed *= 1.2f;
+            fireConfig.projectileSpeed *= 1.2f;
+            iceConfig.fireRate *= 0.85f;
+            fireConfig.fireRate *= 0.85f;
+        }
+
+        public void MultiplyFireRate(float rateMultiplier)
+        {
+            iceConfig.fireRate *= rateMultiplier;
+            fireConfig.fireRate *= rateMultiplier;
+        }
+
+        public void BoostElementDamage(ElementType element, float mult)
+        {
+            if (element == ElementType.Ice) iceConfig.damage *= mult;
+            else if (element == ElementType.Fire) fireConfig.damage *= mult;
+        }
+
         private void Shoot()
         {
             var config = CurrentConfig;

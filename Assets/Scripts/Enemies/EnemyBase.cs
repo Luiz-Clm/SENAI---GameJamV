@@ -3,10 +3,12 @@ using System.Collections;
 using UnityEngine;
 using WitchShmup.CameraSystem;
 using WitchShmup.Combat;
+using WitchShmup.Core;
+using WitchShmup.Drops;
 
 namespace WitchShmup.Enemies
 {
-    [RequireComponent(typeof(Collider2D))]
+    [RequireComponent(typeof(Collider2D), typeof(Rigidbody2D))]
     public class EnemyBase : MonoBehaviour, IDamageable
     {
         [Header("Enemy Base Stats")]
@@ -24,8 +26,17 @@ namespace WitchShmup.Enemies
         [SerializeField] protected Color damageFlashColor = new Color(1f, 0.3f, 0.3f, 1f);
         [SerializeField] protected GameObject deathEffectPrefab;
 
+        [Header("Item Drops")]
+        [SerializeField] protected GameObject fireHeartDropPrefab;
+        [SerializeField] [Range(0f, 1f)] protected float fireHeartDropChance = 0.40f;
+        [SerializeField] protected GameObject healthPotionDropPrefab;
+        [SerializeField] [Range(0f, 1f)] protected float healthPotionDropChance = 0.25f;
+        [SerializeField] protected GameObject skillPointDropPrefab;
+        [SerializeField] [Range(0f, 1f)] protected float skillPointDropChance = 0.35f;
+
         protected Color originalColor = Color.white;
         protected Coroutine flashCoroutine;
+        protected Rigidbody2D rb;
 
         public float CurrentHealth => currentHealth;
         public float MaxHealth => maxHealth;
@@ -36,6 +47,14 @@ namespace WitchShmup.Enemies
         protected virtual void Awake()
         {
             currentHealth = maxHealth;
+
+            rb = GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.gravityScale = 0f;
+                rb.bodyType = RigidbodyType2D.Kinematic;
+            }
+
             if (spriteRenderer == null)
             {
                 spriteRenderer = GetComponentInChildren<SpriteRenderer>();
@@ -113,6 +132,13 @@ namespace WitchShmup.Enemies
 
         protected virtual void Die()
         {
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.AddScore(scoreValue);
+            }
+
+            DropItems();
+
             if (deathEffectPrefab != null)
             {
                 Instantiate(deathEffectPrefab, transform.position, Quaternion.identity);
@@ -122,11 +148,55 @@ namespace WitchShmup.Enemies
             Destroy(gameObject);
         }
 
+        protected virtual void DropItems()
+        {
+            // Monta a lista de drops possíveis com seus pesos
+            // Apenas adiciona um drop se o prefab estiver atribuído
+            float totalWeight = 0f;
+            float fhWeight = (fireHeartDropPrefab != null) ? fireHeartDropChance : 0f;
+            float hpWeight = (healthPotionDropPrefab != null) ? healthPotionDropChance : 0f;
+            float spWeight = (skillPointDropPrefab != null) ? skillPointDropChance : 0f;
+            totalWeight = fhWeight + hpWeight + spWeight;
+
+            // Sem nenhum drop possível
+            if (totalWeight <= 0f) return;
+
+            // Roll único: chance de dropar ALGUMA coisa = soma dos pesos (cap 1)
+            float dropRoll = UnityEngine.Random.value;
+            float dropChance = Mathf.Min(1f, totalWeight);
+            if (dropRoll > dropChance) return; // Não dropa nada desta vez
+
+            // Normaliza e escolhe qual item dropar
+            float pick = UnityEngine.Random.value * totalWeight;
+            GameObject prefabToDrop = null;
+
+            if (pick < fhWeight)
+            {
+                prefabToDrop = fireHeartDropPrefab;
+            }
+            else if (pick < fhWeight + hpWeight)
+            {
+                prefabToDrop = healthPotionDropPrefab;
+            }
+            else
+            {
+                prefabToDrop = skillPointDropPrefab;
+            }
+
+            if (prefabToDrop != null)
+            {
+                // Pequeno offset aleatório para não sobrepor outros drops
+                Vector2 offset = UnityEngine.Random.insideUnitCircle * 0.5f;
+                Vector3 spawnPos = transform.position + new Vector3(offset.x, offset.y, 0f);
+                Instantiate(prefabToDrop, spawnPos, Quaternion.identity);
+            }
+        }
+
         protected virtual void OnTriggerEnter2D(Collider2D other)
         {
-            if (other.CompareTag("Player"))
+            if (other.CompareTag("Player") || other.GetComponentInParent<WitchShmup.Player.PlayerController>() != null)
             {
-                var damageable = other.GetComponent<IDamageable>();
+                var damageable = other.GetComponentInParent<IDamageable>();
                 if (damageable != null)
                 {
                     damageable.TakeDamage(contactDamage, ElementType.Enemy);
