@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using WitchShmup.Player;
@@ -17,7 +19,7 @@ namespace WitchShmup.Core
         [Header("Evolution Materials")]
         [SerializeField] private int fireHeartsCount = 0;
         [SerializeField] private int bossCoresCount = 0;
-        [SerializeField] private int skillPoints = 0;
+        [SerializeField] private int skillPoints = 2; // Começa com 2 pontos como no esboço HTML
         [SerializeField] private bool isStaffEvolved = false;
 
         [Header("Staff Evolution Requirements")]
@@ -27,14 +29,22 @@ namespace WitchShmup.Core
         [Header("UI References")]
         [SerializeField] private HUDController hudController;
         [SerializeField] private GameObject gameOverPanel;
+        [SerializeField] private GameObject victoryPanel;
         [SerializeField] private GameObject evolutionPanel;
 
-        // Skill Tree Unlocks
-        public bool SkillVitalityUnlocked { get; private set; } = false;
-        public bool SkillAttackSpeedUnlocked { get; private set; } = false;
-        public bool SkillIcePowerUnlocked { get; private set; } = false;
-        public bool SkillFirePowerUnlocked { get; private set; } = false;
-        public bool SkillFlightSpeedUnlocked { get; private set; } = false;
+        // Skill Tree Levels matching HTML sketch
+        public int LevelVitality { get; private set; } = 0;     // vit (max 5)
+        public int LevelVeloz { get; private set; } = 0;        // vel (max 3)
+        public int LevelFoco { get; private set; } = 0;         // foc (max 3)
+        public int LevelDespertar { get; private set; } = 0;    // des (max 1)
+        public int LevelPele { get; private set; } = 0;         // pel (max 3)
+        public int LevelIma { get; private set; } = 0;          // ima (max 2)
+        public int LevelSegundoFolego { get; private set; } = 0;// seg (max 1)
+        public int LevelRapido { get; private set; } = 0;       // rap (max 4)
+        public int LevelDuplo { get; private set; } = 0;        // dup (max 1)
+        public int LevelPerfurante { get; private set; } = 0;   // per (max 1)
+
+        public float SoulMagnetMultiplier => 1f + (LevelIma * 0.35f);
 
         public int CurrentScore => currentScore;
         public int HighScore => highScore;
@@ -48,8 +58,10 @@ namespace WitchShmup.Core
         public event Action<int> OnScoreChanged;
         public event Action<int> OnSkillPointsChanged;
         public event Action<int, int> OnMaterialsChanged;
+        public event Action<string, int> OnSkillUpgraded;
         public event Action OnStaffEvolved;
         public event Action OnGameOver;
+        public event Action OnVictory;
 
         private void Awake()
         {
@@ -64,6 +76,18 @@ namespace WitchShmup.Core
             }
 
             highScore = PlayerPrefs.GetInt("WitchShmup_HighScore", 0);
+
+            // Garante que a cena possua um EventSystem ativo para cliques de botões funcionarem
+            if (UnityEngine.EventSystems.EventSystem.current == null && FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+            {
+                var esObj = new GameObject("EventSystem");
+                esObj.AddComponent<UnityEngine.EventSystems.EventSystem>();
+#if ENABLE_INPUT_SYSTEM
+                esObj.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+#else
+                esObj.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+#endif
+            }
         }
 
         private void Start()
@@ -86,7 +110,25 @@ namespace WitchShmup.Core
                 playerHealth.OnDeath += TriggerGameOver;
             }
 
+            // Auto-associa painéis caso a referência no inspector esteja vazia
+            if (gameOverPanel == null)
+            {
+                var goUi = FindFirstObjectByType<GameOverUI>(FindObjectsInactive.Include);
+                if (goUi != null) gameOverPanel = goUi.gameObject;
+            }
+            if (victoryPanel == null)
+            {
+                var vicUi = FindFirstObjectByType<VictoryUI>(FindObjectsInactive.Include);
+                if (vicUi != null) victoryPanel = vicUi.gameObject;
+            }
+            if (evolutionPanel == null)
+            {
+                var evoUi = FindFirstObjectByType<EvolutionUI>(FindObjectsInactive.Include);
+                if (evoUi != null) evolutionPanel = evoUi.gameObject;
+            }
+
             if (gameOverPanel != null) gameOverPanel.SetActive(false);
+            if (victoryPanel != null) victoryPanel.SetActive(false);
             if (evolutionPanel != null) evolutionPanel.SetActive(false);
         }
 
@@ -154,6 +196,93 @@ namespace WitchShmup.Core
             return false;
         }
 
+        public int GetSkillLevel(string id)
+        {
+            switch (id)
+            {
+                case "vit": return LevelVitality;
+                case "vel": return LevelVeloz;
+                case "foc": return LevelFoco;
+                case "des": return LevelDespertar;
+                case "pel": return LevelPele;
+                case "ima": return LevelIma;
+                case "seg": return LevelSegundoFolego;
+                case "rap": return LevelRapido;
+                case "dup": return LevelDuplo;
+                case "per": return LevelPerfurante;
+                default: return 0;
+            }
+        }
+
+        public bool UpgradeSkill(string id, int cost)
+        {
+            if (!SpendSkillPoints(cost)) return false;
+
+            var pHealth = FindFirstObjectByType<PlayerHealth>();
+            var pShooting = FindFirstObjectByType<PlayerShooting>();
+            var pController = FindFirstObjectByType<PlayerController>();
+
+            switch (id)
+            {
+                case "vit":
+                    LevelVitality++;
+                    if (pHealth != null) pHealth.IncreaseMaxHealth(1);
+                    break;
+
+                case "vel":
+                    LevelVeloz++;
+                    if (pController != null) pController.MultiplySpeed(1.08f);
+                    break;
+
+                case "foc":
+                    LevelFoco++;
+                    if (pShooting != null) pShooting.AddBonusDamage(0.5f);
+                    break;
+
+                case "des":
+                    LevelDespertar++;
+                    if (pHealth != null) pHealth.IncreaseMaxHealth(1);
+                    if (pShooting != null) pShooting.AddBonusDamage(0.5f);
+                    break;
+
+                case "pel":
+                    LevelPele++;
+                    if (pHealth != null) pHealth.SetDamageReduction(LevelPele * 0.08f);
+                    break;
+
+                case "ima":
+                    LevelIma++;
+                    // SoulMagnetMultiplier se atualiza automaticamente
+                    break;
+
+                case "seg":
+                    LevelSegundoFolego++;
+                    if (pHealth != null) pHealth.EnableSecondWind();
+                    break;
+
+                case "rap":
+                    LevelRapido++;
+                    if (pShooting != null) pShooting.AddFireRateBonus(0.10f);
+                    break;
+
+                case "dup":
+                    LevelDuplo++;
+                    if (pShooting != null) pShooting.UnlockDoubleShot();
+                    break;
+
+                case "per":
+                    LevelPerfurante++;
+                    if (pShooting != null) pShooting.AddBonusPierce(1);
+                    break;
+
+                default:
+                    return false;
+            }
+
+            OnSkillUpgraded?.Invoke(id, GetSkillLevel(id));
+            return true;
+        }
+
         public bool CanEvolveStaff()
         {
             return (!isStaffEvolved && fireHeartsCount >= fireHeartsRequired && bossCoresCount >= bossCoresRequired);
@@ -179,66 +308,8 @@ namespace WitchShmup.Core
             var shooting = FindFirstObjectByType<PlayerShooting>();
             if (shooting != null)
             {
-                // Aumenta poder de fogo e dano elemental do jogador
                 shooting.UpgradeStaffBonus(1.6f);
             }
-        }
-
-        public bool UnlockSkill(string skillId)
-        {
-            switch (skillId)
-            {
-                case "Vitality":
-                    if (!SkillVitalityUnlocked && SpendSkillPoints(1))
-                    {
-                        SkillVitalityUnlocked = true;
-                        var pHealth = FindFirstObjectByType<PlayerHealth>();
-                        if (pHealth != null) pHealth.IncreaseMaxHealth(1);
-                        return true;
-                    }
-                    break;
-
-                case "AttackSpeed":
-                    if (!SkillAttackSpeedUnlocked && SpendSkillPoints(1))
-                    {
-                        SkillAttackSpeedUnlocked = true;
-                        var pShooting = FindFirstObjectByType<PlayerShooting>();
-                        if (pShooting != null) pShooting.MultiplyFireRate(0.8f); // 20% mais rápido
-                        return true;
-                    }
-                    break;
-
-                case "IcePower":
-                    if (!SkillIcePowerUnlocked && SpendSkillPoints(1))
-                    {
-                        SkillIcePowerUnlocked = true;
-                        var pShooting = FindFirstObjectByType<PlayerShooting>();
-                        if (pShooting != null) pShooting.BoostElementDamage(Combat.ElementType.Ice, 1.5f);
-                        return true;
-                    }
-                    break;
-
-                case "FirePower":
-                    if (!SkillFirePowerUnlocked && SpendSkillPoints(1))
-                    {
-                        SkillFirePowerUnlocked = true;
-                        var pShooting = FindFirstObjectByType<PlayerShooting>();
-                        if (pShooting != null) pShooting.BoostElementDamage(Combat.ElementType.Fire, 1.5f);
-                        return true;
-                    }
-                    break;
-
-                case "FlightSpeed":
-                    if (!SkillFlightSpeedUnlocked && SpendSkillPoints(1))
-                    {
-                        SkillFlightSpeedUnlocked = true;
-                        var pController = FindFirstObjectByType<PlayerController>();
-                        if (pController != null) pController.MultiplySpeed(1.2f); // +20% velocidade
-                        return true;
-                    }
-                    break;
-            }
-            return false;
         }
 
         public void ToggleEvolutionPanel()
@@ -263,11 +334,28 @@ namespace WitchShmup.Core
 
         public void TriggerGameOver()
         {
+            Time.timeScale = 0f;
             if (gameOverPanel != null)
             {
                 gameOverPanel.SetActive(true);
             }
             OnGameOver?.Invoke();
+        }
+
+        public IEnumerator WaitAndTriggerVictory(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            TriggerVictory();
+        }
+
+        public void TriggerVictory()
+        {
+            Time.timeScale = 0f;
+            if (victoryPanel != null)
+            {
+                victoryPanel.SetActive(true);
+            }
+            OnVictory?.Invoke();
         }
 
         public void RestartGame()

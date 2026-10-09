@@ -29,18 +29,18 @@ namespace WitchShmup.Player
         [SerializeField] private ElementWeaponConfig iceConfig = new ElementWeaponConfig
         {
             element = ElementType.Ice,
-            fireRate = 0.12f,
+            fireRate = 0.16f,
             damage = 1f,
             projectileSpeed = 18f,
-            pierceCount = 2,
+            pierceCount = 1,
             elementColor = new Color(0.35f, 0.85f, 1f, 1f) // Cyan
         };
 
         [SerializeField] private ElementWeaponConfig fireConfig = new ElementWeaponConfig
         {
             element = ElementType.Fire,
-            fireRate = 0.22f,
-            damage = 2.5f,
+            fireRate = 0.28f,
+            damage = 1.8f,
             projectileSpeed = 14f,
             pierceCount = 1,
             elementColor = new Color(1f, 0.55f, 0.15f, 1f) // Orange
@@ -50,11 +50,22 @@ namespace WitchShmup.Player
         [SerializeField] private Transform[] firePoints;
         [SerializeField] private Vector2 defaultMuzzleOffset = new Vector2(0.6f, 0f);
 
+        [Header("Upgrades State")]
+        [SerializeField] private bool isDoubleShotUnlocked = false;
+        [SerializeField] private int bonusPierce = 0;
+        [SerializeField] private float bonusDamage = 0f;
+        [SerializeField] private float fireRateBonusPercent = 0f;
+
         [Header("Audio (Optional)")]
         [SerializeField] private AudioSource audioSource;
 
         private float nextFireTime = 0f;
         private bool isFiring = false;
+
+        public bool IsDoubleShotUnlocked => isDoubleShotUnlocked;
+        public int BonusPierce => bonusPierce;
+        public float BonusDamage => bonusDamage;
+        public float FireRateBonusPercent => fireRateBonusPercent;
 
         public ElementType CurrentElement => currentElement;
         public ElementWeaponConfig CurrentConfig => (currentElement == ElementType.Ice) ? iceConfig : fireConfig;
@@ -130,7 +141,7 @@ namespace WitchShmup.Player
             // Fallback for standard input
             if (!switched)
             {
-                if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.Tab) || Input.GetMouseButtonDown(1))
+                if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.Tab) || Input.GetMouseButtonDown(1))
                 {
                     ToggleElement();
                 }
@@ -196,6 +207,26 @@ namespace WitchShmup.Player
             OnElementChanged?.Invoke(currentElement);
         }
 
+        public void UnlockDoubleShot()
+        {
+            isDoubleShotUnlocked = true;
+        }
+
+        public void AddBonusDamage(float amount)
+        {
+            bonusDamage += amount;
+        }
+
+        public void AddBonusPierce(int amount)
+        {
+            bonusPierce += amount;
+        }
+
+        public void AddFireRateBonus(float percent)
+        {
+            fireRateBonusPercent += percent;
+        }
+
         public void UpgradeStaffBonus(float damageMultiplier)
         {
             iceConfig.damage *= damageMultiplier;
@@ -221,23 +252,27 @@ namespace WitchShmup.Player
         private void Shoot()
         {
             var config = CurrentConfig;
-            nextFireTime = Time.time + config.fireRate;
+            float effectiveRate = config.fireRate * (1f - Mathf.Clamp(fireRateBonusPercent, 0f, 0.65f));
+            nextFireTime = Time.time + effectiveRate;
 
-            if (firePoints != null && firePoints.Length > 0)
+            float effectiveDamage = config.damage + bonusDamage;
+            int effectivePierce = config.pierceCount + bonusPierce;
+
+            if (isDoubleShotUnlocked)
             {
-                foreach (var point in firePoints)
-                {
-                    if (point != null)
-                    {
-                        SpawnProjectile(point.position, config);
-                    }
-                }
+                // Disparo duplo: 2 magias paralelas
+                Vector3 basePos = transform.position + (Vector3)defaultMuzzleOffset;
+                Vector3 topPos = new Vector3(basePos.x, basePos.y + 0.22f, basePos.z);
+                Vector3 botPos = new Vector3(basePos.x, basePos.y - 0.22f, basePos.z);
+
+                SpawnProjectile(topPos, config, effectiveDamage, effectivePierce);
+                SpawnProjectile(botPos, config, effectiveDamage, effectivePierce);
             }
             else
             {
-                // Default muzzle position
+                // Disparo inicial: 1 projétil central único e equilibrado
                 Vector3 spawnPos = transform.position + (Vector3)defaultMuzzleOffset;
-                SpawnProjectile(spawnPos, config);
+                SpawnProjectile(spawnPos, config, effectiveDamage, effectivePierce);
             }
 
             if (config.shootSound != null && audioSource != null)
@@ -248,7 +283,7 @@ namespace WitchShmup.Player
             OnShotFired?.Invoke();
         }
 
-        private void SpawnProjectile(Vector3 position, ElementWeaponConfig config)
+        private void SpawnProjectile(Vector3 position, ElementWeaponConfig config, float dmg, int pierce)
         {
             if (config.projectilePrefab != null)
             {
@@ -256,7 +291,7 @@ namespace WitchShmup.Player
                 var proj = projObj.GetComponent<Projectile>();
                 if (proj != null)
                 {
-                    proj.Initialize(Vector2.right, config.projectileSpeed, config.damage, config.element, true);
+                    proj.Initialize(Vector2.right, config.projectileSpeed, dmg, config.element, true, pierce);
                 }
             }
             else
@@ -264,7 +299,7 @@ namespace WitchShmup.Player
                 // Runtime fallback projectile if prefab is not yet assigned
                 GameObject runtimeProj = CreateFallbackProjectile(position, config);
                 var proj = runtimeProj.GetComponent<Projectile>();
-                proj.Initialize(Vector2.right, config.projectileSpeed, config.damage, config.element, true);
+                proj.Initialize(Vector2.right, config.projectileSpeed, dmg, config.element, true, pierce);
             }
         }
 

@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine;
 using WitchShmup.Boss;
 using WitchShmup.CameraSystem;
+using WitchShmup.Enemies;
 using WitchShmup.Environment;
 using WitchShmup.Player;
 using WitchShmup.UI;
@@ -77,11 +78,38 @@ namespace WitchShmup.Cutscenes
                 ParallaxBackgroundController.Instance.TransitionScrollSpeed(0f, 1.2f);
             }
 
-            // 2. Trava controles do jogador temporariamente
+            // 2. Protege o player contra qualquer dano durante a cutscene
+            PlayerHealth playerHealth = (playerTransform != null) ? playerTransform.GetComponent<PlayerHealth>() : null;
+            if (playerHealth != null)
+            {
+                playerHealth.SetInvulnerable(true);
+            }
+
+            // 3. Limpa todos os inimigos menores e projéteis da tela: a arena fica livre pro Boss!
+            EnemyBase[] activeEnemies = FindObjectsByType<EnemyBase>(FindObjectsSortMode.None);
+            foreach (var enemy in activeEnemies)
+            {
+                if (enemy != null && !enemy.CompareTag("Boss"))
+                {
+                    enemy.enabled = false;
+                    Destroy(enemy.gameObject);
+                }
+            }
+
+            WitchShmup.Combat.Projectile[] activeProjectiles = FindObjectsByType<WitchShmup.Combat.Projectile>(FindObjectsSortMode.None);
+            foreach (var proj in activeProjectiles)
+            {
+                if (proj != null)
+                {
+                    Destroy(proj.gameObject);
+                }
+            }
+
+            // 4. Trava controles do jogador temporariamente
             if (playerController != null) playerController.enabled = false;
             if (playerShooting != null) playerShooting.enabled = false;
 
-            // 3. Move o jogador suavemente para a posição segura à esquerda
+            // 5. Move o jogador suavemente para a posição segura à esquerda
             if (playerTransform != null)
             {
                 Vector3 startPlayerPos = playerTransform.position;
@@ -172,6 +200,13 @@ namespace WitchShmup.Cutscenes
             if (golemBoss != null)
             {
                 golemBoss.StartFight();
+            }
+
+            // Breve intervalo de graça (0.5s) antes de remover a invulnerabilidade
+            yield return new WaitForSeconds(0.5f);
+            if (playerHealth != null)
+            {
+                playerHealth.SetInvulnerable(false);
             }
 
             isCutsceneRunning = false;

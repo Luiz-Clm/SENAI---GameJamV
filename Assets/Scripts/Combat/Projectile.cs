@@ -34,13 +34,14 @@ namespace WitchShmup.Combat
             }
         }
 
-        public void Initialize(Vector2 dir, float spd, float dmg, ElementType elem, bool playerShot)
+        public void Initialize(Vector2 dir, float spd, float dmg, ElementType elem, bool playerShot, int pierce = 1)
         {
             direction = dir.normalized;
             speed = spd;
             damage = dmg;
             element = elem;
             isPlayerProjectile = playerShot;
+            pierceCount = Mathf.Max(1, pierce);
             currentHits = 0;
             timer = 0f;
 

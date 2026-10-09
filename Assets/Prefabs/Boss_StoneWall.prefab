@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 665875252463266518}
   - component: {fileID: 8076363009619671597}
   - component: {fileID: 59254812236471546}
-  - component: {fileID: 8390056969794043248}
+  - component: {fileID: 8690888946487668431}
   m_Layer: 0
   m_Name: StoneSegment_2
   m_TagString: Untagged
@@ -167,7 +167,7 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!114 &8390056969794043248
+--- !u!114 &8690888946487668431
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -197,7 +197,7 @@ GameObject:
   - component: {fileID: 7773416091555443081}
   - component: {fileID: 2416801985616907020}
   - component: {fileID: 11904998126276873}
-  - component: {fileID: 7823123972168803373}
+  - component: {fileID: 5703928050802644495}
   m_Layer: 0
   m_Name: StoneSegment_1
   m_TagString: Untagged
@@ -352,7 +352,7 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!114 &7823123972168803373
+--- !u!114 &5703928050802644495
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -382,7 +382,7 @@ GameObject:
   - component: {fileID: 3602435809522366446}
   - component: {fileID: 3963536052173233477}
   - component: {fileID: 7294289912761704074}
-  - component: {fileID: 5961586131485194515}
+  - component: {fileID: 4401473582945749334}
   m_Layer: 0
   m_Name: StoneSegment_0
   m_TagString: Untagged
@@ -537,7 +537,7 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!114 &5961586131485194515
+--- !u!114 &4401473582945749334
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

@@ -82,9 +82,11 @@ namespace WitchShmup.Enemies
             }
         }
 
+        protected bool isDead = false;
+
         public virtual void TakeDamage(float amount, ElementType element)
         {
-            if (currentHealth <= 0) return;
+            if (isDead || currentHealth <= 0) return;
 
             float finalDamage = amount;
             if (weakElement != ElementType.None && element == weakElement)
@@ -132,6 +134,12 @@ namespace WitchShmup.Enemies
 
         protected virtual void Die()
         {
+            if (isDead) return;
+            isDead = true;
+
+            var col = GetComponent<Collider2D>();
+            if (col != null) col.enabled = false;
+
             if (GameManager.Instance != null)
             {
                 GameManager.Instance.AddScore(scoreValue);

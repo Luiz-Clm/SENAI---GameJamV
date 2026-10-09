@@ -11,10 +11,16 @@ namespace WitchShmup.UI
         [SerializeField] private TextMeshProUGUI finalScoreText;
         [SerializeField] private Button retryButton;
 
-        private void Start()
+        private void Awake()
         {
+            if (retryButton == null)
+            {
+                retryButton = GetComponentInChildren<Button>(true);
+            }
+
             if (retryButton != null)
             {
+                retryButton.onClick.RemoveAllListeners();
                 retryButton.onClick.AddListener(OnRetryClicked);
             }
         }
@@ -35,6 +41,7 @@ namespace WitchShmup.UI
             }
             else
             {
+                Time.timeScale = 1f;
                 UnityEngine.SceneManagement.SceneManager.LoadScene(
                     UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex
                 );

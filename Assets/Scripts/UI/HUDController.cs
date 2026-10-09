@@ -85,6 +85,20 @@ namespace WitchShmup.UI
         {
             if (heartImages == null || heartImages.Length == 0) return;
 
+            // Suporta expansão dinâmica de corações caso o player compre upgrades de vida
+            if (maxHealth > heartImages.Length && heartImages[0] != null)
+            {
+                var parent = heartImages[0].transform.parent;
+                var list = new System.Collections.Generic.List<Image>(heartImages);
+                while (list.Count < maxHealth)
+                {
+                    var newHeart = Instantiate(heartImages[0].gameObject, parent);
+                    newHeart.name = $"Heart_{list.Count}";
+                    list.Add(newHeart.GetComponent<Image>());
+                }
+                heartImages = list.ToArray();
+            }
+
             for (int i = 0; i < heartImages.Length; i++)
             {
                 if (heartImages[i] == null) continue;

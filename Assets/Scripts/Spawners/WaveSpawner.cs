@@ -13,9 +13,9 @@ namespace WitchShmup.Spawners
 
         [Header("Duração da Fase")]
         [Tooltip("Tempo em segundos de ondas antes de chamar o Boss")]
-        [SerializeField] private float stageDuration = 35f;
-        [SerializeField] private float spawnIntervalMin = 1.2f;
-        [SerializeField] private float spawnIntervalMax = 2.5f;
+        [SerializeField] private float stageDuration = 75f;
+        [SerializeField] private float spawnIntervalMin = 1.1f;
+        [SerializeField] private float spawnIntervalMax = 2.4f;
 
         [Header("Spawn Position Bounds")]
         [SerializeField] private float spawnX = 11.5f;
@@ -60,13 +60,18 @@ namespace WitchShmup.Spawners
 
         private IEnumerator SpawnLoop()
         {
-            yield return new WaitForSeconds(1.5f);
+            yield return new WaitForSeconds(1.2f);
 
             while (isSpawning)
             {
                 SpawnRandomEnemy();
 
-                float interval = Random.Range(spawnIntervalMin, spawnIntervalMax);
+                // Frequência de spawn acelera ligeiramente conforme o tempo passa
+                float progress = Mathf.Clamp01(stageTimer / stageDuration);
+                float curMin = Mathf.Lerp(spawnIntervalMin * 1.3f, spawnIntervalMin * 0.85f, progress);
+                float curMax = Mathf.Lerp(spawnIntervalMax * 1.2f, spawnIntervalMax * 0.85f, progress);
+
+                float interval = Random.Range(curMin, curMax);
                 yield return new WaitForSeconds(interval);
             }
         }
@@ -76,8 +81,9 @@ namespace WitchShmup.Spawners
             float randomY = Random.Range(minY, maxY);
             Vector3 spawnPos = new Vector3(spawnX, randomY, 0f);
 
-            // 50% chance de Rusher, 50% chance de Bat
-            bool spawnRusher = (Random.value > 0.5f);
+            // Progressão: início mais Rushers simples, depois mais Morcegos e formações mistas
+            float batChance = (stageTimer < 25f) ? 0.30f : (stageTimer < 50f) ? 0.50f : 0.65f;
+            bool spawnRusher = (Random.value > batChance);
 
             if (spawnRusher)
             {

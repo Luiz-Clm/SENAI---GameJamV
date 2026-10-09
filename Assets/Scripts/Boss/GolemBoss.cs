@@ -331,6 +331,12 @@ namespace WitchShmup.Boss
             }
 
             OnBossDefeated?.Invoke();
+
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.StartCoroutine(GameManager.Instance.WaitAndTriggerVictory(1.8f));
+            }
+
             Destroy(gameObject);
         }
 
