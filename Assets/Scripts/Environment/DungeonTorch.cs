@@ -1,29 +1,27 @@
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace WitchShmup.Environment
 {
+    /// <summary>
+    /// Tocha de dungeon: estrutura + chama com oscilação leve + Point Light2D natural do URP.
+    /// A tocha é completamente ESTÁTICA no mundo — apenas a chama escala suavemente.
+    /// </summary>
     public class DungeonTorch : MonoBehaviour
     {
         [Header("Visual Elements")]
         [SerializeField] private SpriteRenderer torchRenderer;
         [SerializeField] private SpriteRenderer flameRenderer;
-        [SerializeField] private MeshFilter lightConeMeshFilter;
-        [SerializeField] private MeshRenderer lightConeMeshRenderer;
+        [SerializeField] private Light2D torchLight;
 
-        [Header("Spotlight Cone Settings")]
-        [SerializeField] private float coneHeight = 6.5f;
-        [SerializeField] private float coneWidth = 4.0f;
-        [SerializeField] [Range(0f, 1f)] private float baseLightAlpha = 0.38f;
-        [SerializeField] private Color lightColorTop = new Color(1f, 0.82f, 0.35f, 0.45f);
-        [SerializeField] private Color lightColorBottom = new Color(1f, 0.5f, 0.08f, 0.0f);
-
-        [Header("Flicker Animation")]
-        [SerializeField] private float flickerSpeed = 7.5f;
-        [SerializeField] private float flickerIntensity = 0.12f;
+        [Header("Flame Flicker (Muito Sutil)")]
+        [SerializeField] private float flickerSpeed = 2.5f;
+        [SerializeField] [Range(0f, 0.1f)] private float flickerIntensity = 0.04f;
+        [SerializeField] private float baseLightIntensity = 1.2f;
+        [SerializeField] [Range(0f, 0.15f)] private float lightFlickerIntensity = 0.06f;
 
         private float randomSeed;
         private Vector3 flameBaseScale;
-        private Material coneMaterial;
 
         private void Awake()
         {
@@ -33,90 +31,33 @@ namespace WitchShmup.Environment
             {
                 flameBaseScale = flameRenderer.transform.localScale;
             }
-
-            SetupLightCone();
-        }
-
-        public void SetupLightCone()
-        {
-            if (lightConeMeshFilter == null || lightConeMeshRenderer == null)
-            {
-                // Cria o filho para o cone triangular de luz caso não exista
-                GameObject coneObj = new GameObject("Torch_Spotlight_Cone");
-                coneObj.transform.SetParent(transform, false);
-                coneObj.transform.localPosition = new Vector3(0f, 0.2f, 0f);
-
-                lightConeMeshFilter = coneObj.AddComponent<MeshFilter>();
-                lightConeMeshRenderer = coneObj.AddComponent<MeshRenderer>();
-            }
-
-            // Material transparente para o cone de luz com sorting order no fundo do cenário (-5)
-            Shader unlitShader = Shader.Find("Sprites/Default");
-            if (unlitShader == null) unlitShader = Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default");
-            if (unlitShader == null) unlitShader = Shader.Find("UI/Default");
-
-            coneMaterial = new Material(unlitShader);
-            lightConeMeshRenderer.material = coneMaterial;
-            lightConeMeshRenderer.sortingOrder = -5; // Atrás de todo gameplay, sem atrapalhar a UI
-
-            BuildTriangleMesh();
-        }
-
-        private void BuildTriangleMesh()
-        {
-            Mesh mesh = new Mesh();
-            mesh.name = "TorchLightConeMesh";
-
-            // Vértices do triângulo (topo na chama, base larga descendo)
-            Vector3[] vertices = new Vector3[3];
-            vertices[0] = new Vector3(0f, 0f, 0f);                            // Topo (origem da chama)
-            vertices[1] = new Vector3(-coneWidth * 0.5f, -coneHeight, 0f);   // Canto inferior esquerdo
-            vertices[2] = new Vector3(coneWidth * 0.5f, -coneHeight, 0f);    // Canto inferior direito
-
-            int[] triangles = new int[] { 0, 2, 1 };
-
-            // Cores por vértice para criar o gradiente suave de iluminação
-            Color topC = lightColorTop;
-            topC.a = baseLightAlpha;
-
-            Color botC = lightColorBottom;
-            botC.a = 0f; // Fim transparente na base
-
-            Color[] colors = new Color[3];
-            colors[0] = topC;
-            colors[1] = botC;
-            colors[2] = botC;
-
-            mesh.vertices = vertices;
-            mesh.triangles = triangles;
-            mesh.colors = colors;
-            mesh.RecalculateBounds();
-
-            lightConeMeshFilter.mesh = mesh;
         }
 
         private void Update()
         {
             float time = Time.time * flickerSpeed + randomSeed;
-            float flicker = Mathf.Sin(time) * 0.5f + Mathf.PerlinNoise(time * 0.8f, randomSeed) - 0.5f;
-            float currentAlpha = Mathf.Clamp01(baseLightAlpha + (flicker * flickerIntensity));
+            // Perlin noise para oscilação suave e orgânica
+            float flicker = (Mathf.PerlinNoise(time * 0.8f, randomSeed) - 0.5f) * 2f; // -1 a 1
 
-            // Chama da tocha tremeluzindo
+            // Apenas a chama oscila (escala Y levemente)
             if (flameRenderer != null)
             {
-                float scaleMod = 1f + (flicker * 0.2f);
-                flameRenderer.transform.localScale = new Vector3(flameBaseScale.x * scaleMod, flameBaseScale.y * (1f + flicker * 0.3f), 1f);
+                float sx = flameBaseScale.x * (1f + flicker * flickerIntensity * 0.4f);
+                float sy = flameBaseScale.y * (1f + flicker * flickerIntensity);
+                flameRenderer.transform.localScale = new Vector3(sx, sy, 1f);
             }
 
-            // Atualiza cor do material do cone com tremulação suave
-            if (coneMaterial != null)
+            // Intensidade da luz oscila sutilmente
+            if (torchLight != null)
             {
-                Color c = Color.Lerp(lightColorTop, new Color(1f, 0.9f, 0.4f, 1f), (flicker + 0.5f) * 0.5f);
-                c.a = currentAlpha;
-                coneMaterial.color = c;
+                torchLight.intensity = baseLightIntensity + flicker * lightFlickerIntensity;
             }
         }
 
+        /// <summary>
+        /// Cria uma tocha completa como filho de <paramref name="parent"/> na posição local especificada.
+        /// Inclui suporte de madeira/ferro, chama pixel art e Point Light2D nativo do URP.
+        /// </summary>
         public static GameObject CreateTorch(Transform parent, Vector3 localPos)
         {
             GameObject torchObj = new GameObject("Dungeon_Torch");
@@ -125,26 +66,22 @@ namespace WitchShmup.Environment
 
             var torch = torchObj.AddComponent<DungeonTorch>();
 
-            // 1. Suporte da tocha (Braçadeira de ferro e madeira)
+            // --- 1. Suporte da tocha (pixel art: madeira + anel de ferro) ---
             GameObject mountObj = new GameObject("Torch_Mount");
             mountObj.transform.SetParent(torchObj.transform, false);
             var mountSr = mountObj.AddComponent<SpriteRenderer>();
-            mountSr.color = new Color(0.45f, 0.32f, 0.22f, 1f);
-            mountSr.sortingOrder = -4; // No fundo, logo à frente dos tijolos
+            mountSr.color = Color.white;
+            mountSr.sortingOrder = -4;
 
             Texture2D mountTex = new Texture2D(6, 14, TextureFormat.RGBA32, false);
             mountTex.filterMode = FilterMode.Point;
             Color[] mCols = new Color[6 * 14];
             for (int i = 0; i < mCols.Length; i++) mCols[i] = Color.clear;
 
-            // Suporte de ferro e tocha em pixel art
             Color iron = new Color(0.25f, 0.22f, 0.3f, 1f);
             Color wood = new Color(0.55f, 0.35f, 0.18f, 1f);
             for (int y = 0; y < 10; y++)
-            {
                 for (int x = 2; x <= 3; x++) mCols[y * 6 + x] = wood;
-            }
-            // Anel de metal
             for (int x = 1; x <= 4; x++) mCols[7 * 6 + x] = iron;
             for (int x = 1; x <= 4; x++) mCols[8 * 6 + x] = iron;
 
@@ -153,7 +90,7 @@ namespace WitchShmup.Environment
             mountSr.sprite = Sprite.Create(mountTex, new Rect(0, 0, 6, 14), new Vector2(0.5f, 0.2f), 16f);
             torch.torchRenderer = mountSr;
 
-            // 2. Fogo da tocha
+            // --- 2. Chama da tocha (pixel art) ---
             GameObject flameObj = new GameObject("Torch_Flame");
             flameObj.transform.SetParent(torchObj.transform, false);
             flameObj.transform.localPosition = new Vector3(0f, 0.45f, 0f);
@@ -165,11 +102,10 @@ namespace WitchShmup.Environment
             Color[] fCols = new Color[10 * 14];
             for (int i = 0; i < fCols.Length; i++) fCols[i] = Color.clear;
 
-            Color cRed = new Color(0.95f, 0.25f, 0.1f, 1f);
-            Color cOrange = new Color(1f, 0.6f, 0.1f, 1f);
-            Color cYellow = new Color(1f, 0.95f, 0.4f, 1f);
+            Color cRed    = new Color(0.95f, 0.25f, 0.1f, 1f);
+            Color cOrange = new Color(1f,    0.60f, 0.1f, 1f);
+            Color cYellow = new Color(1f,    0.95f, 0.4f, 1f);
 
-            // Desenha labareda
             for (int y = 0; y < 14; y++)
             {
                 int w = (y < 4) ? 3 : (y < 9) ? 4 : (y < 12) ? 2 : 1;
@@ -184,7 +120,22 @@ namespace WitchShmup.Environment
             flameSr.sprite = Sprite.Create(flameTex, new Rect(0, 0, 10, 14), new Vector2(0.5f, 0.1f), 16f);
             torch.flameRenderer = flameSr;
 
-            torch.SetupLightCone();
+            // --- 3. Point Light2D nativo do URP 2D (iluminação natural) ---
+            GameObject lightObj = new GameObject("Torch_Light2D");
+            lightObj.transform.SetParent(torchObj.transform, false);
+            lightObj.transform.localPosition = new Vector3(0f, 0.35f, 0f);
+
+            var light2d = lightObj.AddComponent<Light2D>();
+            light2d.lightType = Light2D.LightType.Point;
+            light2d.color     = new Color(1f, 0.62f, 0.22f, 1f); // laranja quente
+            light2d.intensity = 1.2f;
+            light2d.pointLightOuterRadius = 4.5f;
+            light2d.pointLightInnerRadius = 0.4f;
+            light2d.falloffIntensity      = 0.6f;
+            light2d.shadowsEnabled        = false; // sem sombras para performance
+            torch.torchLight        = light2d;
+            torch.baseLightIntensity = 1.2f;
+
             return torchObj;
         }
     }

@@ -404,91 +404,43 @@ namespace WitchShmup.Editor
 
         private static void SetupParallaxHierarchy(Camera cam)
         {
+            // Remove o GameObject antigo (parallax ou estático)
             var existingBg = GameObject.Find("Environment_Parallax");
             if (existingBg != null) Object.DestroyImmediate(existingBg);
+            var existingStatic = GameObject.Find("Environment_Background");
+            if (existingStatic != null) Object.DestroyImmediate(existingStatic);
 
-            GameObject bgRoot = new GameObject("Environment_Parallax");
-            var bgController = bgRoot.AddComponent<ParallaxBackgroundController>();
+            // ---- Cenário ESTÁTICO: apenas fundo de tijolos + tochas fixas ----
+            GameObject bgRoot = new GameObject("Environment_Background");
+            bgRoot.transform.position = Vector3.zero;
 
             Sprite brickSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/BrickWall.png");
-            Sprite spikesSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Spikes.png");
 
-            // Layer 1: Dark Bricks
             if (brickSprite != null)
             {
-                GameObject layerBricks = new GameObject("Layer_Bricks");
-                layerBricks.transform.SetParent(bgRoot.transform);
-                var pl1 = layerBricks.AddComponent<ParallaxLayer>();
+                // Um único segmento de tijolos cobrindo a tela inteira (estático, sem movimento)
+                // Câmera ortográfica size=5, aspecto 16:9 → janela ≈ 18x10 unidades
+                float bgW = 22f;
+                float bgH = 12f;
 
-                float segWidth = 24f;
-                for (int i = 0; i < 2; i++)
+                GameObject bgWall = new GameObject("BrickWall_Background");
+                bgWall.transform.SetParent(bgRoot.transform);
+                bgWall.transform.position = new Vector3(0f, 0f, 2f);
+
+                var sr = bgWall.AddComponent<SpriteRenderer>();
+                sr.sprite    = brickSprite;
+                sr.drawMode  = SpriteDrawMode.Tiled;
+                sr.size      = new Vector2(bgW, bgH);
+                sr.sortingOrder = -10;
+                sr.color     = new Color(0.55f, 0.55f, 0.72f, 1f);
+
+                // Tochas FIXAS distribuídas pelo cenário
+                float[] torchXPositions = { -8f, -4f, 0f, 4f, 8f };
+                float torchY = 1.3f;
+                foreach (float tx in torchXPositions)
                 {
-                    GameObject seg = new GameObject($"BrickSegment_{i}");
-                    seg.transform.SetParent(layerBricks.transform);
-                    seg.transform.position = new Vector3(i * segWidth - 4f, 0f, 2f);
-                    seg.transform.localScale = new Vector3(segWidth / 4f, 10f / 4f, 1f);
-
-                    var sr = seg.AddComponent<SpriteRenderer>();
-                    sr.sprite = brickSprite;
-                    sr.drawMode = SpriteDrawMode.Tiled;
-                    sr.size = new Vector2(segWidth, 10f);
-                    sr.sortingOrder = -10;
-                    sr.color = new Color(0.7f, 0.7f, 0.85f, 1f);
-
-                    // Adiciona tochas de fundo com spot lights triangulares que se movem com o parallax!
-                    float[] torchPositions = { -8f, 0f, 8f };
-                    foreach (float tx in torchPositions)
-                    {
-                        DungeonTorch.CreateTorch(seg.transform, new Vector3(tx, 1.3f, 0f));
-                    }
+                    DungeonTorch.CreateTorch(bgRoot.transform, new Vector3(tx, torchY, 0f));
                 }
-                pl1.AutoSetupSegments();
-            }
-
-            // Layer 2: Ceiling & Floor Spikes
-            if (spikesSprite != null)
-            {
-                GameObject layerSpikes = new GameObject("Layer_Spikes_Obstacles");
-                layerSpikes.transform.SetParent(bgRoot.transform);
-                var pl2 = layerSpikes.AddComponent<ParallaxLayer>();
-
-                float spikeWidth = 20f;
-                for (int i = 0; i < 2; i++)
-                {
-                    GameObject seg = new GameObject($"SpikeSegment_{i}");
-                    seg.transform.SetParent(layerSpikes.transform);
-                    seg.transform.position = new Vector3(i * spikeWidth - 2f, 0f, 0f);
-
-                    // Top ceiling spikes
-                    GameObject topSpike = new GameObject("TopSpikes");
-                    topSpike.transform.SetParent(seg.transform);
-                    topSpike.transform.localPosition = new Vector3(0f, 4.6f, 0f);
-                    topSpike.transform.localRotation = Quaternion.Euler(0, 0, 180f);
-                    var srTop = topSpike.AddComponent<SpriteRenderer>();
-                    srTop.sprite = spikesSprite;
-                    srTop.drawMode = SpriteDrawMode.Tiled;
-                    srTop.size = new Vector2(spikeWidth, 1.2f);
-                    srTop.sortingOrder = -2;
-                    srTop.color = new Color(0.4f, 0.35f, 0.5f, 1f);
-                    var topCol = topSpike.AddComponent<BoxCollider2D>();
-                    topCol.isTrigger = true;
-                    topSpike.tag = "Hazard";
-
-                    // Bottom floor spikes
-                    GameObject botSpike = new GameObject("BottomSpikes");
-                    botSpike.transform.SetParent(seg.transform);
-                    botSpike.transform.localPosition = new Vector3(0f, -4.6f, 0f);
-                    var srBot = botSpike.AddComponent<SpriteRenderer>();
-                    srBot.sprite = spikesSprite;
-                    srBot.drawMode = SpriteDrawMode.Tiled;
-                    srBot.size = new Vector2(spikeWidth, 1.2f);
-                    srBot.sortingOrder = -2;
-                    srBot.color = new Color(0.4f, 0.35f, 0.5f, 1f);
-                    var botCol = botSpike.AddComponent<BoxCollider2D>();
-                    botCol.isTrigger = true;
-                    botSpike.tag = "Hazard";
-                }
-                pl2.AutoSetupSegments();
             }
         }
 
@@ -1390,75 +1342,32 @@ namespace WitchShmup.Editor
             var existingCutscene = GameObject.Find("Cutscene_Manager");
             if (existingCutscene != null) Object.DestroyImmediate(existingCutscene);
 
-            // 1. Criar Boss GameObject
+            // --- 1. Criar Boss GameObject com novo sprite sheet ---
             GameObject bossObj = new GameObject("Boss_Golem");
             bossObj.tag = "Boss";
             bossObj.transform.position = new Vector3(14f, 0f, 0f);
 
-            Sprite headSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Golem_Head.png");
-            Sprite bodySprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Golem_Body.png");
-            Sprite stoneBlockSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/StoneWall_Block.png");
+            // Carrega os frames de idle (golem_idle_sheet_64x64_0/1/2)
+            Sprite[] idleFrames   = LoadSpriteSheet("golem_idle_sheet_64x64.png",   3);
+            // Carrega os frames de ataque (golem_ataque_sheet_64x64_0/1/2)
+            Sprite[] attackFrames = LoadSpriteSheet("golem_ataque_sheet_64x64.png", 3);
 
-            // Aura circular roxa no fundo
-            GameObject aura = new GameObject("Aura");
-            aura.transform.SetParent(bossObj.transform);
-            aura.transform.localPosition = Vector3.zero;
-            var auraSr = aura.AddComponent<SpriteRenderer>();
-            auraSr.sortingOrder = 1;
-            auraSr.color = new Color(0.24f, 0.12f, 0.35f, 0.85f);
-            Texture2D auraTex = new Texture2D(64, 64, TextureFormat.RGBA32, false);
-            auraTex.filterMode = FilterMode.Point;
-            Color[] auraCols = new Color[64 * 64];
-            for (int x = 0; x < 64; x++)
-            {
-                for (int y = 0; y < 64; y++)
-                {
-                    float d = Vector2.Distance(new Vector2(x, y), new Vector2(32, 32));
-                    auraCols[y * 64 + x] = (d <= 30f) ? Color.white : Color.clear;
-                }
-            }
-            auraTex.SetPixels(auraCols);
-            auraTex.Apply();
-            auraSr.sprite = Sprite.Create(auraTex, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 12f);
-
-            // Corpo central
+            // Corpo animado principal (usa o idle como frame inicial)
             GameObject body = new GameObject("Body");
             body.transform.SetParent(bossObj.transform);
-            body.transform.localPosition = new Vector3(0f, -0.4f, 0f);
+            body.transform.localPosition = Vector3.zero;
             var bodySr = body.AddComponent<SpriteRenderer>();
-            bodySr.sprite = bodySprite;
-            bodySr.sortingOrder = 3;
+            bodySr.sortingOrder = 5;
+            if (idleFrames != null && idleFrames.Length > 0)
+                bodySr.sprite = idleFrames[0];
 
-            // Cabeça
-            GameObject head = new GameObject("Head");
-            head.transform.SetParent(bossObj.transform);
-            head.transform.localPosition = new Vector3(0f, 2.0f, 0f);
-            var headSr = head.AddComponent<SpriteRenderer>();
-            headSr.sprite = headSprite;
-            headSr.sortingOrder = 4;
-
-            // Ombro / Braço esquerdo e direito
-            if (stoneBlockSprite != null)
-            {
-                GameObject leftShoulder = new GameObject("Left_Plate");
-                leftShoulder.transform.SetParent(bossObj.transform);
-                leftShoulder.transform.localPosition = new Vector3(-2.2f, 0.4f, 0f);
-                var lsSr = leftShoulder.AddComponent<SpriteRenderer>();
-                lsSr.sprite = stoneBlockSprite;
-                lsSr.sortingOrder = 2;
-
-                GameObject rightShoulder = new GameObject("Right_Plate");
-                rightShoulder.transform.SetParent(bossObj.transform);
-                rightShoulder.transform.localPosition = new Vector3(2.2f, 0.4f, 0f);
-                var rsSr = rightShoulder.AddComponent<SpriteRenderer>();
-                rsSr.sprite = stoneBlockSprite;
-                rsSr.sortingOrder = 2;
-            }
+            // SimpleSpriteAnimator para animação do boss
+            var animator = body.AddComponent<SimpleSpriteAnimator>();
 
             // Collider principal do Boss
             var col = bossObj.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
-            col.size = new Vector2(3.5f, 4.8f);
+            col.size = new Vector2(3.2f, 4f);
 
             var rb = bossObj.AddComponent<Rigidbody2D>();
             rb.gravityScale = 0f;
@@ -1466,23 +1375,40 @@ namespace WitchShmup.Editor
 
             var golem = bossObj.AddComponent<GolemBoss>();
 
-            // Conectar prefabs de ataques e drops no GolemBoss
-            GameObject bigRockPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Boss_BigRock.prefab");
-            GameObject stoneWallPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Boss_StoneWall.prefab");
-            GameObject miniStonePrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Boss_OrbitingStone.prefab");
-            GameObject bossCorePrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_BossCore.prefab");
+            // Conectar prefabs de ataques e drops
+            GameObject bigRockPrefab    = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Boss_BigRock.prefab");
+            GameObject stoneWallPrefab  = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Boss_StoneWall.prefab");
+            GameObject miniStonePrefab  = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Boss_OrbitingStone.prefab");
+            GameObject bossCorePrefab   = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_BossCore.prefab");
             GameObject skillPointPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_SkillPoint.prefab");
 
             SerializedObject golemSo = new SerializedObject(golem);
-            golemSo.FindProperty("bigRockPrefab").objectReferenceValue = bigRockPrefab;
-            golemSo.FindProperty("stoneWallPrefab").objectReferenceValue = stoneWallPrefab;
+            golemSo.FindProperty("bigRockPrefab").objectReferenceValue      = bigRockPrefab;
+            golemSo.FindProperty("stoneWallPrefab").objectReferenceValue    = stoneWallPrefab;
             golemSo.FindProperty("orbitingStonePrefab").objectReferenceValue = miniStonePrefab;
-            golemSo.FindProperty("bossCoreDropPrefab").objectReferenceValue = bossCorePrefab;
+            golemSo.FindProperty("bossCoreDropPrefab").objectReferenceValue  = bossCorePrefab;
             golemSo.FindProperty("skillPointDropPrefab").objectReferenceValue = skillPointPrefab;
-            golemSo.FindProperty("mainBodyRenderer").objectReferenceValue = bodySr;
+            golemSo.FindProperty("mainBodyRenderer").objectReferenceValue    = bodySr;
+            golemSo.FindProperty("bossAnimator").objectReferenceValue        = animator;
+
+            // Injeta frames de idle e ataque diretamente no GolemBoss
+            if (idleFrames != null && idleFrames.Length > 0)
+            {
+                SerializedProperty idleProp = golemSo.FindProperty("idleFrames");
+                idleProp.arraySize = idleFrames.Length;
+                for (int i = 0; i < idleFrames.Length; i++)
+                    idleProp.GetArrayElementAtIndex(i).objectReferenceValue = idleFrames[i];
+            }
+            if (attackFrames != null && attackFrames.Length > 0)
+            {
+                SerializedProperty attackProp = golemSo.FindProperty("attackFrames");
+                attackProp.arraySize = attackFrames.Length;
+                for (int i = 0; i < attackFrames.Length; i++)
+                    attackProp.GetArrayElementAtIndex(i).objectReferenceValue = attackFrames[i];
+            }
             golemSo.ApplyModifiedProperties();
 
-            // 2. Criar Cutscene Manager
+            // --- 2. Criar Cutscene Manager ---
             GameObject cutsceneObj = new GameObject("Cutscene_Manager");
             var cutscene = cutsceneObj.AddComponent<BossIntroCutscene>();
 
@@ -1492,10 +1418,27 @@ namespace WitchShmup.Editor
             if (player != null)
             {
                 csSo.FindProperty("playerController").objectReferenceValue = player.GetComponent<PlayerController>();
-                csSo.FindProperty("playerShooting").objectReferenceValue = player.GetComponent<PlayerShooting>();
-                csSo.FindProperty("playerTransform").objectReferenceValue = player.transform;
+                csSo.FindProperty("playerShooting").objectReferenceValue   = player.GetComponent<PlayerShooting>();
+                csSo.FindProperty("playerTransform").objectReferenceValue  = player.transform;
             }
             csSo.ApplyModifiedProperties();
+        }
+
+        /// <summary>
+        /// Carrega os sprites individuais de um sprite sheet.
+        /// </summary>
+        private static Sprite[] LoadSpriteSheet(string filename, int frameCount)
+        {
+            string path = $"{SpritesPath}/{filename}";
+            Object[] all = AssetDatabase.LoadAllAssetsAtPath(path);
+            var sprites = new System.Collections.Generic.List<Sprite>();
+            foreach (var obj in all)
+            {
+                if (obj is Sprite s) sprites.Add(s);
+            }
+            // Ordena pelo nome para garantir a ordem correta (_0, _1, _2…)
+            sprites.Sort((a, b) => string.Compare(a.name, b.name, System.StringComparison.Ordinal));
+            return sprites.Count > 0 ? sprites.ToArray() : null;
         }
 
         private static void SetupWaveSpawner()

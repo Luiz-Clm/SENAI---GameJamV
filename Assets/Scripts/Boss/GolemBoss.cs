@@ -6,6 +6,7 @@ using WitchShmup.CameraSystem;
 using WitchShmup.Combat;
 using WitchShmup.Core;
 using WitchShmup.UI;
+using WitchShmup.Utils;
 
 namespace WitchShmup.Boss
 {
@@ -55,6 +56,11 @@ namespace WitchShmup.Boss
         [SerializeField] private SpriteRenderer mainBodyRenderer;
         [SerializeField] private GameObject explosionEffectPrefab;
 
+        [Header("Animação (Sprites do Golem)")]
+        [SerializeField] private Sprite[] idleFrames;
+        [SerializeField] private Sprite[] attackFrames;
+        [SerializeField] private SimpleSpriteAnimator bossAnimator;
+
         private BossState state = BossState.WaitingForCutscene;
         private Transform playerTarget;
         private float hoverBaseY = 0f;
@@ -85,6 +91,14 @@ namespace WitchShmup.Boss
             {
                 mainBodyRenderer = GetComponentInChildren<SpriteRenderer>();
             }
+
+            if (bossAnimator == null)
+            {
+                bossAnimator = GetComponentInChildren<SimpleSpriteAnimator>();
+            }
+
+            // Inicia com animação idle
+            PlayIdleAnim();
         }
 
         private void Start()
@@ -135,7 +149,25 @@ namespace WitchShmup.Boss
             {
                 hud.SetBossHealth(1f);
             }
+            PlayIdleAnim();
             attackRoutine = StartCoroutine(AttackLoop());
+        }
+
+        // --- Helpers de animação ---
+        private void PlayIdleAnim()
+        {
+            if (bossAnimator != null && idleFrames != null && idleFrames.Length > 0)
+            {
+                bossAnimator.SetFrames(idleFrames, 6f);
+            }
+        }
+
+        private void PlayAttackAnim()
+        {
+            if (bossAnimator != null && attackFrames != null && attackFrames.Length > 0)
+            {
+                bossAnimator.SetFrames(attackFrames, 10f);
+            }
         }
 
         private void Update()
@@ -177,7 +209,9 @@ namespace WitchShmup.Boss
 
         private IEnumerator PerformBigRockAttack()
         {
-            // Aviso visual (aviso de carregar pedra)
+            // Aviso visual: muda para animação de ataque
+            PlayAttackAnim();
+
             if (ScreenShake.Instance != null)
             {
                 ScreenShake.Instance.Shake(0.3f, 0.15f);
@@ -205,11 +239,16 @@ namespace WitchShmup.Boss
             {
                 CreateFallbackBigRock(spawnPos, dir);
             }
+
+            // Volta para idle após 0.6s
+            yield return new WaitForSeconds(0.6f);
+            PlayIdleAnim();
         }
 
         private IEnumerator PerformStoneWallAttack()
         {
-            // O Golem ergue uma barreira de pedras
+            // Muda para animação de ataque
+            PlayAttackAnim();
             yield return new WaitForSeconds(0.4f);
 
             Vector3 spawnPos = transform.position + new Vector3(-2f, 0f, 0f);
@@ -222,6 +261,10 @@ namespace WitchShmup.Boss
             {
                 CreateFallbackStoneWall(spawnPos);
             }
+
+            // Volta para idle após 0.5s
+            yield return new WaitForSeconds(0.5f);
+            PlayIdleAnim();
         }
 
         public void TakeDamage(float amount, ElementType element)
