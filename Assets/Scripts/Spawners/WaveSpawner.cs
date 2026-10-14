@@ -13,9 +13,9 @@ namespace WitchShmup.Spawners
 
         [Header("Duração da Fase")]
         [Tooltip("Tempo em segundos de ondas antes de chamar o Boss")]
-        [SerializeField] private float stageDuration = 75f;
-        [SerializeField] private float spawnIntervalMin = 1.1f;
-        [SerializeField] private float spawnIntervalMax = 2.4f;
+        [SerializeField] private float stageDuration = 150f;
+        [SerializeField] private float spawnIntervalMin = 0.9f;
+        [SerializeField] private float spawnIntervalMax = 2.0f;
 
         [Header("Spawn Position Bounds")]
         [SerializeField] private float spawnX = 11.5f;

@@ -66,6 +66,15 @@ namespace WitchShmup.Editor
 
             // 3. Drops Coletáveis
             Sprite fireHeartSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/FireHeart.png");
+            if (fireHeartSprite == null)
+            {
+                foreach (var obj in AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/FireHeart.png"))
+                {
+                    if (obj is Sprite s) { fireHeartSprite = s; break; }
+                }
+            }
+            if (fireHeartSprite == null) fireHeartSprite = Resources.Load<Sprite>("Sprites/FireHeart");
+
             Sprite potionSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/HealthPotion.png");
             Sprite skillPointSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/SkillPoint.png");
             Sprite bossCoreSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/BossCore.png");
@@ -429,7 +438,14 @@ namespace WitchShmup.Editor
             var parallaxCtrl = bgRoot.AddComponent<ParallaxBackgroundController>();
             parallaxCtrl.SetScrollSpeed(3.0f);
 
-            Sprite brickSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/BrickWall.png");
+            Sprite brickSprite = null;
+            foreach (var obj in AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/Parallax.png"))
+            {
+                if (obj is Sprite s) { brickSprite = s; break; }
+            }
+            if (brickSprite == null) brickSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Parallax.png");
+            if (brickSprite == null) brickSprite = Resources.Load<Sprite>("Sprites/Parallax");
+
             if (brickSprite != null)
             {
                 float segmentWidth = 24f;
@@ -527,6 +543,12 @@ namespace WitchShmup.Editor
             playerObj.AddComponent<PlayerHealth>();
             var shooting = playerObj.AddComponent<PlayerShooting>();
 
+            // AudioSource para o som de tiro
+            var audioSrc = playerObj.AddComponent<AudioSource>();
+            audioSrc.playOnAwake = false;
+            audioSrc.volume = 0.65f;
+            audioSrc.spatialBlend = 0f;
+
             // Setup fire points: Inicia com apenas 1 projétil central!
             GameObject muzzleCenter = new GameObject("Muzzle_Center");
             muzzleCenter.transform.SetParent(playerObj.transform);
@@ -535,9 +557,22 @@ namespace WitchShmup.Editor
             GameObject icePrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Projectile_Ice.prefab");
             GameObject firePrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Projectile_Fire.prefab");
 
+            // Som de tiro do mago
+            AudioClip shootClip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{SpritesPath}/Tiro.Teste.wav");
+
             SerializedObject so = new SerializedObject(shooting);
             so.FindProperty("iceConfig.projectilePrefab").objectReferenceValue = icePrefab;
             so.FindProperty("fireConfig.projectilePrefab").objectReferenceValue = firePrefab;
+
+            // Vincula som de tiro a ambos os elementos
+            if (shootClip != null)
+            {
+                so.FindProperty("iceConfig.shootSound").objectReferenceValue = shootClip;
+                so.FindProperty("fireConfig.shootSound").objectReferenceValue = shootClip;
+            }
+
+            // Vincula AudioSource
+            so.FindProperty("audioSource").objectReferenceValue = audioSrc;
 
             SerializedProperty firePointsProp = so.FindProperty("firePoints");
             firePointsProp.arraySize = 1;
@@ -556,66 +591,101 @@ namespace WitchShmup.Editor
             var scaler = canvasObj.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
             canvasObj.AddComponent<GraphicRaycaster>();
 
             var hud = canvasObj.AddComponent<HUDController>();
             Sprite heartSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Heart.png");
 
-            // --- Top Bar ---
+            // --- TOP BAR (Score | Título da fase | Barra do Boss) ---
             GameObject topBar = new GameObject("TopBar");
             topBar.transform.SetParent(canvasObj.transform, false);
             var topBarRect = topBar.AddComponent<RectTransform>();
             topBarRect.anchorMin = new Vector2(0f, 1f);
             topBarRect.anchorMax = new Vector2(1f, 1f);
             topBarRect.pivot = new Vector2(0.5f, 1f);
-            topBarRect.sizeDelta = new Vector2(0f, 70f);
+            topBarRect.anchoredPosition = new Vector2(0f, 0f);
+            topBarRect.sizeDelta = new Vector2(0f, 72f);
+            var topBg = topBar.AddComponent<Image>();
+            topBg.color = new Color(0.05f, 0.03f, 0.1f, 0.82f);
 
-            // Score Text
+            // Score Text (canto esquerdo do top bar)
             GameObject scoreObj = new GameObject("ScoreText");
             scoreObj.transform.SetParent(topBar.transform, false);
             var scoreRect = scoreObj.AddComponent<RectTransform>();
-            scoreRect.anchorMin = new Vector2(0.04f, 0.5f);
-            scoreRect.anchorMax = new Vector2(0.04f, 0.5f);
+            scoreRect.anchorMin = new Vector2(0f, 0f);
+            scoreRect.anchorMax = new Vector2(0f, 1f);
             scoreRect.pivot = new Vector2(0f, 0.5f);
+            scoreRect.anchoredPosition = new Vector2(24f, 0f);
+            scoreRect.sizeDelta = new Vector2(380f, 0f);
             var scoreTmp = scoreObj.AddComponent<TextMeshProUGUI>();
             scoreTmp.text = "SCORE 0000000";
-            scoreTmp.fontSize = 32;
+            scoreTmp.fontSize = 30;
             scoreTmp.fontStyle = FontStyles.Bold;
             scoreTmp.color = Color.white;
+            scoreTmp.alignment = TextAlignmentOptions.MidlineLeft;
 
-            // Stage Title Text
+            // Stage Title Text (centro do top bar)
             GameObject stageObj = new GameObject("StageText");
             stageObj.transform.SetParent(topBar.transform, false);
             var stageRect = stageObj.AddComponent<RectTransform>();
-            stageRect.anchorMin = new Vector2(0.5f, 0.5f);
-            stageRect.anchorMax = new Vector2(0.5f, 0.5f);
+            stageRect.anchorMin = new Vector2(0.35f, 0f);
+            stageRect.anchorMax = new Vector2(0.65f, 1f);
             stageRect.pivot = new Vector2(0.5f, 0.5f);
+            stageRect.sizeDelta = new Vector2(0f, 0f);
+            stageRect.anchoredPosition = Vector2.zero;
             var stageTmp = stageObj.AddComponent<TextMeshProUGUI>();
             stageTmp.text = "FASE 1 - RUÍNAS DE PEDRA";
-            stageTmp.fontSize = 28;
+            stageTmp.fontSize = 26;
             stageTmp.fontStyle = FontStyles.Bold;
             stageTmp.color = new Color(0.9f, 0.85f, 1f, 1f);
+            stageTmp.alignment = TextAlignmentOptions.Center;
 
-            // Boss Health Bar Container (no topo direito, como no mockup!)
+            // === BOSS HEALTH BAR (canto direito do top bar) ===
+            GameObject bossBarWrapper = new GameObject("BossBar_Wrapper");
+            bossBarWrapper.transform.SetParent(topBar.transform, false);
+            var bossWrapRect = bossBarWrapper.AddComponent<RectTransform>();
+            bossWrapRect.anchorMin = new Vector2(1f, 0f);
+            bossWrapRect.anchorMax = new Vector2(1f, 1f);
+            bossWrapRect.pivot = new Vector2(1f, 0.5f);
+            bossWrapRect.anchoredPosition = new Vector2(-24f, 0f);
+            bossWrapRect.sizeDelta = new Vector2(400f, 0f);
+
+            // Nome do Boss (label acima da barra)
+            GameObject bossNameObj = new GameObject("BossNameText");
+            bossNameObj.transform.SetParent(bossBarWrapper.transform, false);
+            var bossNameRect = bossNameObj.AddComponent<RectTransform>();
+            bossNameRect.anchorMin = new Vector2(0f, 0.55f);
+            bossNameRect.anchorMax = new Vector2(1f, 1f);
+            bossNameRect.sizeDelta = Vector2.zero;
+            bossNameRect.anchoredPosition = Vector2.zero;
+            var bossNameTmp = bossNameObj.AddComponent<TextMeshProUGUI>();
+            bossNameTmp.text = "GOLEM DE PEDRA";
+            bossNameTmp.fontSize = 20;
+            bossNameTmp.fontStyle = FontStyles.Bold;
+            bossNameTmp.color = new Color(1f, 0.85f, 0.85f, 1f);
+            bossNameTmp.alignment = TextAlignmentOptions.MidlineRight;
+
+            // Container da barra de HP
             GameObject bossBarObj = new GameObject("BossHealthBar");
-            bossBarObj.transform.SetParent(topBar.transform, false);
+            bossBarObj.transform.SetParent(bossBarWrapper.transform, false);
             var bossBarRect = bossBarObj.AddComponent<RectTransform>();
-            bossBarRect.anchorMin = new Vector2(0.96f, 0.5f);
-            bossBarRect.anchorMax = new Vector2(0.96f, 0.5f);
-            bossBarRect.pivot = new Vector2(1f, 0.5f);
-            bossBarRect.sizeDelta = new Vector2(360f, 26f);
-
-            // Fundo escuro da barra
+            bossBarRect.anchorMin = new Vector2(0f, 0f);
+            bossBarRect.anchorMax = new Vector2(1f, 0.5f);
+            bossBarRect.sizeDelta = Vector2.zero;
+            bossBarRect.anchoredPosition = Vector2.zero;
             var bossBgImg = bossBarObj.AddComponent<Image>();
-            bossBgImg.color = new Color(0.18f, 0.08f, 0.14f, 0.9f);
+            bossBgImg.color = new Color(0.18f, 0.08f, 0.14f, 0.95f);
 
             // Fill vermelho da barra
             GameObject fillObj = new GameObject("Fill");
             fillObj.transform.SetParent(bossBarObj.transform, false);
             var fillRect = fillObj.AddComponent<RectTransform>();
-            fillRect.anchorMin = Vector2.zero;
-            fillRect.anchorMax = Vector2.one;
+            fillRect.anchorMin = new Vector2(0.01f, 0.08f);
+            fillRect.anchorMax = new Vector2(0.99f, 0.92f);
             fillRect.sizeDelta = Vector2.zero;
+            fillRect.anchoredPosition = Vector2.zero;
             var fillImg = fillObj.AddComponent<Image>();
             fillImg.color = new Color(0.97f, 0.3f, 0.35f, 1f);
             fillImg.type = Image.Type.Filled;
@@ -623,26 +693,32 @@ namespace WitchShmup.Editor
             fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
             fillImg.fillAmount = 1f;
 
-            // --- Bottom Bar ---
+            // --- BOTTOM BAR (Corações | Indicador elemento | Poções) ---
             GameObject bottomBar = new GameObject("BottomBar");
             bottomBar.transform.SetParent(canvasObj.transform, false);
             var bottomBarRect = bottomBar.AddComponent<RectTransform>();
             bottomBarRect.anchorMin = new Vector2(0f, 0f);
             bottomBarRect.anchorMax = new Vector2(1f, 0f);
             bottomBarRect.pivot = new Vector2(0.5f, 0f);
+            bottomBarRect.anchoredPosition = new Vector2(0f, 0f);
             bottomBarRect.sizeDelta = new Vector2(0f, 90f);
+            var bottomBg = bottomBar.AddComponent<Image>();
+            bottomBg.color = new Color(0.05f, 0.03f, 0.1f, 0.82f);
 
-            // Hearts Container
+            // Hearts Container (canto esquerdo do bottom)
             GameObject heartsContainer = new GameObject("HeartsContainer");
             heartsContainer.transform.SetParent(bottomBar.transform, false);
             var heartsRect = heartsContainer.AddComponent<RectTransform>();
-            heartsRect.anchorMin = new Vector2(0.04f, 0.5f);
-            heartsRect.anchorMax = new Vector2(0.04f, 0.5f);
+            heartsRect.anchorMin = new Vector2(0f, 0f);
+            heartsRect.anchorMax = new Vector2(0f, 1f);
             heartsRect.pivot = new Vector2(0f, 0.5f);
+            heartsRect.anchoredPosition = new Vector2(24f, 0f);
+            heartsRect.sizeDelta = new Vector2(240f, 0f);
             var hlg = heartsContainer.AddComponent<HorizontalLayoutGroup>();
-            hlg.spacing = 16f;
+            hlg.spacing = 12f;
             hlg.childForceExpandWidth = false;
             hlg.childForceExpandHeight = false;
+            hlg.childAlignment = TextAnchor.MiddleLeft;
 
             Image[] heartImgs = new Image[4];
             for (int i = 0; i < 4; i++)
@@ -650,30 +726,75 @@ namespace WitchShmup.Editor
                 GameObject hObj = new GameObject($"Heart_{i}");
                 hObj.transform.SetParent(heartsContainer.transform, false);
                 var hRect = hObj.AddComponent<RectTransform>();
-                hRect.sizeDelta = new Vector2(36f, 36f);
+                hRect.sizeDelta = new Vector2(52f, 52f);
                 var img = hObj.AddComponent<Image>();
                 img.sprite = heartSprite;
                 img.color = new Color(1f, 0.35f, 0.45f, 1f);
+                img.preserveAspect = true;
                 heartImgs[i] = img;
             }
 
-            // Element Buttons: [GELO] [FOGO]
+            // === POTION INVENTORY HUD (centro-esquerdo do bottom) ===
+            GameObject potionContainer = new GameObject("PotionInventory");
+            potionContainer.transform.SetParent(bottomBar.transform, false);
+            var potionRect = potionContainer.AddComponent<RectTransform>();
+            potionRect.anchorMin = new Vector2(0f, 0f);
+            potionRect.anchorMax = new Vector2(0f, 1f);
+            potionRect.pivot = new Vector2(0f, 0.5f);
+            potionRect.anchoredPosition = new Vector2(300f, 0f);
+            potionRect.sizeDelta = new Vector2(200f, 0f);
+            potionContainer.SetActive(false); // Começa oculto; aparece quando tem poção
+
+            // Ícone de poção
+            Sprite potionSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/HealthPotion.png");
+            GameObject potionIconObj = new GameObject("PotionIcon");
+            potionIconObj.transform.SetParent(potionContainer.transform, false);
+            var piRect = potionIconObj.AddComponent<RectTransform>();
+            piRect.anchorMin = new Vector2(0f, 0.15f);
+            piRect.anchorMax = new Vector2(0f, 0.85f);
+            piRect.pivot = new Vector2(0f, 0.5f);
+            piRect.anchoredPosition = new Vector2(0f, 0f);
+            piRect.sizeDelta = new Vector2(48f, 0f);
+            var potionIconImg = potionIconObj.AddComponent<Image>();
+            potionIconImg.sprite = potionSprite;
+            potionIconImg.preserveAspect = true;
+
+            // Texto do contador de poções
+            GameObject potionTextObj = new GameObject("PotionCountText");
+            potionTextObj.transform.SetParent(potionContainer.transform, false);
+            var ptRect = potionTextObj.AddComponent<RectTransform>();
+            ptRect.anchorMin = new Vector2(0f, 0f);
+            ptRect.anchorMax = new Vector2(1f, 1f);
+            ptRect.pivot = new Vector2(0f, 0.5f);
+            ptRect.anchoredPosition = new Vector2(56f, 0f);
+            ptRect.sizeDelta = new Vector2(-56f, 0f);
+            var potionTmp = potionTextObj.AddComponent<TextMeshProUGUI>();
+            potionTmp.text = "[F] x0";
+            potionTmp.fontSize = 26;
+            potionTmp.fontStyle = FontStyles.Bold;
+            potionTmp.color = new Color(0.7f, 1f, 0.7f, 1f);
+            potionTmp.alignment = TextAlignmentOptions.MidlineLeft;
+
+            // Element Buttons: [GELO] [FOGO] (canto direito do bottom)
             GameObject elemContainer = new GameObject("ElementSelector");
             elemContainer.transform.SetParent(bottomBar.transform, false);
             var elemRect = elemContainer.AddComponent<RectTransform>();
-            elemRect.anchorMin = new Vector2(0.96f, 0.5f);
-            elemRect.anchorMax = new Vector2(0.96f, 0.5f);
+            elemRect.anchorMin = new Vector2(1f, 0f);
+            elemRect.anchorMax = new Vector2(1f, 1f);
             elemRect.pivot = new Vector2(1f, 0.5f);
+            elemRect.anchoredPosition = new Vector2(-24f, 0f);
+            elemRect.sizeDelta = new Vector2(340f, 0f);
             var elemHlg = elemContainer.AddComponent<HorizontalLayoutGroup>();
-            elemHlg.spacing = 20f;
+            elemHlg.spacing = 16f;
             elemHlg.childForceExpandWidth = false;
             elemHlg.childForceExpandHeight = false;
+            elemHlg.childAlignment = TextAnchor.MiddleRight;
 
             // Ice Badge
             GameObject iceObj = new GameObject("Badge_Gelo");
             iceObj.transform.SetParent(elemContainer.transform, false);
             var iceRect = iceObj.AddComponent<RectTransform>();
-            iceRect.sizeDelta = new Vector2(140f, 48f);
+            iceRect.sizeDelta = new Vector2(155f, 58f);
             var iceImg = iceObj.AddComponent<Image>();
             iceImg.color = new Color(0.2f, 0.85f, 1f, 1f);
 
@@ -684,9 +805,9 @@ namespace WitchShmup.Editor
             iceTxtRect.anchorMax = Vector2.one;
             iceTxtRect.sizeDelta = Vector2.zero;
             var iceTmp = iceTxtObj.AddComponent<TextMeshProUGUI>();
-            iceTmp.text = "GELO";
+            iceTmp.text = "1: GELO";
             iceTmp.alignment = TextAlignmentOptions.Center;
-            iceTmp.fontSize = 24;
+            iceTmp.fontSize = 22;
             iceTmp.fontStyle = FontStyles.Bold;
             iceTmp.color = Color.white;
 
@@ -694,7 +815,7 @@ namespace WitchShmup.Editor
             GameObject fireObj = new GameObject("Badge_Fogo");
             fireObj.transform.SetParent(elemContainer.transform, false);
             var fireRect = fireObj.AddComponent<RectTransform>();
-            fireRect.sizeDelta = new Vector2(140f, 48f);
+            fireRect.sizeDelta = new Vector2(155f, 58f);
             var fireImg = fireObj.AddComponent<Image>();
             fireImg.color = new Color(0.45f, 0.25f, 0.05f, 0.5f);
 
@@ -705,13 +826,13 @@ namespace WitchShmup.Editor
             fireTxtRect.anchorMax = Vector2.one;
             fireTxtRect.sizeDelta = Vector2.zero;
             var fireTmp = fireTxtObj.AddComponent<TextMeshProUGUI>();
-            fireTmp.text = "FOGO";
+            fireTmp.text = "FOGO [BLOQ]";
             fireTmp.alignment = TextAlignmentOptions.Center;
-            fireTmp.fontSize = 24;
+            fireTmp.fontSize = 22;
             fireTmp.fontStyle = FontStyles.Bold;
-            fireTmp.color = new Color(0.7f, 0.7f, 0.7f, 0.6f);
+            fireTmp.color = new Color(0.55f, 0.45f, 0.45f, 0.5f);
 
-            // Wire HUD
+            // Wire HUD refs
             SerializedObject hudSo = new SerializedObject(hud);
             SerializedProperty heartsProp = hudSo.FindProperty("heartImages");
             heartsProp.arraySize = 4;
@@ -723,11 +844,14 @@ namespace WitchShmup.Editor
             hudSo.FindProperty("fireText").objectReferenceValue = fireTmp;
             hudSo.FindProperty("scoreText").objectReferenceValue = scoreTmp;
             hudSo.FindProperty("stageText").objectReferenceValue = stageTmp;
-            hudSo.FindProperty("bossBarContainer").objectReferenceValue = bossBarObj;
+            hudSo.FindProperty("bossBarContainer").objectReferenceValue = bossBarWrapper;
             hudSo.FindProperty("bossHealthFill").objectReferenceValue = fillImg;
+            hudSo.FindProperty("bossNameText").objectReferenceValue = bossNameTmp;
+            hudSo.FindProperty("potionCountText").objectReferenceValue = potionTmp;
+            hudSo.FindProperty("potionIconContainer").objectReferenceValue = potionContainer;
             hudSo.ApplyModifiedProperties();
 
-            // --- EventSystem (Essencial para cliques e interação de botões na UI) ---
+            // --- EventSystem ---
             var es = Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>();
             if (es == null)
             {
@@ -748,13 +872,13 @@ namespace WitchShmup.Editor
                 existingGm = gmObj.AddComponent<GameManager>();
             }
 
-            // --- GameOver Screen (Derrota) ---
+            // --- GameOver Screen ---
             GameObject gameOverPanel = SetupGameOverPanel(canvasObj.transform);
 
-            // --- Victory Screen (Vitória) ---
+            // --- Victory Screen ---
             GameObject victoryPanel = SetupVictoryPanel(canvasObj.transform);
 
-            // --- Evolution Screen (Árvore de Upgrades do Esboço HTML) ---
+            // --- Evolution Screen (Árvore de Upgrades) ---
             GameObject evolutionPanel = SetupEvolutionPanel(canvasObj.transform);
 
             // Connect panels to GameManager
@@ -938,511 +1062,7 @@ namespace WitchShmup.Editor
             rect.anchorMax = Vector2.one;
             rect.sizeDelta = Vector2.zero;
 
-            var bgImg = panel.AddComponent<Image>();
-            bgImg.color = new Color(0.05f, 0.04f, 0.09f, 0.94f);
-
             var evoUI = panel.AddComponent<EvolutionUI>();
-
-            // Frame principal (#1d1530)
-            GameObject frame = new GameObject("Frame");
-            frame.transform.SetParent(panel.transform, false);
-            var fRect = frame.AddComponent<RectTransform>();
-            fRect.anchorMin = new Vector2(0.5f, 0.5f);
-            fRect.anchorMax = new Vector2(0.5f, 0.5f);
-            fRect.sizeDelta = new Vector2(1100f, 680f);
-            var fImg = frame.AddComponent<Image>();
-            fImg.color = new Color(0.11f, 0.08f, 0.19f, 1f);
-
-            // Header Container
-            GameObject header = new GameObject("Header");
-            header.transform.SetParent(frame.transform, false);
-            var hRect = header.AddComponent<RectTransform>();
-            hRect.anchorMin = new Vector2(0f, 1f);
-            hRect.anchorMax = new Vector2(1f, 1f);
-            hRect.pivot = new Vector2(0.5f, 1f);
-            hRect.anchoredPosition = new Vector2(0f, -14f);
-            hRect.sizeDelta = new Vector2(-40f, 60f);
-
-            // Title
-            GameObject titleObj = new GameObject("Title");
-            titleObj.transform.SetParent(header.transform, false);
-            var tRect = titleObj.AddComponent<RectTransform>();
-            tRect.anchorMin = new Vector2(0f, 0.5f);
-            tRect.anchorMax = new Vector2(0f, 0.5f);
-            tRect.pivot = new Vector2(0f, 0.5f);
-            tRect.anchoredPosition = new Vector2(10f, 12f);
-            var tTmp = titleObj.AddComponent<TextMeshProUGUI>();
-            tTmp.text = "ÁRVORE DE UPGRADES";
-            tTmp.fontSize = 24;
-            tTmp.fontStyle = FontStyles.Bold;
-            tTmp.color = new Color(1f, 0.61f, 0.73f, 1f);
-
-            // Subtitle
-            GameObject subObj = new GameObject("Subtitle");
-            subObj.transform.SetParent(header.transform, false);
-            var subRect = subObj.AddComponent<RectTransform>();
-            subRect.anchorMin = new Vector2(0f, 0.5f);
-            subRect.anchorMax = new Vector2(0f, 0.5f);
-            subRect.pivot = new Vector2(0f, 0.5f);
-            subRect.anchoredPosition = new Vector2(10f, -12f);
-            var subTmp = subObj.AddComponent<TextMeshProUGUI>();
-            subTmp.text = "Inimigos dropam skill points. Clique em um nó para ver e desbloquear.";
-            subTmp.fontSize = 15;
-            subTmp.color = new Color(0.65f, 0.58f, 0.8f, 1f);
-
-            // Skill Points Box
-            GameObject spBox = new GameObject("SP_Box");
-            spBox.transform.SetParent(header.transform, false);
-            var spbRect = spBox.AddComponent<RectTransform>();
-            spbRect.anchorMin = new Vector2(1f, 0.5f);
-            spbRect.anchorMax = new Vector2(1f, 0.5f);
-            spbRect.pivot = new Vector2(1f, 0.5f);
-            spbRect.anchoredPosition = new Vector2(-60f, 0f);
-            spbRect.sizeDelta = new Vector2(190f, 48f);
-            var spbImg = spBox.AddComponent<Image>();
-            spbImg.color = new Color(0.04f, 0.03f, 0.06f, 1f);
-
-            GameObject spTxtObj = new GameObject("Text");
-            spTxtObj.transform.SetParent(spBox.transform, false);
-            var sptRect = spTxtObj.AddComponent<RectTransform>();
-            sptRect.anchorMin = Vector2.zero;
-            sptRect.anchorMax = Vector2.one;
-            sptRect.sizeDelta = Vector2.zero;
-            var spTmp = spTxtObj.AddComponent<TextMeshProUGUI>();
-            spTmp.text = "SKILL POINTS: 2";
-            spTmp.fontSize = 18;
-            spTmp.fontStyle = FontStyles.Bold;
-            spTmp.alignment = TextAlignmentOptions.Center;
-            spTmp.color = new Color(1f, 0.78f, 0.23f, 1f);
-
-            // Close button (X)
-            GameObject closeObj = new GameObject("Btn_Close");
-            closeObj.transform.SetParent(header.transform, false);
-            var cRect = closeObj.AddComponent<RectTransform>();
-            cRect.anchorMin = new Vector2(1f, 0.5f);
-            cRect.anchorMax = new Vector2(1f, 0.5f);
-            cRect.pivot = new Vector2(1f, 0.5f);
-            cRect.anchoredPosition = new Vector2(0f, 0f);
-            cRect.sizeDelta = new Vector2(44f, 44f);
-            var cImg = closeObj.AddComponent<Image>();
-            cImg.color = new Color(0.8f, 0.2f, 0.25f, 1f);
-            var closeBtn = closeObj.AddComponent<Button>();
-
-            GameObject closeTxtObj = new GameObject("Text");
-            closeTxtObj.transform.SetParent(closeObj.transform, false);
-            var ctRect = closeTxtObj.AddComponent<RectTransform>();
-            ctRect.anchorMin = Vector2.zero;
-            ctRect.anchorMax = Vector2.one;
-            ctRect.sizeDelta = Vector2.zero;
-            var ctTmp = closeTxtObj.AddComponent<TextMeshProUGUI>();
-            ctTmp.text = "X";
-            ctTmp.fontSize = 24;
-            ctTmp.fontStyle = FontStyles.Bold;
-            ctTmp.alignment = TextAlignmentOptions.Center;
-            ctTmp.color = Color.white;
-
-            // --- Body: Split em Árvore (Esquerda) e Card de Detalhes (Direita) ---
-            GameObject body = new GameObject("Body");
-            body.transform.SetParent(frame.transform, false);
-            var bRect = body.AddComponent<RectTransform>();
-            bRect.anchorMin = new Vector2(0f, 0f);
-            bRect.anchorMax = new Vector2(1f, 1f);
-            bRect.anchoredPosition = new Vector2(0f, -40f);
-            bRect.sizeDelta = new Vector2(-40f, -120f);
-
-            // Container da Árvore
-            GameObject treeBox = new GameObject("TreeContainer");
-            treeBox.transform.SetParent(body.transform, false);
-            var tbRect = treeBox.AddComponent<RectTransform>();
-            tbRect.anchorMin = new Vector2(0f, 0.5f);
-            tbRect.anchorMax = new Vector2(0f, 0.5f);
-            tbRect.pivot = new Vector2(0f, 0.5f);
-            tbRect.anchoredPosition = new Vector2(0f, 0f);
-            tbRect.sizeDelta = new Vector2(650f, 520f);
-            var tbImg = treeBox.AddComponent<Image>();
-            tbImg.color = new Color(0.07f, 0.05f, 0.12f, 1f);
-
-            // Container de Linhas
-            GameObject linesBox = new GameObject("Lines");
-            linesBox.transform.SetParent(treeBox.transform, false);
-            var lbRect = linesBox.AddComponent<RectTransform>();
-            lbRect.anchorMin = Vector2.zero;
-            lbRect.anchorMax = Vector2.one;
-            lbRect.sizeDelta = Vector2.zero;
-
-            // Dados dos 10 Nós conforme gameplay
-            var nodeConfigs = new (string id, string name, string desc, string req, int max, int baseCost, string eff, string unit, float val, Vector2 pos, string icon)[]
-            {
-                ("vit", "Vitalidade", "Aumenta a energia vital do mago, concedendo corações extras.", null, 5, 1, "+1 Vida Máxima (Coração Extra)", " de vida", 1f, new Vector2(0f, -185f), "HP"),
-                ("vel", "Velocidade Arcana", "A vassoura corta o ar mais rápido e os projéteis voam velozes.", "vit", 3, 1, "+8% Movimento e +25% Velocidade dos Tiros", "% de velocidade", 25f, new Vector2(0f, -115f), "VEL"),
-                ("foc", "Poder do Gelo", "O cristal canaliza o gelo com perfeição: mais dano e lentidão prolongada.", "vel", 3, 2, "+35% Dano e Lentidão Glacial", "% poder gelo", 35f, new Vector2(0f, -45f), "ICE"),
-                ("des", "Despertar Arcano", "Equilibra corpo e magia: concede +1 Coração e +0.5 de Dano base.", "foc", 1, 2, "+1 Coração e +0.5 Dano Base", "", 0f, new Vector2(0f, 25f), "★"),
-
-                // Ramo Esquerdo (Defesa)
-                ("pel", "Pele de Pedra", "Encantamento de resistência: reduz todo dano recebido em 8%.", "des", 3, 2, "8% Menos Dano Recebido", "% menos dano", 8f, new Vector2(-95f, 95f), "DEF"),
-                ("ima", "Ímã de Almas", "Os drops de skill points e corações voam até você de longe.", "pel", 2, 2, "+35% Alcance Magnético de Drops", "% alcance", 35f, new Vector2(-175f, 155f), "IMA"),
-                ("seg", "Segundo Fôlego", "Ao zerar os corações, a magia do mago revive-o com 35% de vida.", "ima", 1, 5, "Revive 1x por partida", "", 0f, new Vector2(-245f, 195f), "REV"),
-
-                // Ramo Direito (Ataque)
-                ("rap", "Cadência Rápida", "O cajado dispara magias em rápida sucessão.", "des", 4, 2, "+10% de Cadência de Tiro", "% de cadência", 10f, new Vector2(95f, 95f), "ATK"),
-                ("dup", "Disparo Múltiplo", "Aumenta o número de magias disparadas juntas (Lv1: Duplo, Lv2: Triplo!).", "rap", 2, 3, "+1 Projétil por disparo (Lv1: Duplo, Lv2: Triplo)", " projéteis", 1f, new Vector2(175f, 155f), "MULTI"),
-                ("per", "Fúria do Fogo", "Magias flamejantes perfuram os inimigos e causam destruição em massa.", "dup", 2, 4, "Tiros Perfuram Inimigos e +45% Dano de Fogo", "% poder fogo", 45f, new Vector2(245f, 195f), "FIRE")
-            };
-
-            var posDict = new Dictionary<string, Vector2>();
-            foreach (var item in nodeConfigs) posDict[item.id] = item.pos;
-
-            // Linhas de conexão
-            foreach (var item in nodeConfigs)
-            {
-                if (!string.IsNullOrEmpty(item.req) && posDict.ContainsKey(item.req))
-                {
-                    Vector2 start = posDict[item.req];
-                    Vector2 end = item.pos;
-                    CreateUILine(linesBox.transform, start, end, new Color(0.29f, 0.21f, 0.45f, 1f));
-                }
-            }
-
-            // Criação dos Nós
-            SerializedObject evoSo = new SerializedObject(evoUI);
-            SerializedProperty nodesProp = evoSo.FindProperty("nodes");
-            nodesProp.arraySize = nodeConfigs.Length;
-
-            for (int i = 0; i < nodeConfigs.Length; i++)
-            {
-                var cfg = nodeConfigs[i];
-
-                GameObject nObj = new GameObject($"Node_{cfg.id}");
-                nObj.transform.SetParent(treeBox.transform, false);
-                var nRect = nObj.AddComponent<RectTransform>();
-                nRect.anchoredPosition = cfg.pos;
-                nRect.sizeDelta = new Vector2(50f, 50f);
-
-                // Anel de seleção
-                GameObject selObj = new GameObject("Ring");
-                selObj.transform.SetParent(nObj.transform, false);
-                var selRect = selObj.AddComponent<RectTransform>();
-                selRect.anchorMin = Vector2.zero;
-                selRect.anchorMax = Vector2.one;
-                selRect.sizeDelta = new Vector2(10f, 10f);
-                var selImg = selObj.AddComponent<Image>();
-                selImg.color = new Color(0.37f, 0.90f, 1f, 0.8f);
-                selObj.SetActive(false);
-
-                // Borda / Fundo
-                var borderImg = nObj.AddComponent<Image>();
-                borderImg.color = new Color(0.14f, 0.11f, 0.20f, 1f);
-
-                // Botão
-                var btn = nObj.AddComponent<Button>();
-                var colors = btn.colors;
-                colors.highlightedColor = new Color(0.37f, 0.90f, 1.0f, 1f);
-                colors.pressedColor = new Color(1f, 0.78f, 0.23f, 1f);
-                btn.colors = colors;
-
-                // Ícone Texto
-                GameObject iconObj = new GameObject("Icon");
-                iconObj.transform.SetParent(nObj.transform, false);
-                var icRect = iconObj.AddComponent<RectTransform>();
-                icRect.anchorMin = Vector2.zero;
-                icRect.anchorMax = Vector2.one;
-                icRect.sizeDelta = Vector2.zero;
-                var icTmp = iconObj.AddComponent<TextMeshProUGUI>();
-                icTmp.text = cfg.icon;
-                icTmp.fontSize = (cfg.icon.Length > 2) ? 14 : 18;
-                icTmp.fontStyle = FontStyles.Bold;
-                icTmp.alignment = TextAlignmentOptions.Center;
-                icTmp.color = Color.white;
-
-                // Nível Texto (abaixo do nó)
-                GameObject lvlObj = new GameObject("LevelText");
-                lvlObj.transform.SetParent(nObj.transform, false);
-                var lRect = lvlObj.AddComponent<RectTransform>();
-                lRect.anchoredPosition = new Vector2(0f, -32f);
-                lRect.sizeDelta = new Vector2(60f, 20f);
-                var lTmp = lvlObj.AddComponent<TextMeshProUGUI>();
-                lTmp.text = $"0/{cfg.max}";
-                lTmp.fontSize = 13;
-                lTmp.alignment = TextAlignmentOptions.Center;
-                lTmp.color = new Color(0.65f, 0.58f, 0.8f, 1f);
-
-                // Serializa dados
-                var elem = nodesProp.GetArrayElementAtIndex(i);
-                elem.FindPropertyRelative("id").stringValue = cfg.id;
-                elem.FindPropertyRelative("name").stringValue = cfg.name;
-                elem.FindPropertyRelative("description").stringValue = cfg.desc;
-                elem.FindPropertyRelative("requirementId").stringValue = cfg.req ?? "";
-                elem.FindPropertyRelative("maxLevel").intValue = cfg.max;
-                elem.FindPropertyRelative("baseCost").intValue = cfg.baseCost;
-                elem.FindPropertyRelative("effectText").stringValue = cfg.eff;
-                elem.FindPropertyRelative("unitText").stringValue = cfg.unit;
-                elem.FindPropertyRelative("valuePerLevel").floatValue = cfg.val;
-                elem.FindPropertyRelative("nodeButton").objectReferenceValue = btn;
-                elem.FindPropertyRelative("nodeBorder").objectReferenceValue = borderImg;
-                elem.FindPropertyRelative("nodeLevelText").objectReferenceValue = lTmp;
-                elem.FindPropertyRelative("selectionRing").objectReferenceValue = selObj;
-            }
-
-            // --- Card de Detalhes (Direita) ---
-            GameObject card = new GameObject("DetailCard");
-            card.transform.SetParent(body.transform, false);
-            var cCardRect = card.AddComponent<RectTransform>();
-            cCardRect.anchorMin = new Vector2(1f, 0.5f);
-            cCardRect.anchorMax = new Vector2(1f, 0.5f);
-            cCardRect.pivot = new Vector2(1f, 0.5f);
-            cCardRect.anchoredPosition = new Vector2(0f, 0f);
-            cCardRect.sizeDelta = new Vector2(380f, 520f);
-            var cardImg = card.AddComponent<Image>();
-            cardImg.color = new Color(0.91f, 0.84f, 0.97f, 1f);
-
-            // Top Row
-            GameObject dTop = new GameObject("Top");
-            dTop.transform.SetParent(card.transform, false);
-            var dtRect = dTop.AddComponent<RectTransform>();
-            dtRect.anchorMin = new Vector2(0f, 1f);
-            dtRect.anchorMax = new Vector2(1f, 1f);
-            dtRect.pivot = new Vector2(0.5f, 1f);
-            dtRect.anchoredPosition = new Vector2(0f, -12f);
-            dtRect.sizeDelta = new Vector2(-24f, 40f);
-
-            GameObject dnObj = new GameObject("DetailName");
-            dnObj.transform.SetParent(dTop.transform, false);
-            var dnRect = dnObj.AddComponent<RectTransform>();
-            dnRect.anchorMin = new Vector2(0f, 0.5f);
-            dnRect.anchorMax = new Vector2(0.65f, 0.5f);
-            dnRect.pivot = new Vector2(0f, 0.5f);
-            var dnTmp = dnObj.AddComponent<TextMeshProUGUI>();
-            dnTmp.text = "Vitalidade";
-            dnTmp.fontSize = 20;
-            dnTmp.fontStyle = FontStyles.Bold;
-            dnTmp.color = new Color(0.16f, 0.09f, 0.25f, 1f);
-
-            GameObject dcObj = new GameObject("DetailCost");
-            dcObj.transform.SetParent(dTop.transform, false);
-            var dcRect = dcObj.AddComponent<RectTransform>();
-            dcRect.anchorMin = new Vector2(0.68f, 0.5f);
-            dcRect.anchorMax = new Vector2(1f, 0.5f);
-            dcRect.pivot = new Vector2(1f, 0.5f);
-            dcRect.sizeDelta = new Vector2(110f, 32f);
-            var dcImg = dcObj.AddComponent<Image>();
-            dcImg.color = new Color(0.04f, 0.03f, 0.06f, 1f);
-            var dcTmp = dcObj.AddComponent<TextMeshProUGUI>();
-            dcTmp.text = "CUSTO: 1 SP";
-            dcTmp.fontSize = 14;
-            dcTmp.fontStyle = FontStyles.Bold;
-            dcTmp.alignment = TextAlignmentOptions.Center;
-            dcTmp.color = new Color(1f, 0.78f, 0.23f, 1f);
-
-            // Label Descrição
-            GameObject lblDesc = new GameObject("LblDesc");
-            lblDesc.transform.SetParent(card.transform, false);
-            var ldRect = lblDesc.AddComponent<RectTransform>();
-            ldRect.anchoredPosition = new Vector2(0f, 195f);
-            ldRect.sizeDelta = new Vector2(330f, 20f);
-            var ldTmp = lblDesc.AddComponent<TextMeshProUGUI>();
-            ldTmp.text = "Descrição:";
-            ldTmp.fontSize = 15;
-            ldTmp.color = new Color(0.42f, 0.29f, 0.59f, 1f);
-
-            // Descrição Texto
-            GameObject ddObj = new GameObject("DetailDesc");
-            ddObj.transform.SetParent(card.transform, false);
-            var ddRect = ddObj.AddComponent<RectTransform>();
-            ddRect.anchoredPosition = new Vector2(0f, 150f);
-            ddRect.sizeDelta = new Vector2(330f, 65f);
-            var ddTmp = ddObj.AddComponent<TextMeshProUGUI>();
-            ddTmp.text = "Seu corpo de mago aguenta mais pancada na masmorra.";
-            ddTmp.fontSize = 15;
-            ddTmp.color = new Color(0.16f, 0.09f, 0.25f, 1f);
-
-            // Art Frame
-            GameObject artFrame = new GameObject("ArtFrame");
-            artFrame.transform.SetParent(card.transform, false);
-            var afRect = artFrame.AddComponent<RectTransform>();
-            afRect.anchoredPosition = new Vector2(0f, 40f);
-            afRect.sizeDelta = new Vector2(330f, 110f);
-            var afImg = artFrame.AddComponent<Image>();
-            afImg.color = new Color(0.16f, 0.12f, 0.27f, 1f);
-
-            // Pips Container
-            GameObject pipsObj = new GameObject("Pips");
-            pipsObj.transform.SetParent(artFrame.transform, false);
-            var pRect = pipsObj.AddComponent<RectTransform>();
-            pRect.anchoredPosition = new Vector2(0f, -30f);
-            pRect.sizeDelta = new Vector2(200f, 22f);
-            var pHlg = pipsObj.AddComponent<HorizontalLayoutGroup>();
-            pHlg.spacing = 8f;
-            pHlg.childAlignment = TextAnchor.MiddleCenter;
-            pHlg.childForceExpandWidth = false;
-            pHlg.childForceExpandHeight = false;
-
-            for (int p = 0; p < 5; p++)
-            {
-                GameObject pip = new GameObject($"Pip_{p}");
-                pip.transform.SetParent(pipsObj.transform, false);
-                var pipRect = pip.AddComponent<RectTransform>();
-                pipRect.sizeDelta = new Vector2(16f, 16f);
-                var pipImg = pip.AddComponent<Image>();
-                pipImg.color = new Color(0.07f, 0.05f, 0.12f, 1f);
-            }
-
-            // Efeito Texto
-            GameObject effObj = new GameObject("DetailEffect");
-            effObj.transform.SetParent(card.transform, false);
-            var efRect = effObj.AddComponent<RectTransform>();
-            efRect.anchoredPosition = new Vector2(0f, -50f);
-            efRect.sizeDelta = new Vector2(330f, 30f);
-            var efTmp = effObj.AddComponent<TextMeshProUGUI>();
-            efTmp.text = "+1 Vida Máxima";
-            efTmp.fontSize = 20;
-            efTmp.fontStyle = FontStyles.Bold;
-            efTmp.alignment = TextAlignmentOptions.Center;
-            efTmp.color = new Color(0.54f, 0.12f, 0.33f, 1f);
-
-            // Total Texto
-            GameObject totObj = new GameObject("DetailTotal");
-            totObj.transform.SetParent(card.transform, false);
-            var totRect = totObj.AddComponent<RectTransform>();
-            totRect.anchoredPosition = new Vector2(0f, -80f);
-            totRect.sizeDelta = new Vector2(330f, 25f);
-            var totTmp = totObj.AddComponent<TextMeshProUGUI>();
-            totTmp.text = "Total Atual: +0 de vida";
-            totTmp.fontSize = 15;
-            totTmp.alignment = TextAlignmentOptions.Center;
-            totTmp.color = new Color(0.42f, 0.29f, 0.59f, 1f);
-
-            // Botão Desbloquear
-            GameObject buyBtnObj = new GameObject("Btn_Buy");
-            buyBtnObj.transform.SetParent(card.transform, false);
-            var bbRect = buyBtnObj.AddComponent<RectTransform>();
-            bbRect.anchoredPosition = new Vector2(0f, -140f);
-            bbRect.sizeDelta = new Vector2(310f, 48f);
-            var bbImg = buyBtnObj.AddComponent<Image>();
-            bbImg.color = new Color(1f, 0.36f, 0.56f, 1f);
-            var buyBtn = buyBtnObj.AddComponent<Button>();
-
-            GameObject bbTxtObj = new GameObject("Text");
-            bbTxtObj.transform.SetParent(buyBtnObj.transform, false);
-            var bbtRect = bbTxtObj.AddComponent<RectTransform>();
-            bbtRect.anchorMin = Vector2.zero;
-            bbtRect.anchorMax = Vector2.one;
-            bbtRect.sizeDelta = Vector2.zero;
-            var bbtTmp = bbTxtObj.AddComponent<TextMeshProUGUI>();
-            bbtTmp.text = "DESBLOQUEAR";
-            bbtTmp.fontSize = 18;
-            bbtTmp.fontStyle = FontStyles.Bold;
-            bbtTmp.alignment = TextAlignmentOptions.Center;
-            bbtTmp.color = Color.white;
-
-            // Status Message Texto
-            GameObject statusObj = new GameObject("DetailStatus");
-            statusObj.transform.SetParent(card.transform, false);
-            var stRect = statusObj.AddComponent<RectTransform>();
-            stRect.anchoredPosition = new Vector2(0f, -195f);
-            stRect.sizeDelta = new Vector2(330f, 30f);
-            var statusTmp = statusObj.AddComponent<TextMeshProUGUI>();
-            statusTmp.text = "Pronto para desbloquear";
-            statusTmp.fontSize = 15;
-            statusTmp.alignment = TextAlignmentOptions.Center;
-            statusTmp.color = new Color(0.29f, 0.17f, 0.35f, 1f);
-
-            // Staff Evolution Box
-            GameObject staffBox = new GameObject("StaffEvolutionBox");
-            staffBox.transform.SetParent(card.transform, false);
-            var sbRect = staffBox.AddComponent<RectTransform>();
-            sbRect.anchoredPosition = new Vector2(0f, -320f);
-            sbRect.sizeDelta = new Vector2(330f, 130f);
-            var sbImg = staffBox.AddComponent<Image>();
-            sbImg.color = new Color(0.16f, 0.10f, 0.22f, 0.95f);
-
-            GameObject sTitle = new GameObject("Title");
-            sTitle.transform.SetParent(staffBox.transform, false);
-            var sttRect = sTitle.AddComponent<RectTransform>();
-            sttRect.anchorMin = new Vector2(0f, 1f);
-            sttRect.anchorMax = new Vector2(1f, 1f);
-            sttRect.pivot = new Vector2(0.5f, 1f);
-            sttRect.anchoredPosition = new Vector2(0f, -6f);
-            sttRect.sizeDelta = new Vector2(-20f, 22f);
-            var sttTmp = sTitle.AddComponent<TextMeshProUGUI>();
-            sttTmp.text = "CAJADO ARCANO (EVOLUÇÃO)";
-            sttTmp.fontSize = 14;
-            sttTmp.fontStyle = FontStyles.Bold;
-            sttTmp.alignment = TextAlignmentOptions.Center;
-            sttTmp.color = new Color(1f, 0.75f, 0.2f, 1f);
-
-            GameObject sStatus = new GameObject("StatusText");
-            sStatus.transform.SetParent(staffBox.transform, false);
-            var ssRect = sStatus.AddComponent<RectTransform>();
-            ssRect.anchorMin = new Vector2(0f, 1f);
-            ssRect.anchorMax = new Vector2(1f, 1f);
-            ssRect.pivot = new Vector2(0.5f, 1f);
-            ssRect.anchoredPosition = new Vector2(0f, -28f);
-            ssRect.sizeDelta = new Vector2(-20f, 20f);
-            var ssTmp = sStatus.AddComponent<TextMeshProUGUI>();
-            ssTmp.text = "Cajado Básico (Apenas Gelo)";
-            ssTmp.fontSize = 12;
-            ssTmp.alignment = TextAlignmentOptions.Center;
-            ssTmp.color = new Color(0.4f, 0.85f, 1f, 1f);
-
-            GameObject sReq = new GameObject("ReqText");
-            sReq.transform.SetParent(staffBox.transform, false);
-            var srRect = sReq.AddComponent<RectTransform>();
-            srRect.anchorMin = new Vector2(0f, 1f);
-            srRect.anchorMax = new Vector2(1f, 1f);
-            srRect.pivot = new Vector2(0.5f, 1f);
-            srRect.anchoredPosition = new Vector2(0f, -48f);
-            srRect.sizeDelta = new Vector2(-20f, 20f);
-            var srTmp = sReq.AddComponent<TextMeshProUGUI>();
-            srTmp.text = "Requer: 0/3 Corações de Fogo | 0/1 Núcleo de Boss";
-            srTmp.fontSize = 12;
-            srTmp.alignment = TextAlignmentOptions.Center;
-            srTmp.color = new Color(1f, 0.85f, 0.7f, 1f);
-
-            GameObject sBtn = new GameObject("Btn_EvolveStaff");
-            sBtn.transform.SetParent(staffBox.transform, false);
-            var sbtnRect = sBtn.AddComponent<RectTransform>();
-            sbtnRect.anchorMin = new Vector2(0.5f, 0f);
-            sbtnRect.anchorMax = new Vector2(0.5f, 0f);
-            sbtnRect.pivot = new Vector2(0.5f, 0f);
-            sbtnRect.anchoredPosition = new Vector2(0f, 8f);
-            sbtnRect.sizeDelta = new Vector2(300f, 36f);
-            var sbtnImg = sBtn.AddComponent<Image>();
-            sbtnImg.color = new Color(0.95f, 0.45f, 0.15f, 1f);
-            var evoStaffBtn = sBtn.AddComponent<Button>();
-
-            GameObject sBtnTxt = new GameObject("Text");
-            sBtnTxt.transform.SetParent(sBtn.transform, false);
-            var sbtRect = sBtnTxt.AddComponent<RectTransform>();
-            sbtRect.anchorMin = Vector2.zero;
-            sbtRect.anchorMax = Vector2.one;
-            sbtRect.sizeDelta = Vector2.zero;
-            var sbtTmp = sBtnTxt.AddComponent<TextMeshProUGUI>();
-            sbtTmp.text = "EVOLUIR CAJADO (LIBERAR FOGO)";
-            sbtTmp.fontSize = 13;
-            sbtTmp.fontStyle = FontStyles.Bold;
-            sbtTmp.alignment = TextAlignmentOptions.Center;
-            sbtTmp.color = Color.white;
-
-            // Conecta referências no EvolutionUI
-            evoSo.FindProperty("skillPointsText").objectReferenceValue = spTmp;
-            evoSo.FindProperty("closeButton").objectReferenceValue = closeBtn;
-            evoSo.FindProperty("detailNameText").objectReferenceValue = dnTmp;
-            evoSo.FindProperty("detailCostText").objectReferenceValue = dcTmp;
-            evoSo.FindProperty("detailDescText").objectReferenceValue = ddTmp;
-            evoSo.FindProperty("detailEffectText").objectReferenceValue = efTmp;
-            evoSo.FindProperty("detailTotalText").objectReferenceValue = totTmp;
-            evoSo.FindProperty("detailStatusText").objectReferenceValue = statusTmp;
-            evoSo.FindProperty("buyButton").objectReferenceValue = buyBtn;
-            evoSo.FindProperty("buyButtonText").objectReferenceValue = bbtTmp;
-            evoSo.FindProperty("pipsContainer").objectReferenceValue = pipsObj.transform;
-            evoSo.FindProperty("staffEvolutionBox").objectReferenceValue = staffBox;
-            evoSo.FindProperty("staffStatusText").objectReferenceValue = ssTmp;
-            evoSo.FindProperty("staffRequirementsText").objectReferenceValue = srTmp;
-            evoSo.FindProperty("evolveStaffButton").objectReferenceValue = evoStaffBtn;
-            evoSo.ApplyModifiedProperties();
-
-            evoUI.HookNodeButtons();
-            evoUI.SelectNode("vit");
 
             panel.SetActive(false);
             return panel;
@@ -1589,8 +1209,23 @@ namespace WitchShmup.Editor
             so.FindProperty("rusherPrefab").objectReferenceValue = rusherPrefab;
             so.FindProperty("batPrefab").objectReferenceValue = batPrefab;
             so.FindProperty("bossCutscene").objectReferenceValue = cutscene;
-            so.FindProperty("stageDuration").floatValue = 75f;
+            so.FindProperty("stageDuration").floatValue = 150f;
             so.ApplyModifiedProperties();
+        }
+
+        [InitializeOnLoadMethod]
+        private static void RegisterAutoSetupTrigger()
+        {
+            EditorApplication.delayCall += () =>
+            {
+                string triggerFile = "Temp/TriggerSetup.flag";
+                if (File.Exists(triggerFile))
+                {
+                    try { File.Delete(triggerFile); } catch {}
+                    SetupCurrentScene();
+                    Debug.Log("[WitchShmup] Cena atual montada e salva com sucesso automaticamente via SetupTool!");
+                }
+            };
         }
     }
 }

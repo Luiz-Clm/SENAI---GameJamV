@@ -1,10 +1,19 @@
 fileFormatVersion: 2
-guid: 7a3f4bade387c574494a649214baf592
+guid: d5a80eda56810d8448d6625eece3caeb
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -192906985781391278
-    second: Parallax_0
+      213: -9032170993294063177
+    second: golem_ataque_sheet_64x64 1_0
+  - first:
+      213: 558014197455873470
+    second: golem_ataque_sheet_64x64 1_1
+  - first:
+      213: -2008548088597522909
+    second: golem_ataque_sheet_64x64 1_2
+  - first:
+      213: 423887638489243691
+    second: golem_ataque_sheet_64x64 1_3
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,13 +135,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Parallax_0
+      name: golem_ataque_sheet_64x64 1_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 128
-        height: 128
+        x: 8
+        y: 7
+        width: 51
+        height: 50
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +150,74 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 2501fc55e18a25df0800000000000000
-      internalID: -192906985781391278
+      spriteID: 7b9ce1a065847a280800000000000000
+      internalID: -9032170993294063177
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: golem_ataque_sheet_64x64 1_1
+      rect:
+        serializedVersion: 2
+        x: 72
+        y: 45
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb56bf2c4f67eb700800000000000000
+      internalID: 558014197455873470
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: golem_ataque_sheet_64x64 1_2
+      rect:
+        serializedVersion: 2
+        x: 82
+        y: 8
+        width: 42
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 326dad8b7243024e0800000000000000
+      internalID: -2008548088597522909
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: golem_ataque_sheet_64x64 1_3
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 8
+        width: 54
+        height: 48
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b20a4d4bf83f1e500800000000000000
+      internalID: 423887638489243691
       vertices: []
       indices: 
       edges: []
@@ -161,7 +236,10 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Parallax_0: -192906985781391278
+      golem_ataque_sheet_64x64 1_0: -9032170993294063177
+      golem_ataque_sheet_64x64 1_1: 558014197455873470
+      golem_ataque_sheet_64x64 1_2: -2008548088597522909
+      golem_ataque_sheet_64x64 1_3: 423887638489243691
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

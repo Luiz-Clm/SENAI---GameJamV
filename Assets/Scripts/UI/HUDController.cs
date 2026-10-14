@@ -14,8 +14,8 @@ namespace WitchShmup.UI
 
         [Header("Hearts (Health)")]
         [SerializeField] private Image[] heartImages;
-        [SerializeField] private Color fullHeartColor = new Color(1f, 0.35f, 0.45f, 1f); // Vibrant Pink/Red
-        [SerializeField] private Color emptyHeartColor = new Color(0.25f, 0.2f, 0.25f, 0.5f); // Dim Dark Grey
+        [SerializeField] private Color fullHeartColor = new Color(1f, 0.35f, 0.45f, 1f);
+        [SerializeField] private Color emptyHeartColor = new Color(0.25f, 0.2f, 0.25f, 0.5f);
 
         [Header("Element Indicator (HUD Buttons)")]
         [SerializeField] private Image iceBadge;
@@ -37,9 +37,66 @@ namespace WitchShmup.UI
         [Header("Boss Bar")]
         [SerializeField] private GameObject bossBarContainer;
         [SerializeField] private Image bossHealthFill;
+        [SerializeField] private TextMeshProUGUI bossNameText;
+
+        [Header("Potion Inventory HUD")]
+        [SerializeField] private TextMeshProUGUI potionCountText;
+        [SerializeField] private GameObject potionIconContainer;
+
+        private void Awake()
+        {
+            AutoFindReferences();
+        }
+
+        private void AutoFindReferences()
+        {
+            if (bossBarContainer == null)
+            {
+                var t = transform.Find("TopBar/BossBar_Wrapper");
+                if (t == null) t = transform.Find("TopBar/BossHealthBar");
+                if (t == null)
+                {
+                    foreach (var tr in GetComponentsInChildren<Transform>(true))
+                    {
+                        if (tr.name.Contains("BossBar") || tr.name.Contains("BossHealth")) { t = tr; break; }
+                    }
+                }
+                if (t != null) bossBarContainer = t.gameObject;
+            }
+
+            if (bossHealthFill == null && bossBarContainer != null)
+            {
+                foreach (var img in bossBarContainer.GetComponentsInChildren<Image>(true))
+                {
+                    if (img.name.Equals("Fill", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        bossHealthFill = img;
+                        break;
+                    }
+                }
+            }
+
+            if (bossNameText == null && bossBarContainer != null)
+            {
+                bossNameText = bossBarContainer.GetComponentInChildren<TextMeshProUGUI>(true);
+            }
+
+            if (potionIconContainer == null)
+            {
+                var p = transform.Find("BottomBar/PotionInventory");
+                if (p != null) potionIconContainer = p.gameObject;
+            }
+
+            if (potionCountText == null && potionIconContainer != null)
+            {
+                potionCountText = potionIconContainer.GetComponentInChildren<TextMeshProUGUI>(true);
+            }
+        }
 
         private void Start()
         {
+            AutoFindReferences();
+
             if (playerHealth == null)
             {
                 playerHealth = FindFirstObjectByType<PlayerHealth>();
@@ -62,10 +119,14 @@ namespace WitchShmup.UI
                 UpdateElementUI(playerShooting.CurrentElement);
             }
 
+            // Garante que a barra do boss começa escondida
             if (bossBarContainer != null)
             {
                 bossBarContainer.SetActive(false);
             }
+
+            // Inicializa contador de poções
+            UpdatePotionCount(0);
         }
 
         private void OnDestroy()
@@ -124,22 +185,28 @@ namespace WitchShmup.UI
         {
             bool isFireUnlocked = (playerShooting != null) ? playerShooting.IsFireUnlocked : false;
 
+            // O quadrado de fogo fica COMPLETAMENTE OCULTO até ser desbloqueado no jogo
+            if (fireBadge != null)
+            {
+                fireBadge.gameObject.SetActive(isFireUnlocked);
+            }
+
             if (activeElement == ElementType.Ice)
             {
                 if (iceBadge != null) iceBadge.color = activeIceColor;
                 if (iceText != null) iceText.color = Color.white;
 
-                if (fireBadge != null)
+                if (fireBadge != null && isFireUnlocked)
                 {
-                    fireBadge.color = isFireUnlocked ? inactiveFireColor : new Color(0.22f, 0.14f, 0.14f, 0.45f);
+                    fireBadge.color = inactiveFireColor;
                 }
-                if (fireText != null)
+                if (fireText != null && isFireUnlocked)
                 {
-                    fireText.text = isFireUnlocked ? "2: FOGO" : "FOGO [BLOQ]";
-                    fireText.color = isFireUnlocked ? new Color(0.7f, 0.7f, 0.7f, 0.6f) : new Color(0.55f, 0.45f, 0.45f, 0.5f);
+                    fireText.text = "2: FOGO";
+                    fireText.color = new Color(0.7f, 0.7f, 0.7f, 0.6f);
                 }
             }
-            else if (activeElement == ElementType.Fire)
+            else if (activeElement == ElementType.Fire && isFireUnlocked)
             {
                 if (iceBadge != null) iceBadge.color = inactiveIceColor;
                 if (iceText != null) iceText.color = new Color(0.7f, 0.7f, 0.7f, 0.6f);
@@ -169,6 +236,10 @@ namespace WitchShmup.UI
             }
         }
 
+        /// <summary>
+        /// Ativa e atualiza a barra de vida do boss. Deve ser chamada ANTES de iniciar a luta.
+        /// normalizedHealth: valor entre 0 e 1.
+        /// </summary>
         public void SetBossHealth(float normalizedHealth)
         {
             if (bossBarContainer != null && !bossBarContainer.activeSelf)
@@ -182,11 +253,45 @@ namespace WitchShmup.UI
             }
         }
 
+        public void ShowBossBar(string bossName = "GOLEM")
+        {
+            if (bossBarContainer != null)
+            {
+                bossBarContainer.SetActive(true);
+            }
+
+            if (bossNameText != null)
+            {
+                bossNameText.text = bossName;
+            }
+
+            if (bossHealthFill != null)
+            {
+                bossHealthFill.fillAmount = 1f;
+            }
+        }
+
         public void HideBossBar()
         {
             if (bossBarContainer != null)
             {
                 bossBarContainer.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// Atualiza o contador de poções no HUD.
+        /// </summary>
+        public void UpdatePotionCount(int count)
+        {
+            if (potionCountText != null)
+            {
+                potionCountText.text = count > 0 ? $"[F] x{count}" : "";
+            }
+
+            if (potionIconContainer != null)
+            {
+                potionIconContainer.SetActive(count > 0);
             }
         }
     }

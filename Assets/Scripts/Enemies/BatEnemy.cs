@@ -6,13 +6,22 @@ namespace WitchShmup.Enemies
     public class BatEnemy : EnemyBase
     {
         [Header("Movement (Wavy Flight)")]
-        [SerializeField] private float horizontalSpeed = 2.5f;
+        [SerializeField] private float horizontalSpeed = 3.2f;
         [SerializeField] private float waveFrequency = 3f;
         [SerializeField] private float waveAmplitude = 1.2f;
 
+        [Header("Charge / Rush at Player")]
+        [SerializeField] private float chargeRange = 5.5f;
+        [SerializeField] private float chargeSpeed = 7f;
+        [SerializeField] private float chargeCooldown = 3.5f;
+        private bool isCharging = false;
+        private float chargeTimer = 0f;
+        private float chargeCountdown = 0f;
+        private Vector2 chargeDirection = Vector2.left;
+
         [Header("Shooting")]
         [SerializeField] private GameObject fireballPrefab;
-        [SerializeField] private float fireRate = 2f;
+        [SerializeField] private float fireRate = 2.2f;
         [SerializeField] private float projectileSpeed = 8f;
         [SerializeField] private Vector2 fireOffset = new Vector2(-0.5f, 0f);
 
@@ -49,6 +58,7 @@ namespace WitchShmup.Enemies
         {
             spawnY = transform.position.y;
             fireTimer = Random.Range(0.8f, fireRate);
+            chargeCountdown = Random.Range(1.5f, chargeCooldown);
 
             var playerObj = GameObject.FindWithTag("Player");
             if (playerObj != null)
@@ -61,13 +71,65 @@ namespace WitchShmup.Enemies
         {
             base.Update();
 
+            HandleChargeAI();
             HandleDodgeAI();
             HandleMovement();
             HandleShooting();
         }
 
+        private void HandleChargeAI()
+        {
+            if (isCharging)
+            {
+                chargeTimer -= Time.deltaTime;
+                if (chargeTimer <= 0f)
+                {
+                    isCharging = false;
+                    chargeCountdown = Random.Range(2f, chargeCooldown);
+                    if (playerTarget != null) spawnY = playerTarget.position.y;
+                }
+                return;
+            }
+
+            chargeCountdown -= Time.deltaTime;
+            if (chargeCountdown > 0f || playerTarget == null) return;
+
+            float dist = Vector2.Distance(transform.position, playerTarget.position);
+            if (dist <= chargeRange)
+            {
+                // Inicia o rush na direção do player
+                isCharging = true;
+                chargeTimer = 0.55f;
+                chargeDirection = ((Vector2)playerTarget.position - (Vector2)transform.position).normalized;
+                // Efeito visual: flash vermelho
+                if (spriteRenderer != null)
+                    spriteRenderer.color = new Color(1f, 0.3f, 0.3f, 1f);
+            }
+            else
+            {
+                chargeCountdown = Random.Range(0.5f, 1.5f);
+            }
+        }
+
         private void HandleMovement()
         {
+            if (isCharging && playerTarget != null)
+            {
+                // Avança em alta velocidade direto no player
+                transform.position = Vector2.MoveTowards(
+                    transform.position,
+                    playerTarget.position,
+                    chargeSpeed * speedMultiplier * Time.deltaTime
+                );
+                return;
+            }
+
+            // Restaura cor após charge
+            if (!isCharging && spriteRenderer != null && flashCoroutine == null && slowCoroutine == null)
+            {
+                spriteRenderer.color = originalColor;
+            }
+
             // Movimento horizontal para a esquerda (respeita desaceleração por gelo)
             float posX = transform.position.x - (horizontalSpeed * speedMultiplier * Time.deltaTime);
 

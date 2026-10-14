@@ -143,7 +143,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Drops.PickupItem
   pickupType: 3
   value: 1
-  floatSpeed: 1.2
   magnetRadius: 5
   magnetSpeed: 10
   bobbingFrequency: 4

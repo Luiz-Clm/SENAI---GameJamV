@@ -22,23 +22,23 @@ namespace WitchShmup.Boss
         }
 
         [Header("Boss Stats")]
-        [SerializeField] private float maxHealth = 70f;
+        [SerializeField] private float maxHealth = 120f;
         [SerializeField] private float currentHealth;
-        [SerializeField] private float contactDamage = 1f;
+        [SerializeField] private float contactDamage = 2f;
 
         [Header("Boss Drops")]
         [SerializeField] private GameObject bossCoreDropPrefab;
         [SerializeField] private GameObject skillPointDropPrefab;
 
         [Header("Hover Movement")]
-        [SerializeField] private float hoverSpeed = 1.5f;
-        [SerializeField] private float hoverAmplitude = 1.8f;
+        [SerializeField] private float hoverSpeed = 1.8f;
+        [SerializeField] private float hoverAmplitude = 2.2f;
         [SerializeField] private float targetArenaX = 5.8f;
 
         [Header("Mini Orbiting Stones")]
-        [SerializeField] private int orbitingStoneCount = 8;
+        [SerializeField] private int orbitingStoneCount = 10;
         [SerializeField] private float orbitRadius = 2.8f;
-        [SerializeField] private float orbitSpeed = 70f;
+        [SerializeField] private float orbitSpeed = 95f;
         [SerializeField] private GameObject orbitingStonePrefab;
         private List<OrbitingStone> activeOrbitingStones = new List<OrbitingStone>();
 
@@ -46,7 +46,7 @@ namespace WitchShmup.Boss
         [SerializeField] private GameObject bigRockPrefab;
         [SerializeField] private GameObject stoneWallPrefab;
         [SerializeField] private Transform attackSpawnPoint;
-        [SerializeField] private float attackInterval = 3.5f;
+        [SerializeField] private float attackInterval = 2.2f;
 
         [Header("Enrage Phase (< 50% HP)")]
         [SerializeField] private SpriteRenderer coreGlowRenderer;
@@ -77,6 +77,11 @@ namespace WitchShmup.Boss
         public event Action<float, float> OnHealthChanged;
         public event Action OnBossDefeated;
 
+        [Header("Floating Overhead Health Bar")]
+        private GameObject worldBarContainer;
+        private Transform worldBarFillTransform;
+        private float worldBarFullWidth = 2.4f;
+
         private void Awake()
         {
             currentHealth = maxHealth;
@@ -94,18 +99,85 @@ namespace WitchShmup.Boss
                 mainBodyRenderer = GetComponentInChildren<SpriteRenderer>();
             }
 
+            // Fallback: carrega os sprites de idle e ataque do Golem caso não estejam serializados
+            if (idleFrames == null || idleFrames.Length == 0)
+            {
+                idleFrames = Resources.LoadAll<Sprite>("Sprites/golem_idle_sheet_64x64");
+            }
+            if (attackFrames == null || attackFrames.Length == 0)
+            {
+                attackFrames = Resources.LoadAll<Sprite>("Sprites/golem_ataque_sheet_64x64");
+            }
+
             if (mainBodyRenderer != null)
             {
+                if (mainBodyRenderer.sprite == null && idleFrames != null && idleFrames.Length > 0)
+                {
+                    mainBodyRenderer.sprite = idleFrames[0];
+                }
                 originalBodyColor = mainBodyRenderer.color;
             }
 
             if (bossAnimator == null)
             {
                 bossAnimator = GetComponentInChildren<SimpleSpriteAnimator>();
+                if (bossAnimator == null && mainBodyRenderer != null)
+                {
+                    bossAnimator = mainBodyRenderer.gameObject.AddComponent<SimpleSpriteAnimator>();
+                }
             }
+
+            // Cria barra de vida flutuante em cima da cabeça do Boss
+            CreateWorldHealthBar();
 
             // Inicia com animação idle
             PlayIdleAnim();
+        }
+
+        private void CreateWorldHealthBar()
+        {
+            worldBarContainer = new GameObject("OverheadHealthBar");
+            worldBarContainer.transform.SetParent(transform, false);
+            worldBarContainer.transform.localPosition = new Vector3(0f, 2.5f, 0f);
+
+            // Borda / Fundo escuro
+            GameObject bgObj = new GameObject("Background");
+            bgObj.transform.SetParent(worldBarContainer.transform, false);
+            var bgSr = bgObj.AddComponent<SpriteRenderer>();
+            bgSr.color = new Color(0.08f, 0.05f, 0.12f, 0.95f);
+            bgSr.sortingOrder = 20;
+
+            Texture2D bgTex = new Texture2D(1, 1);
+            bgTex.SetPixel(0, 0, Color.white);
+            bgTex.Apply();
+            bgSr.sprite = Sprite.Create(bgTex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+            bgObj.transform.localScale = new Vector3(worldBarFullWidth + 0.15f, 0.35f, 1f);
+
+            // Fill vermelho
+            GameObject fillObj = new GameObject("Fill");
+            fillObj.transform.SetParent(worldBarContainer.transform, false);
+            fillObj.transform.localPosition = new Vector3(-worldBarFullWidth * 0.5f, 0f, 0f);
+            var fillSr = fillObj.AddComponent<SpriteRenderer>();
+            fillSr.color = new Color(0.98f, 0.25f, 0.32f, 1f);
+            fillSr.sortingOrder = 21;
+
+            Texture2D fillTex = new Texture2D(1, 1);
+            fillTex.SetPixel(0, 0, Color.white);
+            fillTex.Apply();
+            fillSr.sprite = Sprite.Create(fillTex, new Rect(0, 0, 1, 1), new Vector2(0f, 0.5f), 1f);
+            fillObj.transform.localScale = new Vector3(worldBarFullWidth, 0.24f, 1f);
+
+            worldBarFillTransform = fillObj.transform;
+            worldBarContainer.SetActive(false); // Só aparece ao iniciar a luta
+        }
+
+        private void UpdateOverheadBar(float normalizedHealth)
+        {
+            if (worldBarFillTransform != null)
+            {
+                normalizedHealth = Mathf.Clamp01(normalizedHealth);
+                worldBarFillTransform.localScale = new Vector3(worldBarFullWidth * normalizedHealth, 0.24f, 1f);
+            }
         }
 
         private void Start()
@@ -152,9 +224,16 @@ namespace WitchShmup.Boss
         public void StartFight()
         {
             state = BossState.Active;
+            if (hud == null) hud = FindFirstObjectByType<HUDController>();
             if (hud != null)
             {
+                hud.ShowBossBar("GOLEM DE PEDRA");
                 hud.SetBossHealth(1f);
+            }
+            if (worldBarContainer != null)
+            {
+                worldBarContainer.SetActive(true);
+                UpdateOverheadBar(1f);
             }
             PlayIdleAnim();
             attackRoutine = StartCoroutine(AttackLoop());
@@ -198,18 +277,29 @@ namespace WitchShmup.Boss
             int attackCounter = 0;
             while (state == BossState.Active)
             {
-                // Alterna entre arremessar Pedra Gigante e Parede de Pedra
-                if (attackCounter % 2 == 0)
+                // 3 padrões de ataque em rotação: Pedra | Parede | Dupla Pedra
+                int pattern = attackCounter % 3;
+                if (pattern == 0)
                 {
                     yield return StartCoroutine(PerformBigRockAttack());
                 }
-                else
+                else if (pattern == 1)
                 {
                     yield return StartCoroutine(PerformStoneWallAttack());
                 }
+                else
+                {
+                    // Dispara 2 pedras em sequência rápida quando enraivecido, 1 normal caso contrário
+                    yield return StartCoroutine(PerformBigRockAttack());
+                    if (isEnraged)
+                    {
+                        yield return new WaitForSeconds(0.4f);
+                        yield return StartCoroutine(PerformBigRockAttack());
+                    }
+                }
 
                 attackCounter++;
-                float delay = isEnraged ? attackInterval * 0.7f : attackInterval;
+                float delay = isEnraged ? attackInterval * 0.5f : attackInterval;
                 yield return new WaitForSeconds(delay);
             }
         }
@@ -282,12 +372,16 @@ namespace WitchShmup.Boss
             currentHealth -= amount;
             currentHealth = Mathf.Max(0, currentHealth);
 
+            float normalizedHp = currentHealth / maxHealth;
             OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
+            if (hud == null) hud = FindFirstObjectByType<HUDController>();
             if (hud != null)
             {
-                hud.SetBossHealth(currentHealth / maxHealth);
+                hud.SetBossHealth(normalizedHp);
             }
+
+            UpdateOverheadBar(normalizedHp);
 
             // Ativa modo furioso ao chegar a 50% de HP
             if (!isEnraged && currentHealth <= (maxHealth * 0.5f))
@@ -338,6 +432,7 @@ namespace WitchShmup.Boss
         private void Die()
         {
             state = BossState.Dying;
+            if (worldBarContainer != null) worldBarContainer.SetActive(false);
             if (attackRoutine != null) StopCoroutine(attackRoutine);
             if (flashCoroutine != null) StopCoroutine(flashCoroutine);
             if (mainBodyRenderer != null) mainBodyRenderer.color = originalBodyColor;

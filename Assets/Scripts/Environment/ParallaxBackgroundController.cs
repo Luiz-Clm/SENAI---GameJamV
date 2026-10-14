@@ -119,6 +119,19 @@ namespace WitchShmup.Environment
 
             if (brickSprite == null)
             {
+                var parallaxSprites = Resources.LoadAll<Sprite>("Sprites/Parallax");
+                if (parallaxSprites != null && parallaxSprites.Length > 0)
+                {
+                    brickSprite = parallaxSprites[0];
+                }
+                if (brickSprite == null)
+                {
+                    brickSprite = Resources.Load<Sprite>("Sprites/Parallax");
+                }
+            }
+
+            if (brickSprite == null)
+            {
                 brickSprite = CreateFallbackBrickSprite();
             }
 

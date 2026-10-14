@@ -13,7 +13,6 @@ namespace WitchShmup.Drops
         [SerializeField] private int value = 1;
 
         [Header("Floating / Magnet Movement")]
-        [SerializeField] private float floatSpeed = 1.2f;
         [SerializeField] private float magnetRadius = 3.5f;
         [SerializeField] private float magnetSpeed = 10f;
         [SerializeField] private float bobbingFrequency = 4f;
@@ -29,8 +28,7 @@ namespace WitchShmup.Drops
         private bool isAttracted = false;
         private float baseHeight;
         private float bobbingPhaseOffset;
-        private Vector2 ejectionVelocity;
-        private float ejectionDrag = 4.5f;
+        private float despawnTimer = 25f; // Itens somem após 25s se não coletados
 
         private void OnEnable()
         {
@@ -45,21 +43,40 @@ namespace WitchShmup.Drops
             allPickups.Remove(this);
         }
 
+        private Vector3 spawnPosition;
+
         private void Start()
         {
-            baseHeight = transform.position.y;
+            spawnPosition = transform.position;
+            baseHeight = spawnPosition.y;
             bobbingPhaseOffset = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
             bobbingFrequency += UnityEngine.Random.Range(-0.4f, 0.4f);
-
-            // Dispersão suave ao dropar para não nascer colado
-            Vector2 randDir = UnityEngine.Random.insideUnitCircle.normalized;
-            if (randDir == Vector2.zero) randDir = Vector2.up;
-            ejectionVelocity = randDir * UnityEngine.Random.Range(1.8f, 3.2f);
 
             var player = GameObject.FindWithTag("Player");
             if (player != null)
             {
                 playerTarget = player.transform;
+            }
+
+            // Fallback de Sprite caso esteja nulo
+            var sr = GetComponent<SpriteRenderer>();
+            if (sr != null && sr.sprite == null)
+            {
+                switch (pickupType)
+                {
+                    case PickupType.FireHeart:
+                        sr.sprite = Resources.Load<Sprite>("Sprites/FireHeart");
+                        break;
+                    case PickupType.HealthPotion:
+                        sr.sprite = Resources.Load<Sprite>("Sprites/HealthPotion");
+                        break;
+                    case PickupType.SkillPoint:
+                        sr.sprite = Resources.Load<Sprite>("Sprites/SkillPoint");
+                        break;
+                    case PickupType.BossCore:
+                        sr.sprite = Resources.Load<Sprite>("Sprites/BossCore");
+                        break;
+                }
             }
         }
 
@@ -87,52 +104,26 @@ namespace WitchShmup.Drops
 
             if (isAttracted && playerTarget != null)
             {
-                // Move-se acelerando até o player
+                // Voa em direção ao jogador ao ser atraído
                 float speed = magnetSpeed * magnetMult;
                 transform.position = Vector3.MoveTowards(transform.position, playerTarget.position, speed * Time.deltaTime);
             }
             else
             {
-                // Desacelera a ejeção inicial
-                if (ejectionVelocity.sqrMagnitude > 0.01f)
-                {
-                    transform.position += (Vector3)(ejectionVelocity * Time.deltaTime);
-                    baseHeight = transform.position.y;
-                    ejectionVelocity = Vector2.MoveTowards(ejectionVelocity, Vector2.zero, ejectionDrag * Time.deltaTime);
-                }
-
-                // Repulsão entre drops próximos para mantê-los separados visualmente
-                float separationRadius = 0.85f;
-                for (int i = 0; i < allPickups.Count; i++)
-                {
-                    var other = allPickups[i];
-                    if (other != null && other != this && !other.isAttracted)
-                    {
-                        Vector2 diff = (Vector2)transform.position - (Vector2)other.transform.position;
-                        float dist = diff.magnitude;
-                        if (dist < separationRadius && dist > 0.001f)
-                        {
-                            Vector2 push = (diff / dist) * ((separationRadius - dist) * 3f * Time.deltaTime);
-                            transform.position += (Vector3)push;
-                            baseHeight = transform.position.y;
-                        }
-                    }
-                }
-
-                // Flutua suavemente para a esquerda com oscilação dessincronizada
-                float newX = transform.position.x - (floatSpeed * Time.deltaTime);
+                // Permanece exatamente onde o inimigo morreu, apenas flutuando/oscilando levemente na vertical
                 float newY = baseHeight + Mathf.Sin((Time.time * bobbingFrequency) + bobbingPhaseOffset) * bobbingAmplitude;
-                transform.position = new Vector3(newX, newY, transform.position.z);
+                transform.position = new Vector3(spawnPosition.x, newY, spawnPosition.z);
             }
 
-            // Despawn se sair muito da tela à esquerda
-            if (CameraBounds.Instance != null && CameraBounds.Instance.IsOffscreenLeft(transform.position, 3f))
+
+            // Despawn por timer (item não se move mais, então não sai da tela sozinho)
+            if (!isAttracted)
             {
-                Destroy(gameObject);
-            }
-            else if (transform.position.x < -16f)
-            {
-                Destroy(gameObject);
+                despawnTimer -= Time.deltaTime;
+                if (despawnTimer <= 0f)
+                {
+                    Destroy(gameObject);
+                }
             }
         }
 
@@ -153,8 +144,25 @@ namespace WitchShmup.Drops
                     break;
 
                 case PickupType.HealthPotion:
-                    var health = player.GetComponentInParent<PlayerHealth>();
-                    if (health != null) health.Heal(value);
+                    // Busca o PlayerHealth de forma robusta
+                    var health = player.GetComponentInParent<PlayerHealth>() ?? player.GetComponent<PlayerHealth>();
+                    if (health == null) health = FindFirstObjectByType<PlayerHealth>();
+
+                    if (health != null)
+                    {
+                        // Se a vida estiver cheia, guarda no inventário
+                        if (health.CurrentHealth >= health.MaxHealth)
+                        {
+                            if (GameManager.Instance != null)
+                            {
+                                GameManager.Instance.AddHealthPotionToInventory(value);
+                            }
+                        }
+                        else
+                        {
+                            health.Heal(value);
+                        }
+                    }
                     break;
 
                 case PickupType.SkillPoint:
@@ -164,6 +172,11 @@ namespace WitchShmup.Drops
                 case PickupType.BossCore:
                     if (GameManager.Instance != null) GameManager.Instance.AddBossCore(value);
                     break;
+            }
+
+            if (collectSound != null)
+            {
+                AudioSource.PlayClipAtPoint(collectSound, transform.position);
             }
 
             if (collectEffectPrefab != null)

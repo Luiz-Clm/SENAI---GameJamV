@@ -202,11 +202,14 @@ MonoBehaviour:
   healthPotionDropChance: 0.25
   skillPointDropPrefab: {fileID: 8771554972207094783, guid: aa5f32342019cda4bafec4220899e705, type: 3}
   skillPointDropChance: 0.35
-  horizontalSpeed: 2.5
+  horizontalSpeed: 3.2
   waveFrequency: 3
   waveAmplitude: 1.2
+  chargeRange: 5.5
+  chargeSpeed: 7
+  chargeCooldown: 3.5
   fireballPrefab: {fileID: 4185825162384548282, guid: 0773c1cffeb0f204eac5b96306a99168, type: 3}
-  fireRate: 2
+  fireRate: 2.2
   projectileSpeed: 8
   fireOffset: {x: -0.5, y: 0}
   detectionRadius: 3.5

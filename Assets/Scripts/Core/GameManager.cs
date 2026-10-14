@@ -22,6 +22,9 @@ namespace WitchShmup.Core
         [SerializeField] private int skillPoints = 2; // Começa com 2 pontos como no esboço HTML
         [SerializeField] private bool isStaffEvolved = false;
 
+        [Header("Inventário")]
+        [SerializeField] private int healthPotionsInInventory = 0;
+
         [Header("Staff Evolution Requirements")]
         [SerializeField] private int fireHeartsRequired = 3;
         [SerializeField] private int bossCoresRequired = 1;
@@ -58,6 +61,7 @@ namespace WitchShmup.Core
         public bool IsStaffEvolved => isStaffEvolved;
         public int FireHeartsRequired => fireHeartsRequired;
         public int BossCoresRequired => bossCoresRequired;
+        public int HealthPotionsInInventory => healthPotionsInInventory;
 
         public event Action<int> OnScoreChanged;
         public event Action<int> OnSkillPointsChanged;
@@ -66,6 +70,7 @@ namespace WitchShmup.Core
         public event Action OnStaffEvolved;
         public event Action OnGameOver;
         public event Action OnVictory;
+        public event Action<int> OnHealthPotionsChanged;
 
         private void Awake()
         {
@@ -152,6 +157,12 @@ namespace WitchShmup.Core
                     ToggleEvolutionPanel();
                 }
             }
+
+            // Tecla 'F' usa poção do inventário
+            if (Input.GetKeyDown(KeyCode.F))
+            {
+                UseHealthPotionFromInventory();
+            }
         }
 
         public void AddScore(int points)
@@ -187,6 +198,52 @@ namespace WitchShmup.Core
         {
             skillPoints += amount;
             OnSkillPointsChanged?.Invoke(skillPoints);
+        }
+
+        /// <summary>
+        /// Adiciona poção ao inventário (chamado quando o player está com vida cheia).
+        /// </summary>
+        public void AddHealthPotionToInventory(int amount = 1)
+        {
+            healthPotionsInInventory += amount;
+            OnHealthPotionsChanged?.Invoke(healthPotionsInInventory);
+
+            if (hudController != null)
+            {
+                hudController.UpdatePotionCount(healthPotionsInInventory);
+            }
+
+            Debug.Log($"[GameManager] Poção guardada no inventário! Total: {healthPotionsInInventory}");
+        }
+
+        /// <summary>
+        /// Usa uma poção do inventário (tecla F).
+        /// </summary>
+        public bool UseHealthPotionFromInventory()
+        {
+            if (healthPotionsInInventory <= 0) return false;
+
+            var playerHealth = FindFirstObjectByType<PlayerHealth>();
+            if (playerHealth == null) return false;
+
+            // Não desperdiça se já estiver com vida cheia
+            if (playerHealth.CurrentHealth >= playerHealth.MaxHealth)
+            {
+                Debug.Log("[GameManager] Vida já cheia, poção não usada.");
+                return false;
+            }
+
+            healthPotionsInInventory--;
+            playerHealth.Heal(1);
+            OnHealthPotionsChanged?.Invoke(healthPotionsInInventory);
+
+            if (hudController != null)
+            {
+                hudController.UpdatePotionCount(healthPotionsInInventory);
+            }
+
+            Debug.Log($"[GameManager] Poção usada! Restantes: {healthPotionsInInventory}");
+            return true;
         }
 
         public bool SpendSkillPoints(int amount)
