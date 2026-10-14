@@ -84,6 +84,45 @@ namespace SpellGlide.Editor
             CreateCompleteMenuScene(true);
         }
 
+        [MenuItem("Tools/SpellGlide/3. Atualizar Painel de Opções na Cena Aberta")]
+        public static void UpdateOptionsPanelInOpenScene()
+        {
+            Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+            if (canvas == null)
+            {
+                EditorUtility.DisplayDialog("SpellGlide", "Nenhum Canvas encontrado na cena aberta atualmente!", "OK");
+                return;
+            }
+
+            Transform existingPanel = canvas.transform.Find("OptionsPanel");
+            int siblingIndex = -1;
+            if (existingPanel != null)
+            {
+                siblingIndex = existingPanel.GetSiblingIndex();
+                Object.DestroyImmediate(existingPanel.gameObject);
+            }
+
+            GameObject optionsPanelObj = BuildOptionsPanel(canvas.gameObject, out Slider musicSlider, out Slider sfxSlider, out Button closeOptBtn);
+            if (siblingIndex >= 0)
+            {
+                optionsPanelObj.transform.SetSiblingIndex(siblingIndex);
+            }
+
+            MainMenuManager menuMgr = Object.FindFirstObjectByType<MainMenuManager>();
+            if (menuMgr != null)
+            {
+                SerializedObject menuSO = new SerializedObject(menuMgr);
+                menuSO.FindProperty("optionsPanel").objectReferenceValue = optionsPanelObj;
+                menuSO.FindProperty("musicVolumeSlider").objectReferenceValue = musicSlider;
+                menuSO.FindProperty("sfxVolumeSlider").objectReferenceValue = sfxSlider;
+                menuSO.FindProperty("closeOptionsButton").objectReferenceValue = closeOptBtn;
+                menuSO.ApplyModifiedProperties();
+            }
+
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            EditorUtility.DisplayDialog("SpellGlide", "Painel de Opções atualizado com sucesso com os novos controles na cena!", "Ótimo!");
+        }
+
         public static void CreateCompleteMenuScene(bool showDialog = false)
         {
             EnsureAudioFilesExist();
@@ -172,30 +211,9 @@ namespace SpellGlide.Editor
             Button quitBtn = CreateMenuButton(buttonsContainer.transform, "SairButton", "Sair", new Vector2(0, -60));
 
             // ----------------------------------------------------
-            // 6. PAINEL DE OPÇÕES
+            // 6. PAINEL DE OPÇÕES (Áudio e Controles do Jogo)
             // ----------------------------------------------------
-            GameObject optionsPanelObj = new GameObject("OptionsPanel", typeof(RectTransform), typeof(Image));
-            optionsPanelObj.transform.SetParent(canvasObj.transform, false);
-            RectTransform optRect = optionsPanelObj.GetComponent<RectTransform>();
-            optRect.sizeDelta = new Vector2(600f, 400f);
-            optRect.anchoredPosition = Vector2.zero;
-            Image optBg = optionsPanelObj.GetComponent<Image>();
-            optBg.color = new Color(0.08f, 0.08f, 0.12f, 0.95f);
-
-            // Título Opções
-            CreateLabel(optionsPanelObj.transform, "Titulo", "OPÇÕES", 36, new Vector2(0, 140));
-
-            // Slider Música
-            CreateLabel(optionsPanelObj.transform, "MusicaLabel", "Volume da Música", 22, new Vector2(-120, 50));
-            Slider musicSlider = CreateSimpleSlider(optionsPanelObj.transform, "MusicSlider", new Vector2(100, 50));
-
-            // Slider SFX
-            CreateLabel(optionsPanelObj.transform, "SFXLabel", "Volume dos Efeitos", 22, new Vector2(-120, -20));
-            Slider sfxSlider = CreateSimpleSlider(optionsPanelObj.transform, "SFXSlider", new Vector2(100, -20));
-
-            // Botão Voltar
-            Button closeOptBtn = CreateMenuButton(optionsPanelObj.transform, "VoltarButton", "Voltar", new Vector2(0, -120));
-            optionsPanelObj.SetActive(false);
+            GameObject optionsPanelObj = BuildOptionsPanel(canvasObj, out Slider musicSlider, out Slider sfxSlider, out Button closeOptBtn);
 
             // ----------------------------------------------------
             // 7. PAINEL DA HISTÓRIA / HQ (CUTSCENE)
@@ -347,7 +365,7 @@ namespace SpellGlide.Editor
             if (showDialog)
             {
                 EditorUtility.DisplayDialog("SpellGlide - Menu Criado!",
-                    "A cena do Menu com os 3 botões (Jogar, Opções, Sair) e os 6 quadrinhos com Fade In/Out, efeito Typewriter, áudio e pulo foi criada com sucesso em:\nAssets/Scenes/Menu.unity\n\nBasta abrir a cena e pressionar Play para testar!",
+                    "A cena do Menu com os 3 botões (Jogar, Opções, Sair), Painel de Opções (Áudio + Controles do Jogo) e os 6 quadrinhos com Fade In/Out, efeito Typewriter, áudio e pulo foi criada com sucesso em:\nAssets/Scenes/Menu.unity\n\nBasta abrir a cena e pressionar Play para testar!",
                     "Excelente!");
             }
         }
@@ -421,20 +439,82 @@ namespace SpellGlide.Editor
             return btn;
         }
 
-        private static void CreateLabel(Transform parent, string name, string text, float size, Vector2 pos)
+        public static GameObject BuildOptionsPanel(GameObject canvasObj, out Slider musicSlider, out Slider sfxSlider, out Button closeOptBtn)
+        {
+            GameObject optionsPanelObj = new GameObject("OptionsPanel", typeof(RectTransform), typeof(Image));
+            optionsPanelObj.transform.SetParent(canvasObj.transform, false);
+            RectTransform optRect = optionsPanelObj.GetComponent<RectTransform>();
+            optRect.sizeDelta = new Vector2(650f, 620f);
+            optRect.anchoredPosition = Vector2.zero;
+            Image optBg = optionsPanelObj.GetComponent<Image>();
+            optBg.color = new Color(0.08f, 0.08f, 0.12f, 0.96f);
+
+            // Título Opções
+            CreateLabel(optionsPanelObj.transform, "Titulo", "OPÇÕES", 34, new Vector2(0, 255));
+
+            // --- Seção Áudio ---
+            CreateLabel(optionsPanelObj.transform, "AudioHeader", "ÁUDIO", 18, new Vector2(0, 205), new Color(0.45f, 0.8f, 1f, 1f));
+
+            // Slider Música
+            CreateLabel(optionsPanelObj.transform, "MusicaLabel", "Volume da Música", 18, new Vector2(-120, 160), Color.white, TextAlignmentOptions.MidlineLeft, new Vector2(240f, 35f));
+            musicSlider = CreateSimpleSlider(optionsPanelObj.transform, "MusicSlider", new Vector2(120, 160));
+
+            // Slider SFX
+            CreateLabel(optionsPanelObj.transform, "SFXLabel", "Volume dos Efeitos", 18, new Vector2(-120, 115), Color.white, TextAlignmentOptions.MidlineLeft, new Vector2(240f, 35f));
+            sfxSlider = CreateSimpleSlider(optionsPanelObj.transform, "SFXSlider", new Vector2(120, 115));
+
+            // --- Seção Controles ---
+            GameObject controlsBox = new GameObject("ControlsBox", typeof(RectTransform), typeof(Image));
+            controlsBox.transform.SetParent(optionsPanelObj.transform, false);
+            RectTransform ctrlBoxRect = controlsBox.GetComponent<RectTransform>();
+            ctrlBoxRect.sizeDelta = new Vector2(560f, 230f);
+            ctrlBoxRect.anchoredPosition = new Vector2(0f, -45f);
+            Image ctrlBoxImg = controlsBox.GetComponent<Image>();
+            ctrlBoxImg.color = new Color(0.04f, 0.04f, 0.07f, 0.85f);
+
+            CreateLabel(controlsBox.transform, "ControlesHeader", "CONTROLES DO JOGO", 18, new Vector2(0, 80), new Color(0.45f, 0.8f, 1f, 1f));
+
+            CreateControlRow(controlsBox.transform, "Mover", "SETAS / WASD", 35f);
+            CreateControlRow(controlsBox.transform, "Atirar", "M1", -5f);
+            CreateControlRow(controlsBox.transform, "Árvore de Upgrades", "E", -45f);
+            CreateControlRow(controlsBox.transform, "Evoluir Cajado", "T", -85f);
+
+            // Botão Voltar
+            closeOptBtn = CreateMenuButton(optionsPanelObj.transform, "VoltarButton", "Voltar", new Vector2(0, -245));
+            closeOptBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(220f, 48f);
+
+            optionsPanelObj.SetActive(false);
+            return optionsPanelObj;
+        }
+
+        private static void CreateControlRow(Transform parent, string actionName, string keyName, float yPos)
+        {
+            string cleanId = actionName.Replace(" ", "").Replace("Á", "A").Replace("á", "a");
+
+            // Ação (ex: "Mover:", "Atirar:")
+            CreateLabel(parent, cleanId + "Label", actionName + ":", 18, new Vector2(-120f, yPos),
+                new Color(0.85f, 0.85f, 0.9f, 1f), TextAlignmentOptions.MidlineLeft, new Vector2(240f, 32f));
+
+            // Tecla / Atalho (ex: "[ SETAS / WASD ]", "[ M1 ]")
+            CreateLabel(parent, cleanId + "Key", $"[ {keyName} ]", 18, new Vector2(120f, yPos),
+                new Color(1f, 0.86f, 0.35f, 1f), TextAlignmentOptions.MidlineRight, new Vector2(240f, 32f));
+        }
+
+        private static TextMeshProUGUI CreateLabel(Transform parent, string name, string text, float size, Vector2 pos, Color? color = null, TextAlignmentOptions alignment = TextAlignmentOptions.Center, Vector2? sizeDelta = null)
         {
             GameObject obj = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
             obj.transform.SetParent(parent, false);
             RectTransform rt = obj.GetComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(300f, 50f);
+            rt.sizeDelta = sizeDelta ?? new Vector2(300f, 50f);
             rt.anchoredPosition = pos;
 
             TextMeshProUGUI tmp = obj.GetComponent<TextMeshProUGUI>();
             tmp.text = text;
             tmp.fontSize = size;
             tmp.fontStyle = FontStyles.Bold;
-            tmp.color = Color.white;
-            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.color = color ?? Color.white;
+            tmp.alignment = alignment;
+            return tmp;
         }
 
         private static Slider CreateSimpleSlider(Transform parent, string name, Vector2 pos)

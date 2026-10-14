@@ -9,7 +9,14 @@ Este arquivo serve para sincronizar o contexto do projeto entre computadores e c
 1. **Menu Principal (`Assets/Scripts/MainMenuManager.cs`)**:
    - 3 Botões: `Jogar`, `Opções`, `Sair`.
    - Fundo com a arte oficial de `Assets/Menu e HQ'S/Menu SpellGlide.png`.
-   - Janela/Painel de Opções com controle de volume para Música e Efeitos Sonoros (SFX) e botão de Voltar.
+   - Janela/Painel de Opções:
+     - Controle de volume para Música e Efeitos Sonoros (SFX).
+     - **Painel de Controles do Jogo (Somente Leitura)**:
+       - **Mover:** `SETAS / WASD`
+       - **Atirar:** `M1` (Botão esquerdo do mouse)
+       - **Árvore de Upgrades:** `E`
+       - **Evoluir Cajado:** `T`
+     - Botão de Voltar estilizado.
    - Botão Sair fecha o jogo (e para o editor da Unity).
 
 2. **Leitor de HQs / História Intro (`Assets/Scripts/ComicIntroManager.cs`)**:
@@ -34,8 +41,9 @@ Este arquivo serve para sincronizar o contexto do projeto entre computadores e c
    - Fallback procedural caso os arquivos não estejam atribuídos.
 
 5. **Ferramenta de Criação Automática no Unity (`Assets/Scripts/Editor/MenuSetupHelper.cs`)**:
-   - Menu no topo do Unity: `Tools -> SpellGlide -> 2. Criar Cena de Menu e HQ Completa`.
-   - Monta a cena inteira com 1 clique e salva em `Assets/Scenes/Menu.unity`.
+   - Menu no topo do Unity: `Tools -> SpellGlide -> 2. Criar Cena de Menu e HQ Completa` (Recria a cena completa do zero).
+   - Menu no topo do Unity: `Tools -> SpellGlide -> 3. Atualizar Painel de Opções na Cena Aberta` (Atualiza instantaneamente apenas o painel de opções e controles na cena atual sem precisar recriar tudo).
+   - Monta a cena inteira ou atualiza o painel com 1 clique e salva em `Assets/Scenes/Menu.unity`.
 
 ---
 
