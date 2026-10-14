@@ -122,19 +122,34 @@ namespace WitchShmup.UI
 
         public void UpdateElementUI(ElementType activeElement)
         {
+            bool isFireUnlocked = (playerShooting != null) ? playerShooting.IsFireUnlocked : false;
+
             if (activeElement == ElementType.Ice)
             {
                 if (iceBadge != null) iceBadge.color = activeIceColor;
-                if (fireBadge != null) fireBadge.color = inactiveFireColor;
                 if (iceText != null) iceText.color = Color.white;
-                if (fireText != null) fireText.color = new Color(0.7f, 0.7f, 0.7f, 0.6f);
+
+                if (fireBadge != null)
+                {
+                    fireBadge.color = isFireUnlocked ? inactiveFireColor : new Color(0.22f, 0.14f, 0.14f, 0.45f);
+                }
+                if (fireText != null)
+                {
+                    fireText.text = isFireUnlocked ? "2: FOGO" : "FOGO [BLOQ]";
+                    fireText.color = isFireUnlocked ? new Color(0.7f, 0.7f, 0.7f, 0.6f) : new Color(0.55f, 0.45f, 0.45f, 0.5f);
+                }
             }
             else if (activeElement == ElementType.Fire)
             {
                 if (iceBadge != null) iceBadge.color = inactiveIceColor;
-                if (fireBadge != null) fireBadge.color = activeFireColor;
                 if (iceText != null) iceText.color = new Color(0.7f, 0.7f, 0.7f, 0.6f);
-                if (fireText != null) fireText.color = Color.white;
+
+                if (fireBadge != null) fireBadge.color = activeFireColor;
+                if (fireText != null)
+                {
+                    fireText.text = "2: FOGO";
+                    fireText.color = Color.white;
+                }
             }
         }
 

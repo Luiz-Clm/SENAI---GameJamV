@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 665875252463266518}
   - component: {fileID: 8076363009619671597}
   - component: {fileID: 59254812236471546}
-  - component: {fileID: 7943341160249427544}
+  - component: {fileID: 6964253972169156899}
   m_Layer: 0
   m_Name: StoneSegment_2
   m_TagString: Untagged
@@ -167,7 +167,7 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!114 &7943341160249427544
+--- !u!114 &6964253972169156899
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -182,6 +182,8 @@ MonoBehaviour:
   maxHealth: 6
   currentHealth: 0
   contactDamage: 1
+  crushInterval: 0.65
+  crushDamage: 1
   spriteRenderer: {fileID: 0}
   damageFlashColor: {r: 1, g: 0.4, b: 0.4, a: 1}
   breakEffectPrefab: {fileID: 0}
@@ -197,7 +199,7 @@ GameObject:
   - component: {fileID: 7773416091555443081}
   - component: {fileID: 2416801985616907020}
   - component: {fileID: 11904998126276873}
-  - component: {fileID: 5746622981203602656}
+  - component: {fileID: 1424564219520318117}
   m_Layer: 0
   m_Name: StoneSegment_1
   m_TagString: Untagged
@@ -352,7 +354,7 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!114 &5746622981203602656
+--- !u!114 &1424564219520318117
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -367,6 +369,8 @@ MonoBehaviour:
   maxHealth: 6
   currentHealth: 0
   contactDamage: 1
+  crushInterval: 0.65
+  crushDamage: 1
   spriteRenderer: {fileID: 0}
   damageFlashColor: {r: 1, g: 0.4, b: 0.4, a: 1}
   breakEffectPrefab: {fileID: 0}
@@ -382,7 +386,7 @@ GameObject:
   - component: {fileID: 3602435809522366446}
   - component: {fileID: 3963536052173233477}
   - component: {fileID: 7294289912761704074}
-  - component: {fileID: 1084731930423802365}
+  - component: {fileID: 6031283177895155028}
   m_Layer: 0
   m_Name: StoneSegment_0
   m_TagString: Untagged
@@ -537,7 +541,7 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!114 &1084731930423802365
+--- !u!114 &6031283177895155028
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -552,6 +556,8 @@ MonoBehaviour:
   maxHealth: 6
   currentHealth: 0
   contactDamage: 1
+  crushInterval: 0.65
+  crushDamage: 1
   spriteRenderer: {fileID: 0}
   damageFlashColor: {r: 1, g: 0.4, b: 0.4, a: 1}
   breakEffectPrefab: {fileID: 0}
@@ -602,4 +608,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eacbe3957b486624ca4b6959af7803ba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Boss.StoneWallObstacle
-  advanceSpeed: 2
+  advanceSpeed: 2.5

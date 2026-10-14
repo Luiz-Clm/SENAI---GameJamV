@@ -86,6 +86,20 @@ namespace WitchShmup.Combat
                 damageable.TakeDamage(damage, element);
                 currentHits++;
 
+                // Mini efeito de desaceleração nos inimigos quando atira com gelo (menos no Boss!)
+                if (isPlayerProjectile && element == ElementType.Ice)
+                {
+                    var boss = other.GetComponentInParent<WitchShmup.Boss.GolemBoss>();
+                    if (boss == null)
+                    {
+                        var enemy = other.GetComponentInParent<WitchShmup.Enemies.EnemyBase>();
+                        if (enemy != null)
+                        {
+                            enemy.ApplySlow(0.40f, 2.0f);
+                        }
+                    }
+                }
+
                 SpawnHitEffect();
 
                 if (currentHits >= pierceCount)

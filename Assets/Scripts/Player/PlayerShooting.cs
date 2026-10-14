@@ -51,10 +51,15 @@ namespace WitchShmup.Player
         [SerializeField] private Vector2 defaultMuzzleOffset = new Vector2(0.6f, 0f);
 
         [Header("Upgrades State")]
-        [SerializeField] private bool isDoubleShotUnlocked = false;
+        [SerializeField] private bool isFireUnlocked = false; // Começa apenas com gelo!
+        [SerializeField] private int multiShotLevel = 0;       // 0 = 1 tiro, 1 = 2 tiros, 2 = 3 tiros
+        [SerializeField] private float projectileSpeedMultiplier = 1f;
         [SerializeField] private int bonusPierce = 0;
         [SerializeField] private float bonusDamage = 0f;
         [SerializeField] private float fireRateBonusPercent = 0f;
+        [SerializeField] private float iceDamageBonus = 0f;
+        [SerializeField] private float fireDamageBonus = 0f;
+        [SerializeField] private int fireBonusPierce = 0;
 
         [Header("Audio (Optional)")]
         [SerializeField] private AudioSource audioSource;
@@ -62,7 +67,10 @@ namespace WitchShmup.Player
         private float nextFireTime = 0f;
         private bool isFiring = false;
 
-        public bool IsDoubleShotUnlocked => isDoubleShotUnlocked;
+        public bool IsFireUnlocked => isFireUnlocked;
+        public int MultiShotLevel => multiShotLevel;
+        public bool IsDoubleShotUnlocked => multiShotLevel >= 1;
+        public float ProjectileSpeedMultiplier => projectileSpeedMultiplier;
         public int BonusPierce => bonusPierce;
         public float BonusDamage => bonusDamage;
         public float FireRateBonusPercent => fireRateBonusPercent;
@@ -83,7 +91,8 @@ namespace WitchShmup.Player
 
         private void Start()
         {
-            // Broadcast initial element state for UI listeners
+            // O jogador sempre começa com Gelo
+            currentElement = ElementType.Ice;
             OnElementChanged?.Invoke(currentElement);
         }
 
@@ -196,20 +205,67 @@ namespace WitchShmup.Player
 
         public void ToggleElement()
         {
-            SetElement(currentElement == ElementType.Ice ? ElementType.Fire : ElementType.Ice);
+            if (currentElement == ElementType.Ice)
+            {
+                if (isFireUnlocked)
+                {
+                    SetElement(ElementType.Fire);
+                }
+                else
+                {
+                    Debug.Log("[PlayerShooting] Poder de Fogo Bloqueado! Colete 3 Corações de Fogo e 1 Núcleo de Boss para evoluir o cajado!");
+                }
+            }
+            else
+            {
+                SetElement(ElementType.Ice);
+            }
         }
 
         public void SetElement(ElementType newElement)
         {
+            if (newElement == ElementType.Fire && !isFireUnlocked)
+            {
+                Debug.Log("[PlayerShooting] Poder de Fogo Bloqueado! Colete 3 Corações de Fogo e 1 Núcleo de Boss para evoluir o cajado!");
+                return;
+            }
+
             if (currentElement == newElement) return;
 
             currentElement = newElement;
             OnElementChanged?.Invoke(currentElement);
         }
 
+        public void UnlockFireElement()
+        {
+            isFireUnlocked = true;
+            SetElement(ElementType.Fire);
+        }
+
+        public void SetMultiShotLevel(int level)
+        {
+            multiShotLevel = Mathf.Max(multiShotLevel, level);
+        }
+
         public void UnlockDoubleShot()
         {
-            isDoubleShotUnlocked = true;
+            SetMultiShotLevel(1);
+        }
+
+        public void AddProjectileSpeedBonus(float percent)
+        {
+            projectileSpeedMultiplier += percent;
+        }
+
+        public void AddIceMasteryBonus(float extraDamage)
+        {
+            iceDamageBonus += extraDamage;
+        }
+
+        public void AddFireMasteryBonus(float extraDamage, int extraPierce = 1)
+        {
+            fireDamageBonus += extraDamage;
+            fireBonusPierce += extraPierce;
         }
 
         public void AddBonusDamage(float amount)
@@ -231,10 +287,11 @@ namespace WitchShmup.Player
         {
             iceConfig.damage *= damageMultiplier;
             fireConfig.damage *= damageMultiplier;
-            iceConfig.projectileSpeed *= 1.2f;
-            fireConfig.projectileSpeed *= 1.2f;
+            iceConfig.projectileSpeed *= 1.25f;
+            fireConfig.projectileSpeed *= 1.25f;
             iceConfig.fireRate *= 0.85f;
             fireConfig.fireRate *= 0.85f;
+            UnlockFireElement();
         }
 
         public void MultiplyFireRate(float rateMultiplier)
@@ -255,24 +312,32 @@ namespace WitchShmup.Player
             float effectiveRate = config.fireRate * (1f - Mathf.Clamp(fireRateBonusPercent, 0f, 0.65f));
             nextFireTime = Time.time + effectiveRate;
 
-            float effectiveDamage = config.damage + bonusDamage;
-            int effectivePierce = config.pierceCount + bonusPierce;
+            float effectiveDamage = config.damage + bonusDamage + (currentElement == ElementType.Ice ? iceDamageBonus : fireDamageBonus);
+            int effectivePierce = config.pierceCount + bonusPierce + (currentElement == ElementType.Fire ? fireBonusPierce : 0);
+            float effectiveSpeed = config.projectileSpeed * projectileSpeedMultiplier;
 
-            if (isDoubleShotUnlocked)
+            Vector3 basePos = transform.position + (Vector3)defaultMuzzleOffset;
+
+            if (multiShotLevel >= 2)
             {
-                // Disparo duplo: 2 magias paralelas
-                Vector3 basePos = transform.position + (Vector3)defaultMuzzleOffset;
+                // Disparo Triplo: Centro + Superior + Inferior com leve abertura
+                SpawnProjectile(basePos, Vector2.right, config, effectiveDamage, effectivePierce, effectiveSpeed);
+                SpawnProjectile(new Vector3(basePos.x, basePos.y + 0.32f, basePos.z), new Vector2(1f, 0.12f).normalized, config, effectiveDamage, effectivePierce, effectiveSpeed);
+                SpawnProjectile(new Vector3(basePos.x, basePos.y - 0.32f, basePos.z), new Vector2(1f, -0.12f).normalized, config, effectiveDamage, effectivePierce, effectiveSpeed);
+            }
+            else if (multiShotLevel == 1)
+            {
+                // Disparo Duplo: 2 magias paralelas
                 Vector3 topPos = new Vector3(basePos.x, basePos.y + 0.22f, basePos.z);
                 Vector3 botPos = new Vector3(basePos.x, basePos.y - 0.22f, basePos.z);
 
-                SpawnProjectile(topPos, config, effectiveDamage, effectivePierce);
-                SpawnProjectile(botPos, config, effectiveDamage, effectivePierce);
+                SpawnProjectile(topPos, Vector2.right, config, effectiveDamage, effectivePierce, effectiveSpeed);
+                SpawnProjectile(botPos, Vector2.right, config, effectiveDamage, effectivePierce, effectiveSpeed);
             }
             else
             {
-                // Disparo inicial: 1 projétil central único e equilibrado
-                Vector3 spawnPos = transform.position + (Vector3)defaultMuzzleOffset;
-                SpawnProjectile(spawnPos, config, effectiveDamage, effectivePierce);
+                // Disparo inicial: 1 projétil central único
+                SpawnProjectile(basePos, Vector2.right, config, effectiveDamage, effectivePierce, effectiveSpeed);
             }
 
             if (config.shootSound != null && audioSource != null)
@@ -283,7 +348,7 @@ namespace WitchShmup.Player
             OnShotFired?.Invoke();
         }
 
-        private void SpawnProjectile(Vector3 position, ElementWeaponConfig config, float dmg, int pierce)
+        private void SpawnProjectile(Vector3 position, Vector2 direction, ElementWeaponConfig config, float dmg, int pierce, float speed)
         {
             if (config.projectilePrefab != null)
             {
@@ -291,7 +356,7 @@ namespace WitchShmup.Player
                 var proj = projObj.GetComponent<Projectile>();
                 if (proj != null)
                 {
-                    proj.Initialize(Vector2.right, config.projectileSpeed, dmg, config.element, true, pierce);
+                    proj.Initialize(direction, speed, dmg, config.element, true, pierce);
                 }
             }
             else
@@ -299,7 +364,7 @@ namespace WitchShmup.Player
                 // Runtime fallback projectile if prefab is not yet assigned
                 GameObject runtimeProj = CreateFallbackProjectile(position, config);
                 var proj = runtimeProj.GetComponent<Projectile>();
-                proj.Initialize(Vector2.right, config.projectileSpeed, dmg, config.element, true, pierce);
+                proj.Initialize(direction, speed, dmg, config.element, true, pierce);
             }
         }
 

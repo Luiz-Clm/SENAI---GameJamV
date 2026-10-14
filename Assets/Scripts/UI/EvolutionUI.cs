@@ -63,7 +63,31 @@ namespace WitchShmup.UI
 
         private void Awake()
         {
-            // Auto-associa botões caso referências estejam nulas
+            AutoFindReferences();
+            EnsureDefaultNodes();
+            EnsureStaffEvolutionBox();
+        }
+
+        private void Start()
+        {
+            AutoFindReferences();
+            EnsureDefaultNodes();
+            EnsureStaffEvolutionBox();
+            HookNodeButtons();
+            RefreshUI();
+        }
+
+        private void OnEnable()
+        {
+            AutoFindReferences();
+            EnsureDefaultNodes();
+            EnsureStaffEvolutionBox();
+            HookNodeButtons();
+            RefreshUI();
+        }
+
+        private void AutoFindReferences()
+        {
             if (closeButton == null)
             {
                 foreach (var b in GetComponentsInChildren<Button>(true))
@@ -79,24 +103,30 @@ namespace WitchShmup.UI
                 }
             }
 
-            if (detailNameText == null)
+            foreach (var tmp in GetComponentsInChildren<TextMeshProUGUI>(true))
             {
-                foreach (var tmp in GetComponentsInChildren<TextMeshProUGUI>(true))
-                {
-                    if (tmp.name == "Detail_Name") detailNameText = tmp;
-                    else if (tmp.name == "Detail_Cost") detailCostText = tmp;
-                    else if (tmp.name == "Detail_Desc") detailDescText = tmp;
-                    else if (tmp.name == "Detail_Effect") detailEffectText = tmp;
-                    else if (tmp.name == "Detail_Total") detailTotalText = tmp;
-                    else if (tmp.name == "Detail_Status") detailStatusText = tmp;
-                    else if (tmp.name == "SP_Counter") skillPointsText = tmp;
-                }
+                string n = tmp.name.ToLowerInvariant();
+                string parentName = tmp.transform.parent != null ? tmp.transform.parent.name.ToLowerInvariant() : "";
+
+                if (detailNameText == null && (n.Contains("name") || n.Contains("detailname"))) detailNameText = tmp;
+                else if (detailCostText == null && (n.Contains("cost") || n.Contains("detailcost"))) detailCostText = tmp;
+                else if (detailDescText == null && (n.Contains("desc") || n.Contains("detaildesc"))) detailDescText = tmp;
+                else if (detailEffectText == null && (n.Contains("effect") || n.Contains("detaileffect"))) detailEffectText = tmp;
+                else if (detailTotalText == null && (n.Contains("total") || n.Contains("detailtotal"))) detailTotalText = tmp;
+                else if (detailStatusText == null && (n.Contains("status") || n.Contains("detailstatus"))) detailStatusText = tmp;
+                else if (skillPointsText == null && (n.Contains("sp") || parentName.Contains("sp") || n.Contains("skillpoint"))) skillPointsText = tmp;
             }
 
             if (pipsContainer == null)
             {
-                var t = transform.Find("Frame/Body/DetailCard/PipsContainer");
-                if (t != null) pipsContainer = t;
+                foreach (var t in GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name.Equals("Pips", StringComparison.OrdinalIgnoreCase) || t.name.Equals("PipsContainer", StringComparison.OrdinalIgnoreCase))
+                    {
+                        pipsContainer = t;
+                        break;
+                    }
+                }
             }
 
             if (buyButtonText == null && buyButton != null)
@@ -115,26 +145,129 @@ namespace WitchShmup.UI
                 buyButton.onClick.RemoveAllListeners();
                 buyButton.onClick.AddListener(OnBuyClicked);
             }
+        }
 
-            if (evolveStaffButton != null)
+        private void EnsureStaffEvolutionBox()
+        {
+            if (staffEvolutionBox != null) return;
+
+            Transform existing = transform.Find("Frame/Body/StaffEvolutionBox");
+            if (existing == null) existing = transform.Find("Frame/Body/DetailCard/StaffEvolutionBox");
+            if (existing == null)
             {
-                evolveStaffButton.onClick.RemoveAllListeners();
-                evolveStaffButton.onClick.AddListener(OnEvolveStaffClicked);
+                foreach (var t in GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name == "StaffEvolutionBox" || t.name == "StaffBox") { existing = t; break; }
+                }
             }
-        }
 
-        private void Start()
-        {
-            EnsureDefaultNodes();
-            HookNodeButtons();
-            RefreshUI();
-        }
+            if (existing != null)
+            {
+                staffEvolutionBox = existing.gameObject;
+                staffStatusText = existing.Find("StatusText")?.GetComponent<TextMeshProUGUI>();
+                staffRequirementsText = existing.Find("ReqText")?.GetComponent<TextMeshProUGUI>();
+                evolveStaffButton = existing.GetComponentInChildren<Button>(true);
+                if (evolveStaffButton != null)
+                {
+                    evolveStaffButton.onClick.RemoveAllListeners();
+                    evolveStaffButton.onClick.AddListener(OnEvolveStaffClicked);
+                }
+                return;
+            }
 
-        private void OnEnable()
-        {
-            EnsureDefaultNodes();
-            HookNodeButtons();
-            RefreshUI();
+            // Cria dinamicamente o painel de evolução do cajado dentro do DetailCard
+            Transform parentCard = transform.Find("Frame/Body/DetailCard");
+            if (parentCard == null) parentCard = transform.Find("Frame");
+            if (parentCard == null) return;
+
+            GameObject box = new GameObject("StaffEvolutionBox");
+            box.transform.SetParent(parentCard, false);
+            var rect = box.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0f);
+            rect.anchorMax = new Vector2(0.5f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 12f);
+            rect.sizeDelta = new Vector2(340f, 130f);
+
+            var img = box.AddComponent<Image>();
+            img.color = new Color(0.16f, 0.10f, 0.22f, 0.95f);
+
+            // Title
+            GameObject titleObj = new GameObject("Title");
+            titleObj.transform.SetParent(box.transform, false);
+            var tRect = titleObj.AddComponent<RectTransform>();
+            tRect.anchorMin = new Vector2(0f, 1f);
+            tRect.anchorMax = new Vector2(1f, 1f);
+            tRect.pivot = new Vector2(0.5f, 1f);
+            tRect.anchoredPosition = new Vector2(0f, -6f);
+            tRect.sizeDelta = new Vector2(-20f, 22f);
+            var tTmp = titleObj.AddComponent<TextMeshProUGUI>();
+            tTmp.text = "CAJADO ARCANO (EVOLUÇÃO)";
+            tTmp.fontSize = 14;
+            tTmp.fontStyle = FontStyles.Bold;
+            tTmp.alignment = TextAlignmentOptions.Center;
+            tTmp.color = new Color(1f, 0.75f, 0.2f, 1f);
+
+            // Status
+            GameObject statusObj = new GameObject("StatusText");
+            statusObj.transform.SetParent(box.transform, false);
+            var stRect = statusObj.AddComponent<RectTransform>();
+            stRect.anchorMin = new Vector2(0f, 1f);
+            stRect.anchorMax = new Vector2(1f, 1f);
+            stRect.pivot = new Vector2(0.5f, 1f);
+            stRect.anchoredPosition = new Vector2(0f, -28f);
+            stRect.sizeDelta = new Vector2(-20f, 20f);
+            staffStatusText = statusObj.AddComponent<TextMeshProUGUI>();
+            staffStatusText.text = "Cajado Básico (Apenas Gelo)";
+            staffStatusText.fontSize = 12;
+            staffStatusText.alignment = TextAlignmentOptions.Center;
+            staffStatusText.color = new Color(0.4f, 0.85f, 1f, 1f);
+
+            // Requirements
+            GameObject reqObj = new GameObject("ReqText");
+            reqObj.transform.SetParent(box.transform, false);
+            var rRect = reqObj.AddComponent<RectTransform>();
+            rRect.anchorMin = new Vector2(0f, 1f);
+            rRect.anchorMax = new Vector2(1f, 1f);
+            rRect.pivot = new Vector2(0.5f, 1f);
+            rRect.anchoredPosition = new Vector2(0f, -48f);
+            rRect.sizeDelta = new Vector2(-20f, 20f);
+            staffRequirementsText = reqObj.AddComponent<TextMeshProUGUI>();
+            staffRequirementsText.text = "Requer: 0/3 Corações de Fogo | 0/1 Núcleo de Boss";
+            staffRequirementsText.fontSize = 12;
+            staffRequirementsText.alignment = TextAlignmentOptions.Center;
+            staffRequirementsText.color = new Color(1f, 0.85f, 0.7f, 1f);
+
+            // Button
+            GameObject btnObj = new GameObject("Btn_EvolveStaff");
+            btnObj.transform.SetParent(box.transform, false);
+            var bRect = btnObj.AddComponent<RectTransform>();
+            bRect.anchorMin = new Vector2(0.5f, 0f);
+            bRect.anchorMax = new Vector2(0.5f, 0f);
+            bRect.pivot = new Vector2(0.5f, 0f);
+            bRect.anchoredPosition = new Vector2(0f, 8f);
+            bRect.sizeDelta = new Vector2(300f, 36f);
+            var bImg = btnObj.AddComponent<Image>();
+            bImg.color = new Color(0.95f, 0.45f, 0.15f, 1f);
+            evolveStaffButton = btnObj.AddComponent<Button>();
+
+            GameObject bTxt = new GameObject("Text");
+            bTxt.transform.SetParent(btnObj.transform, false);
+            var btRect = bTxt.AddComponent<RectTransform>();
+            btRect.anchorMin = Vector2.zero;
+            btRect.anchorMax = Vector2.one;
+            btRect.sizeDelta = Vector2.zero;
+            var bTmp = bTxt.AddComponent<TextMeshProUGUI>();
+            bTmp.text = "EVOLUIR CAJADO (LIBERAR FOGO)";
+            bTmp.fontSize = 13;
+            bTmp.fontStyle = FontStyles.Bold;
+            bTmp.alignment = TextAlignmentOptions.Center;
+            bTmp.color = Color.white;
+
+            evolveStaffButton.onClick.RemoveAllListeners();
+            evolveStaffButton.onClick.AddListener(OnEvolveStaffClicked);
+
+            staffEvolutionBox = box;
         }
 
         private void EnsureDefaultNodes()
@@ -143,16 +276,16 @@ namespace WitchShmup.UI
 
             nodes = new List<NodeConfig>
             {
-                new NodeConfig { id = "vit", name = "Vitalidade", description = "Seu corpo de mago aguenta mais pancada na masmorra.", requirementId = null, maxLevel = 5, baseCost = 1, effectText = "+1 Vida Máxima", unitText = " de vida", valuePerLevel = 1f },
-                new NodeConfig { id = "vel", name = "Vassoura Veloz", description = "A vassoura corta o ar mais rápido para desviar dos tiros.", requirementId = "vit", maxLevel = 3, baseCost = 1, effectText = "+8% de velocidade", unitText = "% de velocidade", valuePerLevel = 8f },
-                new NodeConfig { id = "foc", name = "Foco Arcano", description = "O cristal do cajado brilha mais forte e causa mais dano.", requirementId = "vel", maxLevel = 3, baseCost = 2, effectText = "+0.5 de dano mágico", unitText = " de dano", valuePerLevel = 0.5f },
-                new NodeConfig { id = "des", name = "Despertar Arcano", description = "Libera os dois caminhos: proteção e ofensiva.", requirementId = "foc", maxLevel = 1, baseCost = 2, effectText = "+1 Vida e +0.5 de dano", unitText = "", valuePerLevel = 0f },
-                new NodeConfig { id = "pel", name = "Pele de Pedra", description = "Você aprendeu um truque com o golem: pancadas doem menos.", requirementId = "des", maxLevel = 3, baseCost = 2, effectText = "8% menos dano recebido", unitText = "% menos dano", valuePerLevel = 8f },
-                new NodeConfig { id = "ima", name = "Ímã de Almas", description = "Os drops de skill points voam até você de mais longe.", requirementId = "pel", maxLevel = 2, baseCost = 2, effectText = "+35% alcance dos drops", unitText = "% alcance", valuePerLevel = 35f },
-                new NodeConfig { id = "seg", name = "Segundo Fôlego", description = "Quando a vida zera, você revive uma vez com vida.", requirementId = "ima", maxLevel = 1, baseCost = 5, effectText = "Revive 1x com 35% de vida", unitText = "", valuePerLevel = 0f },
-                new NodeConfig { id = "rap", name = "Tiro Rápido", description = "O cajado dispara magias com mais frequência.", requirementId = "des", maxLevel = 4, baseCost = 2, effectText = "+10% de cadência de tiro", unitText = "% de cadência", valuePerLevel = 10f },
-                new NodeConfig { id = "dup", name = "Tiro Duplo", description = "Cada disparo solta 2 magias paralelas ao mesmo tempo.", requirementId = "rap", maxLevel = 1, baseCost = 4, effectText = "+1 Projétil por disparo (Tiro Duplo!)", unitText = "", valuePerLevel = 0f },
-                new NodeConfig { id = "per", name = "Tiro Perfurante", description = "As magias atravessam o primeiro inimigo e acertam o próximo.", requirementId = "dup", maxLevel = 1, baseCost = 5, effectText = "Tiros atravessam 1 inimigo", unitText = "", valuePerLevel = 0f }
+                new NodeConfig { id = "vit", name = "Vitalidade", description = "Aumenta a energia vital do mago, concedendo corações extras.", requirementId = null, maxLevel = 5, baseCost = 1, effectText = "+1 Vida Máxima (Coração Extra)", unitText = " de vida", valuePerLevel = 1f },
+                new NodeConfig { id = "vel", name = "Velocidade Arcana", description = "A vassoura corta o ar mais rápido e os projéteis voam velozes.", requirementId = "vit", maxLevel = 3, baseCost = 1, effectText = "+8% Movimento e +25% Velocidade dos Tiros", unitText = "% de velocidade", valuePerLevel = 25f },
+                new NodeConfig { id = "foc", name = "Poder do Gelo", description = "O cristal canaliza o gelo com perfeição: mais dano e lentidão prolongada.", requirementId = "vel", maxLevel = 3, baseCost = 2, effectText = "+35% Dano e Lentidão Glacial", unitText = "% poder gelo", valuePerLevel = 35f },
+                new NodeConfig { id = "des", name = "Despertar Arcano", description = "Equilibra corpo e magia: concede +1 Coração e +0.5 de Dano base.", requirementId = "foc", maxLevel = 1, baseCost = 2, effectText = "+1 Coração e +0.5 Dano Base", unitText = "", valuePerLevel = 0f },
+                new NodeConfig { id = "pel", name = "Pele de Pedra", description = "Encantamento de resistência: reduz todo dano recebido em 8%.", requirementId = "des", maxLevel = 3, baseCost = 2, effectText = "8% Menos Dano Recebido", unitText = "% menos dano", valuePerLevel = 8f },
+                new NodeConfig { id = "ima", name = "Ímã de Almas", description = "Os drops de skill points e corações voam até você de longe.", requirementId = "pel", maxLevel = 2, baseCost = 2, effectText = "+35% Alcance Magnético de Drops", unitText = "% alcance", valuePerLevel = 35f },
+                new NodeConfig { id = "seg", name = "Segundo Fôlego", description = "Ao zerar os corações, a magia do mago revive-o com 35% de vida.", requirementId = "ima", maxLevel = 1, baseCost = 5, effectText = "Revive 1x por partida", unitText = "", valuePerLevel = 0f },
+                new NodeConfig { id = "rap", name = "Cadência Rápida", description = "O cajado dispara magias em rápida sucessão.", requirementId = "des", maxLevel = 4, baseCost = 2, effectText = "+10% de Cadência de Tiro", unitText = "% de cadência", valuePerLevel = 10f },
+                new NodeConfig { id = "dup", name = "Disparo Múltiplo", description = "Aumenta o número de magias disparadas juntas (Lv1: Duplo, Lv2: Triplo!).", requirementId = "rap", maxLevel = 2, baseCost = 3, effectText = "+1 Projétil por disparo (Lv1: Duplo, Lv2: Triplo)", unitText = " projéteis", valuePerLevel = 1f },
+                new NodeConfig { id = "per", name = "Fúria do Fogo", description = "Magias flamejantes perfuram os inimigos e causam destruição em massa.", requirementId = "dup", maxLevel = 2, baseCost = 4, effectText = "Tiros Perfuram Inimigos e +45% Dano de Fogo", unitText = "% poder fogo", valuePerLevel = 45f }
             };
         }
 

@@ -23,7 +23,7 @@ namespace WitchShmup.Core
         [SerializeField] private bool isStaffEvolved = false;
 
         [Header("Staff Evolution Requirements")]
-        [SerializeField] private int fireHeartsRequired = 2;
+        [SerializeField] private int fireHeartsRequired = 3;
         [SerializeField] private int bossCoresRequired = 1;
 
         [Header("UI References")]
@@ -32,7 +32,7 @@ namespace WitchShmup.Core
         [SerializeField] private GameObject victoryPanel;
         [SerializeField] private GameObject evolutionPanel;
 
-        // Skill Tree Levels matching HTML sketch
+        // Skill Tree Levels
         public int LevelVitality { get; private set; } = 0;     // vit (max 5)
         public int LevelVeloz { get; private set; } = 0;        // vel (max 3)
         public int LevelFoco { get; private set; } = 0;         // foc (max 3)
@@ -41,8 +41,12 @@ namespace WitchShmup.Core
         public int LevelIma { get; private set; } = 0;          // ima (max 2)
         public int LevelSegundoFolego { get; private set; } = 0;// seg (max 1)
         public int LevelRapido { get; private set; } = 0;       // rap (max 4)
-        public int LevelDuplo { get; private set; } = 0;        // dup (max 1)
+        public int LevelDuplo { get; private set; } = 0;        // dup (max 2)
         public int LevelPerfurante { get; private set; } = 0;   // per (max 1)
+        public int LevelVelTiro { get; private set; } = 0;      // vel_tiro (max 3)
+        public int LevelQtdTiro { get; private set; } = 0;      // qtd_tiro (max 2)
+        public int LevelPodGelo { get; private set; } = 0;      // pod_gelo (max 3)
+        public int LevelPodFogo { get; private set; } = 0;      // pod_fogo (max 3)
 
         public float SoulMagnetMultiplier => 1f + (LevelIma * 0.35f);
 
@@ -210,6 +214,10 @@ namespace WitchShmup.Core
                 case "rap": return LevelRapido;
                 case "dup": return LevelDuplo;
                 case "per": return LevelPerfurante;
+                case "vel_tiro": return LevelVelTiro;
+                case "qtd_tiro": return LevelQtdTiro;
+                case "pod_gelo": return LevelPodGelo;
+                case "pod_fogo": return LevelPodFogo;
                 default: return 0;
             }
         }
@@ -231,12 +239,19 @@ namespace WitchShmup.Core
 
                 case "vel":
                     LevelVeloz++;
+                    LevelVelTiro = LevelVeloz;
                     if (pController != null) pController.MultiplySpeed(1.08f);
+                    if (pShooting != null) pShooting.AddProjectileSpeedBonus(0.25f);
                     break;
 
                 case "foc":
                     LevelFoco++;
-                    if (pShooting != null) pShooting.AddBonusDamage(0.5f);
+                    LevelPodGelo = LevelFoco;
+                    if (pShooting != null)
+                    {
+                        pShooting.AddBonusDamage(0.5f);
+                        pShooting.AddIceMasteryBonus(0.4f);
+                    }
                     break;
 
                 case "des":
@@ -266,13 +281,35 @@ namespace WitchShmup.Core
                     break;
 
                 case "dup":
+                case "qtd_tiro":
                     LevelDuplo++;
-                    if (pShooting != null) pShooting.UnlockDoubleShot();
+                    LevelQtdTiro = LevelDuplo;
+                    if (pShooting != null) pShooting.SetMultiShotLevel(LevelQtdTiro);
+                    break;
+
+                case "vel_tiro":
+                    LevelVelTiro++;
+                    if (pShooting != null) pShooting.AddProjectileSpeedBonus(0.25f);
+                    break;
+
+                case "pod_gelo":
+                    LevelPodGelo++;
+                    if (pShooting != null) pShooting.AddIceMasteryBonus(0.4f);
+                    break;
+
+                case "pod_fogo":
+                    LevelPodFogo++;
+                    if (pShooting != null) pShooting.AddFireMasteryBonus(0.6f, 1);
                     break;
 
                 case "per":
                     LevelPerfurante++;
-                    if (pShooting != null) pShooting.AddBonusPierce(1);
+                    LevelPodFogo = LevelPerfurante;
+                    if (pShooting != null)
+                    {
+                        pShooting.AddBonusPierce(1);
+                        pShooting.AddFireMasteryBonus(0.6f, 1);
+                    }
                     break;
 
                 default:

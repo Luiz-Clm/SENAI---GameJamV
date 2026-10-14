@@ -68,15 +68,15 @@ namespace WitchShmup.Enemies
 
         private void HandleMovement()
         {
-            // Movimento horizontal para a esquerda
-            float posX = transform.position.x - (horizontalSpeed * Time.deltaTime);
+            // Movimento horizontal para a esquerda (respeita desaceleração por gelo)
+            float posX = transform.position.x - (horizontalSpeed * speedMultiplier * Time.deltaTime);
 
             float posY = transform.position.y;
 
             if (isDodging)
             {
                 // Esquiva ativa rápida para cima ou baixo
-                posY += dodgeDirectionY * dodgeSpeed * Time.deltaTime;
+                posY += dodgeDirectionY * dodgeSpeed * speedMultiplier * Time.deltaTime;
                 dodgeTimer -= Time.deltaTime;
                 if (dodgeTimer <= 0f)
                 {

@@ -34,10 +34,17 @@ namespace WitchShmup.Enemies
         [SerializeField] protected GameObject skillPointDropPrefab;
         [SerializeField] [Range(0f, 1f)] protected float skillPointDropChance = 0.35f;
 
+        [Header("Status Effects")]
+        protected float speedMultiplier = 1f;
+        protected Coroutine slowCoroutine;
+        protected static readonly Color FrostSlowColor = new Color(0.45f, 0.85f, 1f, 1f);
+
         protected Color originalColor = Color.white;
         protected Coroutine flashCoroutine;
         protected Rigidbody2D rb;
 
+        public float SpeedMultiplier => speedMultiplier;
+        public bool IsSlowed => slowCoroutine != null;
         public float CurrentHealth => currentHealth;
         public float MaxHealth => maxHealth;
 
@@ -110,6 +117,36 @@ namespace WitchShmup.Enemies
             }
         }
 
+        public virtual void ApplySlow(float slowPercent, float duration)
+        {
+            if (isDead || currentHealth <= 0) return;
+
+            if (slowCoroutine != null)
+            {
+                StopCoroutine(slowCoroutine);
+            }
+            slowCoroutine = StartCoroutine(SlowRoutine(slowPercent, duration));
+        }
+
+        protected virtual IEnumerator SlowRoutine(float slowPercent, float duration)
+        {
+            speedMultiplier = Mathf.Clamp(1f - slowPercent, 0.2f, 1f);
+
+            if (spriteRenderer != null && flashCoroutine == null)
+            {
+                spriteRenderer.color = FrostSlowColor;
+            }
+
+            yield return new WaitForSeconds(duration);
+
+            speedMultiplier = 1f;
+            if (spriteRenderer != null && flashCoroutine == null)
+            {
+                spriteRenderer.color = originalColor;
+            }
+            slowCoroutine = null;
+        }
+
         protected virtual void FlashOnDamage()
         {
             if (spriteRenderer == null) return;
@@ -127,7 +164,7 @@ namespace WitchShmup.Enemies
             {
                 spriteRenderer.color = damageFlashColor;
                 yield return new WaitForSeconds(0.08f);
-                spriteRenderer.color = originalColor;
+                spriteRenderer.color = (slowCoroutine != null) ? FrostSlowColor : originalColor;
             }
             flashCoroutine = null;
         }
@@ -136,6 +173,9 @@ namespace WitchShmup.Enemies
         {
             if (isDead) return;
             isDead = true;
+
+            if (flashCoroutine != null) StopCoroutine(flashCoroutine);
+            if (slowCoroutine != null) StopCoroutine(slowCoroutine);
 
             var col = GetComponent<Collider2D>();
             if (col != null) col.enabled = false;

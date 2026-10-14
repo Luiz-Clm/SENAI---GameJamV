@@ -66,6 +66,8 @@ namespace WitchShmup.Boss
         private float hoverBaseY = 0f;
         private bool isEnraged = false;
         private Coroutine attackRoutine;
+        private Coroutine flashCoroutine;
+        private Color originalBodyColor = Color.white;
         private HUDController hud;
 
         public BossState State => state;
@@ -90,6 +92,11 @@ namespace WitchShmup.Boss
             if (mainBodyRenderer == null)
             {
                 mainBodyRenderer = GetComponentInChildren<SpriteRenderer>();
+            }
+
+            if (mainBodyRenderer != null)
+            {
+                originalBodyColor = mainBodyRenderer.color;
             }
 
             if (bossAnimator == null)
@@ -288,7 +295,11 @@ namespace WitchShmup.Boss
                 EnterEnrageMode();
             }
 
-            StartCoroutine(FlashRoutine());
+            if (gameObject.activeInHierarchy)
+            {
+                if (flashCoroutine != null) StopCoroutine(flashCoroutine);
+                flashCoroutine = StartCoroutine(FlashRoutine());
+            }
 
             if (currentHealth <= 0)
             {
@@ -317,17 +328,19 @@ namespace WitchShmup.Boss
         {
             if (mainBodyRenderer != null)
             {
-                Color prev = mainBodyRenderer.color;
-                mainBodyRenderer.color = new Color(1f, 0.4f, 0.4f, 1f);
-                yield return new WaitForSeconds(0.06f);
-                mainBodyRenderer.color = prev;
+                mainBodyRenderer.color = new Color(1f, 0.35f, 0.35f, 1f);
+                yield return new WaitForSeconds(0.08f);
+                mainBodyRenderer.color = originalBodyColor;
             }
+            flashCoroutine = null;
         }
 
         private void Die()
         {
             state = BossState.Dying;
             if (attackRoutine != null) StopCoroutine(attackRoutine);
+            if (flashCoroutine != null) StopCoroutine(flashCoroutine);
+            if (mainBodyRenderer != null) mainBodyRenderer.color = originalBodyColor;
 
             StartCoroutine(DeathSequence());
         }

@@ -57,7 +57,7 @@ namespace WitchShmup.Enemies
             float timer = 0f;
             while (timer < approachDuration)
             {
-                transform.Translate(Vector3.left * (approachSpeed * Time.deltaTime), Space.World);
+                transform.Translate(Vector3.left * (approachSpeed * speedMultiplier * Time.deltaTime), Space.World);
                 timer += Time.deltaTime;
                 yield return null;
             }
@@ -98,7 +98,7 @@ namespace WitchShmup.Enemies
             transform.position = baseTelegraphPos;
             if (spriteRenderer != null)
             {
-                spriteRenderer.color = originalColor;
+                spriteRenderer.color = (slowCoroutine != null) ? FrostSlowColor : originalColor;
             }
 
             // 3. Investida furiosa (Charge!)
@@ -111,7 +111,7 @@ namespace WitchShmup.Enemies
 
             if (currentState == RusherState.Charging)
             {
-                transform.Translate(chargeDirection * (chargeSpeed * Time.deltaTime), Space.World);
+                transform.Translate(chargeDirection * (chargeSpeed * speedMultiplier * Time.deltaTime), Space.World);
             }
         }
     }

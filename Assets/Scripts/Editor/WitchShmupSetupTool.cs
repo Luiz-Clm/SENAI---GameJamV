@@ -142,14 +142,24 @@ namespace WitchShmup.Editor
             // 6. Setup Wave Spawner
             SetupWaveSpawner();
 
+            var activeScene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
+            if (activeScene.IsValid())
+            {
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(activeScene);
+                UnityEditor.SceneManagement.EditorSceneManager.SaveScene(activeScene);
+            }
+
             EditorUtility.DisplayDialog("Witch Shmup",
                 "Cena configurada com sucesso!\n\n" +
                 "Novidades implementadas:\n" +
+                "- Parallax dinâmico do cenário e tochas com iluminação 2D!\n" +
                 "- Dano e morte funcionando em todos os inimigos e no Boss!\n" +
-                "- Sistema de Drops (Coração de Fogo, Poção de Cura, Skill Points, Cristal do Boss) com atração magnética!\n" +
-                "- Sistema de Pontuação funcionando em tempo real!\n" +
-                "- Tela de Derrota (Game Over) ao zerar os corações!\n" +
-                "- Tela de Evolução e Árvore de Habilidades em Y (Pressione 'E' para abrir e pausar o jogo)!\n\n" +
+                "- Efeito de desaceleração nos inimigos ao atingir com tiro de gelo (boss imune)!\n" +
+                "- Correção definitiva do flash de dano do Boss!\n" +
+                "- Barreira de pedra empurra o jogador e esmaga na parede de trás!\n" +
+                "- Sistema de Drops (Coração de Fogo, Poção de Cura, Skill Points, Cristal do Boss)!\n" +
+                "- Árvore de Habilidades completa (+Corações, +Velocidade dos tiros, +Disparo Múltiplo, Maestria do Gelo e Fúria do Fogo)!\n" +
+                "- Desbloqueio do Cajado Flamejante (Poder de Fogo com 3 Corações de Fogo + 1 Núcleo de Boss)!\n\n" +
                 "Atalhos úteis no Play Mode:\n" +
                 "- 'E': Abre/Fecha Tela de Evolução\n" +
                 "- 'B': Chama a Cutscene do Boss imediatamente", "Jogar!");
@@ -252,12 +262,15 @@ namespace WitchShmup.Editor
             var rusher = obj.AddComponent<RusherEnemy>();
 
             // Drops do Rusher
+            GameObject fireHeartPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_FireHeart.prefab");
             GameObject potionPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_HealthPotion.prefab");
             GameObject skillPointPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_SkillPoint.prefab");
 
             SerializedObject so = new SerializedObject(rusher);
+            so.FindProperty("fireHeartDropPrefab").objectReferenceValue = fireHeartPrefab;
             so.FindProperty("healthPotionDropPrefab").objectReferenceValue = potionPrefab;
             so.FindProperty("skillPointDropPrefab").objectReferenceValue = skillPointPrefab;
+            so.FindProperty("fireHeartDropChance").floatValue = 0.35f;
             so.FindProperty("healthPotionDropChance").floatValue = 0.20f;
             so.FindProperty("skillPointDropChance").floatValue = 0.25f;
             so.ApplyModifiedProperties();
@@ -404,43 +417,81 @@ namespace WitchShmup.Editor
 
         private static void SetupParallaxHierarchy(Camera cam)
         {
-            // Remove o GameObject antigo (parallax ou estático)
+            // Remove GameObjects antigos (parallax ou estático)
             var existingBg = GameObject.Find("Environment_Parallax");
             if (existingBg != null) Object.DestroyImmediate(existingBg);
             var existingStatic = GameObject.Find("Environment_Background");
             if (existingStatic != null) Object.DestroyImmediate(existingStatic);
 
-            // ---- Cenário ESTÁTICO: apenas fundo de tijolos + tochas fixas ----
-            GameObject bgRoot = new GameObject("Environment_Background");
+            // ---- Cenário PARALLAX Dinâmico: Fundo Distante + Parede Principal com Tochas ----
+            GameObject bgRoot = new GameObject("Environment_Parallax");
             bgRoot.transform.position = Vector3.zero;
+            var parallaxCtrl = bgRoot.AddComponent<ParallaxBackgroundController>();
+            parallaxCtrl.SetScrollSpeed(3.0f);
 
             Sprite brickSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/BrickWall.png");
-
             if (brickSprite != null)
             {
-                // Um único segmento de tijolos cobrindo a tela inteira (estático, sem movimento)
-                // Câmera ortográfica size=5, aspecto 16:9 → janela ≈ 18x10 unidades
-                float bgW = 22f;
-                float bgH = 12f;
+                float segmentWidth = 24f;
+                float segmentHeight = 13f;
 
-                GameObject bgWall = new GameObject("BrickWall_Background");
-                bgWall.transform.SetParent(bgRoot.transform);
-                bgWall.transform.position = new Vector3(0f, 0f, 2f);
+                // --- 1. Camada Distante (Far Background) - Rola a 0.45x para dar profundidade ---
+                GameObject farLayerObj = new GameObject("Parallax_Far");
+                farLayerObj.transform.SetParent(bgRoot.transform, false);
+                var farLayer = farLayerObj.AddComponent<ParallaxLayer>();
+                farLayer.ParallaxFactor = 0.45f;
+                farLayer.SegmentWidth = segmentWidth;
 
-                var sr = bgWall.AddComponent<SpriteRenderer>();
-                sr.sprite    = brickSprite;
-                sr.drawMode  = SpriteDrawMode.Tiled;
-                sr.size      = new Vector2(bgW, bgH);
-                sr.sortingOrder = -10;
-                sr.color     = new Color(0.55f, 0.55f, 0.72f, 1f);
-
-                // Tochas FIXAS distribuídas pelo cenário
-                float[] torchXPositions = { -8f, -4f, 0f, 4f, 8f };
-                float torchY = 1.3f;
-                foreach (float tx in torchXPositions)
+                Transform[] farSegments = new Transform[3];
+                for (int i = 0; i < 3; i++)
                 {
-                    DungeonTorch.CreateTorch(bgRoot.transform, new Vector3(tx, torchY, 0f));
+                    GameObject segObj = new GameObject($"Far_Segment_{i}");
+                    segObj.transform.SetParent(farLayerObj.transform, false);
+                    segObj.transform.position = new Vector3((i - 1) * segmentWidth, 0f, 3f);
+
+                    var sr = segObj.AddComponent<SpriteRenderer>();
+                    sr.sprite = brickSprite;
+                    sr.drawMode = SpriteDrawMode.Tiled;
+                    sr.size = new Vector2(segmentWidth, segmentHeight);
+                    sr.sortingOrder = -15;
+                    sr.color = new Color(0.24f, 0.20f, 0.35f, 1f); // Fundo escuro e misterioso
+
+                    farSegments[i] = segObj.transform;
                 }
+                farLayer.SetSegments(farSegments, segmentWidth);
+
+                // --- 2. Camada Principal (Main Scenario) com TOCHAS - Rola na velocidade base (1.0x) ---
+                GameObject mainLayerObj = new GameObject("Parallax_Main");
+                mainLayerObj.transform.SetParent(bgRoot.transform, false);
+                var mainLayer = mainLayerObj.AddComponent<ParallaxLayer>();
+                mainLayer.ParallaxFactor = 1.0f;
+                mainLayer.SegmentWidth = segmentWidth;
+
+                Transform[] mainSegments = new Transform[3];
+                for (int i = 0; i < 3; i++)
+                {
+                    GameObject segObj = new GameObject($"Main_Segment_{i}");
+                    segObj.transform.SetParent(mainLayerObj.transform, false);
+                    segObj.transform.position = new Vector3((i - 1) * segmentWidth, 0f, 1f);
+
+                    var sr = segObj.AddComponent<SpriteRenderer>();
+                    sr.sprite = brickSprite;
+                    sr.drawMode = SpriteDrawMode.Tiled;
+                    sr.size = new Vector2(segmentWidth, segmentHeight);
+                    sr.sortingOrder = -10;
+                    sr.color = new Color(0.55f, 0.55f, 0.72f, 1f);
+
+                    // Tochas distribuídas no segmento! Sendo filhas do segObj, rolam e dão wrap-around perfeitamente!
+                    float[] torchOffsets = { -8f, 0f, 8f };
+                    float torchY = 1.3f;
+                    foreach (float tx in torchOffsets)
+                    {
+                        DungeonTorch.CreateTorch(segObj.transform, new Vector3(tx, torchY, 0f));
+                    }
+
+                    mainSegments[i] = segObj.transform;
+                }
+                mainLayer.SetSegments(mainSegments, segmentWidth);
             }
         }
 
@@ -1019,23 +1070,23 @@ namespace WitchShmup.Editor
             lbRect.anchorMax = Vector2.one;
             lbRect.sizeDelta = Vector2.zero;
 
-            // Dados dos 10 Nós conforme HTML sketch
+            // Dados dos 10 Nós conforme gameplay
             var nodeConfigs = new (string id, string name, string desc, string req, int max, int baseCost, string eff, string unit, float val, Vector2 pos, string icon)[]
             {
-                ("vit", "Vitalidade", "Seu corpo de mago aguenta mais pancada na masmorra.", null, 5, 1, "+1 Vida Máxima", " de vida", 1f, new Vector2(0f, -185f), "HP"),
-                ("vel", "Vassoura Veloz", "A vassoura corta o ar mais rápido para desviar dos tiros.", "vit", 3, 1, "+8% de velocidade", "% de velocidade", 8f, new Vector2(0f, -115f), "VEL"),
-                ("foc", "Foco Arcano", "O cristal do cajado brilha mais forte e causa mais dano.", "vel", 3, 2, "+0.5 de dano mágico", " de dano", 0.5f, new Vector2(0f, -45f), "DMG"),
-                ("des", "Despertar Arcano", "Libera os dois caminhos: proteção e ofensiva.", "foc", 1, 2, "+1 Vida e +0.5 de dano", "", 0f, new Vector2(0f, 25f), "★"),
+                ("vit", "Vitalidade", "Aumenta a energia vital do mago, concedendo corações extras.", null, 5, 1, "+1 Vida Máxima (Coração Extra)", " de vida", 1f, new Vector2(0f, -185f), "HP"),
+                ("vel", "Velocidade Arcana", "A vassoura corta o ar mais rápido e os projéteis voam velozes.", "vit", 3, 1, "+8% Movimento e +25% Velocidade dos Tiros", "% de velocidade", 25f, new Vector2(0f, -115f), "VEL"),
+                ("foc", "Poder do Gelo", "O cristal canaliza o gelo com perfeição: mais dano e lentidão prolongada.", "vel", 3, 2, "+35% Dano e Lentidão Glacial", "% poder gelo", 35f, new Vector2(0f, -45f), "ICE"),
+                ("des", "Despertar Arcano", "Equilibra corpo e magia: concede +1 Coração e +0.5 de Dano base.", "foc", 1, 2, "+1 Coração e +0.5 Dano Base", "", 0f, new Vector2(0f, 25f), "★"),
 
                 // Ramo Esquerdo (Defesa)
-                ("pel", "Pele de Pedra", "Você aprendeu um truque com o golem: pancadas doem menos.", "des", 3, 2, "8% menos dano recebido", "% menos dano", 8f, new Vector2(-95f, 95f), "DEF"),
-                ("ima", "Ímã de Almas", "Os drops de skill points voam até você de mais longe.", "pel", 2, 2, "+35% alcance dos drops", "% alcance", 35f, new Vector2(-175f, 155f), "IMA"),
-                ("seg", "Segundo Fôlego", "Quando a vida zera, você revive uma vez com vida.", "ima", 1, 5, "Revive 1x com 35% de vida", "", 0f, new Vector2(-245f, 195f), "REV"),
+                ("pel", "Pele de Pedra", "Encantamento de resistência: reduz todo dano recebido em 8%.", "des", 3, 2, "8% Menos Dano Recebido", "% menos dano", 8f, new Vector2(-95f, 95f), "DEF"),
+                ("ima", "Ímã de Almas", "Os drops de skill points e corações voam até você de longe.", "pel", 2, 2, "+35% Alcance Magnético de Drops", "% alcance", 35f, new Vector2(-175f, 155f), "IMA"),
+                ("seg", "Segundo Fôlego", "Ao zerar os corações, a magia do mago revive-o com 35% de vida.", "ima", 1, 5, "Revive 1x por partida", "", 0f, new Vector2(-245f, 195f), "REV"),
 
                 // Ramo Direito (Ataque)
-                ("rap", "Tiro Rápido", "O cajado dispara magias com mais frequência.", "des", 4, 2, "+10% de cadência de tiro", "% de cadência", 10f, new Vector2(95f, 95f), "ATK"),
-                ("dup", "Tiro Duplo", "Cada disparo solta 2 magias paralelas ao mesmo tempo.", "rap", 1, 4, "+1 Projétil por disparo (Tiro Duplo!)", "", 0f, new Vector2(175f, 155f), "x2"),
-                ("per", "Tiro Perfurante", "As magias atravessam o primeiro inimigo e acertam o próximo.", "dup", 1, 5, "Tiros atravessam 1 inimigo", "", 0f, new Vector2(245f, 195f), "PER")
+                ("rap", "Cadência Rápida", "O cajado dispara magias em rápida sucessão.", "des", 4, 2, "+10% de Cadência de Tiro", "% de cadência", 10f, new Vector2(95f, 95f), "ATK"),
+                ("dup", "Disparo Múltiplo", "Aumenta o número de magias disparadas juntas (Lv1: Duplo, Lv2: Triplo!).", "rap", 2, 3, "+1 Projétil por disparo (Lv1: Duplo, Lv2: Triplo)", " projéteis", 1f, new Vector2(175f, 155f), "MULTI"),
+                ("per", "Fúria do Fogo", "Magias flamejantes perfuram os inimigos e causam destruição em massa.", "dup", 2, 4, "Tiros Perfuram Inimigos e +45% Dano de Fogo", "% poder fogo", 45f, new Vector2(245f, 195f), "FIRE")
             };
 
             var posDict = new Dictionary<string, Vector2>();
@@ -1295,6 +1346,83 @@ namespace WitchShmup.Editor
             statusTmp.alignment = TextAlignmentOptions.Center;
             statusTmp.color = new Color(0.29f, 0.17f, 0.35f, 1f);
 
+            // Staff Evolution Box
+            GameObject staffBox = new GameObject("StaffEvolutionBox");
+            staffBox.transform.SetParent(card.transform, false);
+            var sbRect = staffBox.AddComponent<RectTransform>();
+            sbRect.anchoredPosition = new Vector2(0f, -320f);
+            sbRect.sizeDelta = new Vector2(330f, 130f);
+            var sbImg = staffBox.AddComponent<Image>();
+            sbImg.color = new Color(0.16f, 0.10f, 0.22f, 0.95f);
+
+            GameObject sTitle = new GameObject("Title");
+            sTitle.transform.SetParent(staffBox.transform, false);
+            var sttRect = sTitle.AddComponent<RectTransform>();
+            sttRect.anchorMin = new Vector2(0f, 1f);
+            sttRect.anchorMax = new Vector2(1f, 1f);
+            sttRect.pivot = new Vector2(0.5f, 1f);
+            sttRect.anchoredPosition = new Vector2(0f, -6f);
+            sttRect.sizeDelta = new Vector2(-20f, 22f);
+            var sttTmp = sTitle.AddComponent<TextMeshProUGUI>();
+            sttTmp.text = "CAJADO ARCANO (EVOLUÇÃO)";
+            sttTmp.fontSize = 14;
+            sttTmp.fontStyle = FontStyles.Bold;
+            sttTmp.alignment = TextAlignmentOptions.Center;
+            sttTmp.color = new Color(1f, 0.75f, 0.2f, 1f);
+
+            GameObject sStatus = new GameObject("StatusText");
+            sStatus.transform.SetParent(staffBox.transform, false);
+            var ssRect = sStatus.AddComponent<RectTransform>();
+            ssRect.anchorMin = new Vector2(0f, 1f);
+            ssRect.anchorMax = new Vector2(1f, 1f);
+            ssRect.pivot = new Vector2(0.5f, 1f);
+            ssRect.anchoredPosition = new Vector2(0f, -28f);
+            ssRect.sizeDelta = new Vector2(-20f, 20f);
+            var ssTmp = sStatus.AddComponent<TextMeshProUGUI>();
+            ssTmp.text = "Cajado Básico (Apenas Gelo)";
+            ssTmp.fontSize = 12;
+            ssTmp.alignment = TextAlignmentOptions.Center;
+            ssTmp.color = new Color(0.4f, 0.85f, 1f, 1f);
+
+            GameObject sReq = new GameObject("ReqText");
+            sReq.transform.SetParent(staffBox.transform, false);
+            var srRect = sReq.AddComponent<RectTransform>();
+            srRect.anchorMin = new Vector2(0f, 1f);
+            srRect.anchorMax = new Vector2(1f, 1f);
+            srRect.pivot = new Vector2(0.5f, 1f);
+            srRect.anchoredPosition = new Vector2(0f, -48f);
+            srRect.sizeDelta = new Vector2(-20f, 20f);
+            var srTmp = sReq.AddComponent<TextMeshProUGUI>();
+            srTmp.text = "Requer: 0/3 Corações de Fogo | 0/1 Núcleo de Boss";
+            srTmp.fontSize = 12;
+            srTmp.alignment = TextAlignmentOptions.Center;
+            srTmp.color = new Color(1f, 0.85f, 0.7f, 1f);
+
+            GameObject sBtn = new GameObject("Btn_EvolveStaff");
+            sBtn.transform.SetParent(staffBox.transform, false);
+            var sbtnRect = sBtn.AddComponent<RectTransform>();
+            sbtnRect.anchorMin = new Vector2(0.5f, 0f);
+            sbtnRect.anchorMax = new Vector2(0.5f, 0f);
+            sbtnRect.pivot = new Vector2(0.5f, 0f);
+            sbtnRect.anchoredPosition = new Vector2(0f, 8f);
+            sbtnRect.sizeDelta = new Vector2(300f, 36f);
+            var sbtnImg = sBtn.AddComponent<Image>();
+            sbtnImg.color = new Color(0.95f, 0.45f, 0.15f, 1f);
+            var evoStaffBtn = sBtn.AddComponent<Button>();
+
+            GameObject sBtnTxt = new GameObject("Text");
+            sBtnTxt.transform.SetParent(sBtn.transform, false);
+            var sbtRect = sBtnTxt.AddComponent<RectTransform>();
+            sbtRect.anchorMin = Vector2.zero;
+            sbtRect.anchorMax = Vector2.one;
+            sbtRect.sizeDelta = Vector2.zero;
+            var sbtTmp = sBtnTxt.AddComponent<TextMeshProUGUI>();
+            sbtTmp.text = "EVOLUIR CAJADO (LIBERAR FOGO)";
+            sbtTmp.fontSize = 13;
+            sbtTmp.fontStyle = FontStyles.Bold;
+            sbtTmp.alignment = TextAlignmentOptions.Center;
+            sbtTmp.color = Color.white;
+
             // Conecta referências no EvolutionUI
             evoSo.FindProperty("skillPointsText").objectReferenceValue = spTmp;
             evoSo.FindProperty("closeButton").objectReferenceValue = closeBtn;
@@ -1307,6 +1435,10 @@ namespace WitchShmup.Editor
             evoSo.FindProperty("buyButton").objectReferenceValue = buyBtn;
             evoSo.FindProperty("buyButtonText").objectReferenceValue = bbtTmp;
             evoSo.FindProperty("pipsContainer").objectReferenceValue = pipsObj.transform;
+            evoSo.FindProperty("staffEvolutionBox").objectReferenceValue = staffBox;
+            evoSo.FindProperty("staffStatusText").objectReferenceValue = ssTmp;
+            evoSo.FindProperty("staffRequirementsText").objectReferenceValue = srTmp;
+            evoSo.FindProperty("evolveStaffButton").objectReferenceValue = evoStaffBtn;
             evoSo.ApplyModifiedProperties();
 
             evoUI.HookNodeButtons();
