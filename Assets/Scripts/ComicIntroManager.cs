@@ -50,6 +50,9 @@ namespace SpellGlide
         [SerializeField] private TMP_Text skipPromptTmpText;
         [SerializeField] private Text skipPromptUiText;
         [SerializeField] private CanvasGroup screenFader;
+        [Header("Estilo do Texto do Narrador (Opcional)")]
+        [Tooltip("Fonte personalizada para o texto do narrador (se vazio, usa a fonte configurada no StoryText)")]
+        [SerializeField] private TMP_FontAsset narratorFontAsset;
 
         [Header("Áudio")]
         [SerializeField] private AudioManager audioManager;
@@ -81,6 +84,11 @@ namespace SpellGlide
             if (comicContentCanvasGroup != null)
             {
                 comicContentCanvasGroup.alpha = 0f;
+            }
+
+            if (narratorFontAsset != null && storyTmpText != null)
+            {
+                storyTmpText.font = narratorFontAsset;
             }
         }
 

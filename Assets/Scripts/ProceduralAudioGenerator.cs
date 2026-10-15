@@ -128,6 +128,171 @@ namespace SpellGlide
             return clip;
         }
 
+        public static AudioClip CreatePlayerFireShotSound()
+        {
+            const int sampleRate = 44100;
+            const float duration = 0.18f;
+            int totalSamples = (int)(sampleRate * duration);
+            float[] data = new float[totalSamples];
+            var rng = new System.Random(101);
+
+            for (int i = 0; i < totalSamples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float progress = t / duration;
+
+                // 1. Estalo inicial de faísca (snap)
+                float sparkSnap = (float)(rng.NextDouble() * 2.0 - 1.0) * Mathf.Exp(-60f * t) * 0.7f;
+
+                // 2. Assobio veloz de ar quente
+                float flameWhistleFreq = 980f * Mathf.Exp(-12f * t) + 320f;
+                float flameWhistle = Mathf.Sin(2f * Mathf.PI * flameWhistleFreq * t) * Mathf.Exp(-16f * t) * 0.55f;
+
+                // 3. Rastro crepitante de brasa
+                float sizzle = (float)(rng.NextDouble() * 2.0 - 1.0) * Mathf.Sin(2f * Mathf.PI * flameWhistleFreq * t) * Mathf.Exp(-22f * t) * 0.35f;
+
+                // 4. Punch térmico de saída (mini-poof)
+                float punch = Mathf.Sin(2f * Mathf.PI * 140f * t) * Mathf.Exp(-40f * t) * 0.3f;
+
+                float raw = sparkSnap + flameWhistle + sizzle + punch;
+                data[i] = (float)System.Math.Tanh(raw * 1.7f) * 0.9f;
+            }
+
+            AudioClip clip = AudioClip.Create("GeneratedPlayerFireShot", totalSamples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreatePlayerIceShotSound()
+        {
+            const int sampleRate = 44100;
+            const float duration = 0.19f;
+            int totalSamples = (int)(sampleRate * duration);
+            float[] data = new float[totalSamples];
+            var rng = new System.Random(202);
+
+            for (int i = 0; i < totalSamples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float progress = t / duration;
+
+                // 1. Estalo seco inicial de gelo quebrando
+                float crack = (float)(rng.NextDouble() * 2.0 - 1.0) * Mathf.Exp(-55f * t) * 0.75f;
+
+                // 2. Assobio veloz de ar congelado
+                float whistleFreq = 1800f * (1f - progress * 0.5f);
+                float whistle = Mathf.Sin(2f * Mathf.PI * whistleFreq * t) * Mathf.Exp(-15f * t) * 0.5f;
+
+                // 3. Ping cristalino de alta ressonância
+                float ping = Mathf.Sin(2f * Mathf.PI * 3400f * t) * Mathf.Exp(-35f * t) * 0.35f;
+
+                data[i] = (crack + whistle + ping) * 0.85f;
+            }
+
+            AudioClip clip = AudioClip.Create("GeneratedPlayerIceShot", totalSamples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateBatFireballSound()
+        {
+            const int sampleRate = 44100;
+            const float duration = 0.17f;
+            int totalSamples = (int)(sampleRate * duration);
+            float[] data = new float[totalSamples];
+            var rng = new System.Random(303);
+
+            for (int i = 0; i < totalSamples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float progress = t / duration;
+
+                // Cuspe/sopro ágil de criatura voadora
+                float freq = Mathf.Lerp(780f, 210f, progress);
+                float flutter = 1f + 0.35f * Mathf.Sin(2f * Mathf.PI * 45f * t); // Tremolo/vibração alada
+                float tone = Mathf.Sin(2f * Mathf.PI * freq * t);
+
+                float hissNoise = (float)(rng.NextDouble() * 2.0 - 1.0) * 0.55f;
+                float env = Mathf.Exp(-18f * t);
+
+                data[i] = (tone * 0.45f + hissNoise * 0.55f) * flutter * env * 0.7f;
+            }
+
+            AudioClip clip = AudioClip.Create("GeneratedBatFireball", totalSamples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateBossRockThrowSound()
+        {
+            const int sampleRate = 44100;
+            const float duration = 0.38f;
+            int totalSamples = (int)(sampleRate * duration);
+            float[] data = new float[totalSamples];
+            var rng = new System.Random(404);
+
+            for (int i = 0; i < totalSamples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float progress = t / duration;
+
+                // Projétil pesado e massivo rasgando o ar
+                float freq = Mathf.Lerp(70f, 160f, Mathf.Sin(progress * Mathf.PI));
+                float sub = Mathf.Sin(2f * Mathf.PI * freq * t) * 0.65f;
+                float sub2 = Mathf.Sin(2f * Mathf.PI * (freq * 0.5f) * t) * 0.4f;
+
+                // Atrito de cascalho e impacto inicial
+                float gravelNoise = (float)(rng.NextDouble() * 2.0 - 1.0) * 0.4f;
+                float thudEnv = Mathf.Exp(-15f * t) * 0.5f;
+
+                float mainEnv = Mathf.Sin(Mathf.PI * Mathf.Pow(progress, 0.7f));
+
+                float sample = (sub + sub2 + gravelNoise * 0.35f) * (mainEnv * 0.7f + thudEnv);
+                data[i] = Mathf.Clamp(sample * 1.3f, -1f, 1f) * 0.8f;
+            }
+
+            AudioClip clip = AudioClip.Create("GeneratedBossRockThrow", totalSamples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateBossStoneWallSound()
+        {
+            const int sampleRate = 44100;
+            const float duration = 0.70f;
+            int totalSamples = (int)(sampleRate * duration);
+            float[] data = new float[totalSamples];
+            var rng = new System.Random(505);
+
+            for (int i = 0; i < totalSamples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float progress = t / duration;
+
+                // Tremor telúrico / sub-grave sísmico
+                float tremorFreq = Mathf.Lerp(45f, 95f, Mathf.SmoothStep(0f, 1f, progress));
+                float rumble = Mathf.Sin(2f * Mathf.PI * tremorFreq * t) * 0.6f;
+                float rumbleSub = Mathf.Sin(2f * Mathf.PI * (tremorFreq * 0.5f) * t) * 0.45f;
+
+                // Ruído de rochas esmagando e erupção de pedra
+                float crunchNoise = (float)(rng.NextDouble() * 2.0 - 1.0);
+                float noiseMod = Mathf.Sin(2f * Mathf.PI * 18f * t) * 0.3f + 0.7f;
+
+                // Impacto no meio quando a muralha se firma
+                float wallImpact = Mathf.Exp(-18f * Mathf.Abs(t - 0.28f)) * 0.8f;
+                float overallEnv = (progress < 0.25f) ? (progress / 0.25f) : Mathf.Exp(-4.5f * (progress - 0.25f));
+
+                float combined = (rumble + rumbleSub + crunchNoise * noiseMod * 0.4f) * overallEnv
+                               + (crunchNoise * 0.5f + Mathf.Sin(2f * Mathf.PI * 60f * t)) * wallImpact;
+
+                data[i] = Mathf.Clamp(combined * 1.25f, -1f, 1f) * 0.85f;
+            }
+
+            AudioClip clip = AudioClip.Create("GeneratedBossStoneWall", totalSamples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
         public static byte[] ConvertClipToWav(AudioClip clip)
         {
             int samples = clip.samples;

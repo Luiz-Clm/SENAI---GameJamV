@@ -23,6 +23,7 @@ Este arquivo serve para sincronizar o contexto do projeto entre computadores e c
    - 6 quadrinhos usando as imagens em `Assets/Menu e HQ'S/1.png` até `6.png`.
    - **Fade In** da imagem do quadrinho ao iniciar.
    - **Caixa de narração** inferior com **efeito Máquina de Escrever (Typewriter)**.
+   - Suporte a **Fonte personalizada** (campo `Narrator Font Asset` no Inspector ou direto no `StoryText`).
    - Cada quadrinho tem texto padrão configurável: `"Coloque seu texto aqui"` (editável no Inspector).
    - **Tempo de 10 segundos** de exibição antes de fazer **Fade Out** e ir para o próximo quadrinho.
    - Ao terminar o 6º quadrinho, faz transição e carrega a cena do jogo (`Fase.unity`).
@@ -34,15 +35,24 @@ Este arquivo serve para sincronizar o contexto do projeto entre computadores e c
    - Toca som de pulo em ambas as ações.
 
 4. **Sistema de Áudio (`Assets/Scripts/AudioManager.cs` e `ProceduralAudioGenerator.cs`)**:
-   - Música tema do menu em loop (gerada em `Assets/Audio/MenuMusic.wav`).
-   - Som de clique nos botões (`ButtonClick.wav`).
-   - Som de máquina de escrever a cada caractere digitado (`TypewriterClick.wav`).
-   - Som ao pular/avançar tela (`SkipSound.wav`).
-   - Fallback procedural caso os arquivos não estejam atribuídos.
+   - **Áudios de Menu e História:**
+     - Música tema do menu em loop (`MenuMusic.wav`).
+     - Som de clique nos botões (`ButtonClick.wav`).
+     - Som de máquina de escrever (`TypewriterClick.wav`).
+     - Som ao pular/avançar tela (`SkipSound.wav`).
+   - **Efeitos Sonoros de Combate e Gameplay:**
+     - `PlayerFireShot.wav`: Tiro de fogo da jogadora (combustão mágica e projeção quente).
+     - `PlayerIceShot.wav`: Tiro de gelo da jogadora (ressonância cristalina vítrea com estilhaço de gelo).
+     - `BatFireball.wav`: Tiro do morcego de fogo (cuspe/sopro ágil de criatura com tremolo alado).
+     - `BossRockThrow.wav`: Arremesso de rochas do Boss (peso maciço cortando o ar e atrito mineral).
+     - `BossStoneWall.wav`: Parede de pedra do Boss (tremor de terra sísmico com erupção e choque de rochas).
+   - Todos gerados proceduralmente sem dependências externas e prontos para uso em `Assets/Audio/`.
 
 5. **Ferramenta de Criação Automática no Unity (`Assets/Scripts/Editor/MenuSetupHelper.cs`)**:
-   - Menu no topo do Unity: `Tools -> SpellGlide -> 2. Criar Cena de Menu e HQ Completa` (Recria a cena completa do zero).
+   - Menu no topo do Unity: `Tools -> SpellGlide -> 1. Gerar/Atualizar Arquivos de Áudio (WAV)` (Gera ou atualiza todos os 9 arquivos WAV com 1 clique).
+   - Menu no topo do Unity: `Tools -> SpellGlide -> 2. Criar Cena de Menu e HQ Completa` (Recria a cena completa do zero com áudio integrado).
    - Menu no topo do Unity: `Tools -> SpellGlide -> 3. Atualizar Painel de Opções na Cena Aberta` (Atualiza instantaneamente apenas o painel de opções e controles na cena atual sem precisar recriar tudo).
+   - Menu no topo do Unity: `Tools -> SpellGlide -> 4. Restaurar Fundo Padrão do Narrador na Cena Aberta` (Restaura o fundo padrão escuro da caixa de texto do narrador).
    - Monta a cena inteira ou atualiza o painel com 1 clique e salva em `Assets/Scenes/Menu.unity`.
 
 ---

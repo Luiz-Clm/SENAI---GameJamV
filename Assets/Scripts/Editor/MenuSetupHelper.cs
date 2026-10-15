@@ -27,8 +27,13 @@ namespace SpellGlide.Editor
             }
         }
 
-        [MenuItem("Tools/SpellGlide/1. Gerar Arquivos de Áudio (WAV)")]
-        public static void EnsureAudioFilesExist()
+        [MenuItem("Tools/SpellGlide/1. Gerar/Atualizar Arquivos de Áudio (WAV)")]
+        public static void GenerateAudioFilesFromMenu()
+        {
+            EnsureAudioFilesExist(forceRegenerate: true, showDialog: true);
+        }
+
+        public static void EnsureAudioFilesExist(bool forceRegenerate = false, bool showDialog = false)
         {
             string audioDir = Path.Combine(Application.dataPath, "Audio");
             if (!Directory.Exists(audioDir))
@@ -40,34 +45,74 @@ namespace SpellGlide.Editor
             string clickPath = Path.Combine(audioDir, "ButtonClick.wav");
             string typewriterPath = Path.Combine(audioDir, "TypewriterClick.wav");
             string skipPath = Path.Combine(audioDir, "SkipSound.wav");
+            string fireShotPath = Path.Combine(audioDir, "PlayerFireShot.wav");
+            string iceShotPath = Path.Combine(audioDir, "PlayerIceShot.wav");
+            string batFireballPath = Path.Combine(audioDir, "BatFireball.wav");
+            string bossRockPath = Path.Combine(audioDir, "BossRockThrow.wav");
+            string bossWallPath = Path.Combine(audioDir, "BossStoneWall.wav");
 
             bool createdAny = false;
 
-            if (!File.Exists(musicPath))
+            if (forceRegenerate || !File.Exists(musicPath))
             {
                 AudioClip clip = ProceduralAudioGenerator.CreateMenuMusic();
                 File.WriteAllBytes(musicPath, ProceduralAudioGenerator.ConvertClipToWav(clip));
                 createdAny = true;
             }
 
-            if (!File.Exists(clickPath))
+            if (forceRegenerate || !File.Exists(clickPath))
             {
                 AudioClip clip = ProceduralAudioGenerator.CreateClickSound();
                 File.WriteAllBytes(clickPath, ProceduralAudioGenerator.ConvertClipToWav(clip));
                 createdAny = true;
             }
 
-            if (!File.Exists(typewriterPath))
+            if (forceRegenerate || !File.Exists(typewriterPath))
             {
                 AudioClip clip = ProceduralAudioGenerator.CreateTypewriterSound();
                 File.WriteAllBytes(typewriterPath, ProceduralAudioGenerator.ConvertClipToWav(clip));
                 createdAny = true;
             }
 
-            if (!File.Exists(skipPath))
+            if (forceRegenerate || !File.Exists(skipPath))
             {
                 AudioClip clip = ProceduralAudioGenerator.CreateSkipSound();
                 File.WriteAllBytes(skipPath, ProceduralAudioGenerator.ConvertClipToWav(clip));
+                createdAny = true;
+            }
+
+            if (forceRegenerate || !File.Exists(fireShotPath))
+            {
+                AudioClip clip = ProceduralAudioGenerator.CreatePlayerFireShotSound();
+                File.WriteAllBytes(fireShotPath, ProceduralAudioGenerator.ConvertClipToWav(clip));
+                createdAny = true;
+            }
+
+            if (forceRegenerate || !File.Exists(iceShotPath))
+            {
+                AudioClip clip = ProceduralAudioGenerator.CreatePlayerIceShotSound();
+                File.WriteAllBytes(iceShotPath, ProceduralAudioGenerator.ConvertClipToWav(clip));
+                createdAny = true;
+            }
+
+            if (forceRegenerate || !File.Exists(batFireballPath))
+            {
+                AudioClip clip = ProceduralAudioGenerator.CreateBatFireballSound();
+                File.WriteAllBytes(batFireballPath, ProceduralAudioGenerator.ConvertClipToWav(clip));
+                createdAny = true;
+            }
+
+            if (forceRegenerate || !File.Exists(bossRockPath))
+            {
+                AudioClip clip = ProceduralAudioGenerator.CreateBossRockThrowSound();
+                File.WriteAllBytes(bossRockPath, ProceduralAudioGenerator.ConvertClipToWav(clip));
+                createdAny = true;
+            }
+
+            if (forceRegenerate || !File.Exists(bossWallPath))
+            {
+                AudioClip clip = ProceduralAudioGenerator.CreateBossStoneWallSound();
+                File.WriteAllBytes(bossWallPath, ProceduralAudioGenerator.ConvertClipToWav(clip));
                 createdAny = true;
             }
 
@@ -75,6 +120,19 @@ namespace SpellGlide.Editor
             {
                 AssetDatabase.Refresh();
                 Debug.Log("[SpellGlide] Arquivos de áudio (.wav) gerados com sucesso em Assets/Audio/!");
+            }
+
+            if (showDialog)
+            {
+                EditorUtility.DisplayDialog("SpellGlide - Áudios Gerados!",
+                    "Todos os 9 arquivos de áudio (.wav) foram gerados com sucesso em Assets/Audio/:\n\n" +
+                    "• PlayerFireShot.wav (Tiro de Fogo do Jogador)\n" +
+                    "• PlayerIceShot.wav (Tiro de Gelo do Jogador)\n" +
+                    "• BatFireball.wav (Tiro do Morcego de Fogo)\n" +
+                    "• BossRockThrow.wav (Ataque de Rocha do Boss)\n" +
+                    "• BossStoneWall.wav (Parede de Pedra do Boss)\n" +
+                    "• MenuMusic.wav, ButtonClick.wav, TypewriterClick.wav, SkipSound.wav",
+                    "Sensacional!");
             }
         }
 
@@ -121,6 +179,53 @@ namespace SpellGlide.Editor
 
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             EditorUtility.DisplayDialog("SpellGlide", "Painel de Opções atualizado com sucesso com os novos controles na cena!", "Ótimo!");
+        }
+
+        [MenuItem("Tools/SpellGlide/4. Restaurar Fundo Padrão do Narrador na Cena Aberta")]
+        public static void RestoreDefaultNarratorBoxInOpenScene()
+        {
+            Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+            if (canvas == null)
+            {
+                EditorUtility.DisplayDialog("SpellGlide", "Nenhum Canvas encontrado na cena aberta atualmente!", "OK");
+                return;
+            }
+
+            Transform textBoxTr = canvas.transform.Find("ComicIntroPanel/ComicContentGroup/TextBoxBackdrop");
+            if (textBoxTr == null)
+            {
+                foreach (var img in canvas.GetComponentsInChildren<Image>(true))
+                {
+                    if (img.gameObject.name == "TextBoxBackdrop")
+                    {
+                        textBoxTr = img.transform;
+                        break;
+                    }
+                }
+            }
+
+            if (textBoxTr == null)
+            {
+                EditorUtility.DisplayDialog("SpellGlide", "Objeto 'TextBoxBackdrop' não encontrado na cena!", "OK");
+                return;
+            }
+
+            Image textBoxImg = textBoxTr.GetComponent<Image>();
+            textBoxImg.sprite = null;
+            textBoxImg.color = new Color(0.05f, 0.05f, 0.08f, 0.85f);
+
+            Transform storyTextTr = textBoxTr.Find("StoryText");
+            if (storyTextTr != null)
+            {
+                RectTransform storyRt = storyTextTr.GetComponent<RectTransform>();
+                storyRt.anchorMin = new Vector2(0.03f, 0.1f);
+                storyRt.anchorMax = new Vector2(0.97f, 0.9f);
+                storyRt.offsetMin = Vector2.zero;
+                storyRt.offsetMax = Vector2.zero;
+            }
+
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            EditorUtility.DisplayDialog("SpellGlide", "O fundo padrão e original da caixa do narrador foi restaurado com sucesso!", "Perfeito!");
         }
 
         public static void CreateCompleteMenuScene(bool showDialog = false)
