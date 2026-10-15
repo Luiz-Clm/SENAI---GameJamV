@@ -7,7 +7,7 @@ EditorBuildSettings:
   m_Scenes:
   - enabled: 1
     path: Assets/Scenes/Menu.unity
-    guid: 
+    guid: 0d92ff8952ba4f7419dc0d886c32ef02
   - enabled: 1
     path: Assets/Scenes/Fase.unity
     guid: bced5108419e56240b572aba55d11ba0

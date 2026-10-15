@@ -159,6 +159,7 @@ namespace SpellGlide
             }
         }
 
+
         public void SetMusicVolume(float val)
         {
             musicVolume = Mathf.Clamp01(val);
