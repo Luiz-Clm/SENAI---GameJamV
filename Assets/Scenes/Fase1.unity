@@ -1738,7 +1738,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &265876992
 RectTransform:
   m_ObjectHideFlags: 0
@@ -11436,6 +11436,7 @@ MonoBehaviour:
   gameOverPanel: {fileID: 1605575756}
   victoryPanel: {fileID: 265876991}
   evolutionPanel: {fileID: 174841601}
+  bgmManager: {fileID: 0}
   currentPhase: 1
   maxUnlockedPhase: 1
 --- !u!4 &1777938156
@@ -11735,6 +11736,54 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1 &1857939565
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1857939567}
+  - component: {fileID: 1857939566}
+  m_Layer: 0
+  m_Name: Bgm Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1857939566
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1857939565}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5088b12f7d047848ef6635154235246, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Audio.BGMManager
+  normalMusic: {fileID: 8300000, guid: c16051f91dca66640aa33cecdaeedec1, type: 3}
+  bossMusic: {fileID: 8300000, guid: 24754928616b5b647a2a0764250d7a2e, type: 3}
+  musicVolume: 0.6
+  crossfadeDuration: 1.2
+--- !u!4 &1857939567
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1857939565}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 563.2299, y: 382.16382, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1873181546
 GameObject:
   m_ObjectHideFlags: 0
@@ -12951,3 +13000,4 @@ SceneRoots:
   - {fileID: 1159367623}
   - {fileID: 187510}
   - {fileID: 122176173}
+  - {fileID: 1857939567}
