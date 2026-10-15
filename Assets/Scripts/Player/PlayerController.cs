@@ -41,6 +41,11 @@ namespace WitchShmup.Player
             rb.gravityScale = 0f;
             rb.freezeRotation = true;
             rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
+            if (GetComponent<PlayerVisualController>() == null)
+            {
+                gameObject.AddComponent<PlayerVisualController>();
+            }
         }
 
         private void Update()

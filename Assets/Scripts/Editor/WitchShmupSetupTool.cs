@@ -52,12 +52,33 @@ namespace WitchShmup.Editor
             EnsureSpriteImportSettings("BossCore.png", 16f);
             EnsureSpriteImportSettings("Staff_Basic.png", 16f);
             EnsureSpriteImportSettings("Staff_Evolved.png", 16f);
+            EnsureSpriteImportSettings("Parallax.png", 16f, true);
+            EnsureSpriteImportSettings("Parallax 1.png", 16f, true);
+            EnsureSpriteImportSettings("Parallax 2.png", 16f, true);
+            EnsureSpriteImportSettings("MAGOidle.png", 16f);
+            EnsureSpriteImportSettings("MAGOattak.png", 16f);
+            EnsureSpriteImportSettings("bola de Fogo.png", 20f);
+            EnsureSpriteImportSettings("ataqueMAgo.png", 20f);
 
             AssetDatabase.Refresh();
 
             // 1. Projéteis do Player
-            Sprite iceBulletSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/IceBullet.png");
-            Sprite fireBulletSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/FireBullet.png");
+            Sprite iceBulletSprite = null;
+            foreach (var obj in AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/ataqueMAgo.png"))
+            {
+                if (obj is Sprite s) { iceBulletSprite = s; break; }
+            }
+            if (iceBulletSprite == null) iceBulletSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/ataqueMAgo.png");
+            if (iceBulletSprite == null) iceBulletSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/IceBullet.png");
+
+            Sprite fireBulletSprite = null;
+            foreach (var obj in AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/bola de Fogo.png"))
+            {
+                if (obj is Sprite s) { fireBulletSprite = s; break; }
+            }
+            if (fireBulletSprite == null) fireBulletSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/bola de Fogo.png");
+            if (fireBulletSprite == null) fireBulletSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/FireBullet.png");
+
             CreateProjectilePrefab("Projectile_Ice", iceBulletSprite, ElementType.Ice, 18f, 1.2f, 2, true);
             CreateProjectilePrefab("Projectile_Fire", fireBulletSprite, ElementType.Fire, 14f, 2.5f, 1, true);
 
@@ -196,6 +217,15 @@ namespace WitchShmup.Editor
 
                 var wrap = repeat ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
                 if (importer.wrapMode != wrap) { importer.wrapMode = wrap; needReimport = true; }
+
+                var settings = new TextureImporterSettings();
+                importer.ReadTextureSettings(settings);
+                if (repeat && settings.spriteMeshType != SpriteMeshType.FullRect)
+                {
+                    settings.spriteMeshType = SpriteMeshType.FullRect;
+                    importer.SetTextureSettings(settings);
+                    needReimport = true;
+                }
 
                 if (needReimport) importer.SaveAndReimport();
             }
@@ -439,9 +469,25 @@ namespace WitchShmup.Editor
             parallaxCtrl.SetScrollSpeed(3.0f);
 
             Sprite brickSprite = null;
-            foreach (var obj in AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/Parallax.png"))
+            foreach (var obj in AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/Parallax 2.png"))
             {
                 if (obj is Sprite s) { brickSprite = s; break; }
+            }
+            if (brickSprite == null) brickSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Parallax 2.png");
+            if (brickSprite == null)
+            {
+                foreach (var obj in AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/Parallax 1.png"))
+                {
+                    if (obj is Sprite s) { brickSprite = s; break; }
+                }
+            }
+            if (brickSprite == null) brickSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Parallax 1.png");
+            if (brickSprite == null)
+            {
+                foreach (var obj in AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/Parallax.png"))
+                {
+                    if (obj is Sprite s) { brickSprite = s; break; }
+                }
             }
             if (brickSprite == null) brickSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Parallax.png");
             if (brickSprite == null) brickSprite = Resources.Load<Sprite>("Sprites/Parallax");
@@ -521,14 +567,6 @@ namespace WitchShmup.Editor
             playerObj.transform.position = new Vector3(-6f, 0f, 0f);
 
             var sr = playerObj.AddComponent<SpriteRenderer>();
-            Sprite wizardSprite = null;
-            var magoAssets = AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/MAGO.png");
-            foreach (var asset in magoAssets)
-            {
-                if (asset is Sprite s) { wizardSprite = s; break; }
-            }
-            if (wizardSprite == null) wizardSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Wizard.png");
-            sr.sprite = wizardSprite;
             sr.sortingOrder = 10;
 
             var rb = playerObj.AddComponent<Rigidbody2D>();
@@ -560,9 +598,41 @@ namespace WitchShmup.Editor
             // Som de tiro do mago
             AudioClip shootClip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{SpritesPath}/Tiro.Teste.wav");
 
+            // Animação do Mago: Idle e Ataque
+            var visualCtrl = playerObj.AddComponent<PlayerVisualController>();
+            List<Sprite> idleList = new List<Sprite>();
+            foreach (var a in AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/MAGOidle.png"))
+            {
+                if (a is Sprite s) idleList.Add(s);
+            }
+
+            List<Sprite> attackList = new List<Sprite>();
+            foreach (var a in AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/MAGOattak.png"))
+            {
+                if (a is Sprite s) attackList.Add(s);
+            }
+
+            if (idleList.Count > 0 && attackList.Count > 0)
+            {
+                visualCtrl.SetFrames(idleList.ToArray(), attackList.ToArray());
+                sr.sprite = idleList[0];
+            }
+            else
+            {
+                Sprite fallbackSprite = null;
+                var magoFallbackAssets = AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/MAGO.png");
+                foreach (var asset in magoFallbackAssets)
+                {
+                    if (asset is Sprite s) { fallbackSprite = s; break; }
+                }
+                if (fallbackSprite == null) fallbackSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Wizard.png");
+                sr.sprite = fallbackSprite;
+            }
+
             SerializedObject so = new SerializedObject(shooting);
             so.FindProperty("iceConfig.projectilePrefab").objectReferenceValue = icePrefab;
             so.FindProperty("fireConfig.projectilePrefab").objectReferenceValue = firePrefab;
+            so.FindProperty("isFireUnlocked").boolValue = true;
 
             // Vincula som de tiro a ambos os elementos
             if (shootClip != null)

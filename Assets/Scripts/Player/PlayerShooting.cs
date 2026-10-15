@@ -51,7 +51,7 @@ namespace WitchShmup.Player
         [SerializeField] private Vector2 defaultMuzzleOffset = new Vector2(0.6f, 0f);
 
         [Header("Upgrades State")]
-        [SerializeField] private bool isFireUnlocked = false; // Começa apenas com gelo!
+        [SerializeField] private bool isFireUnlocked = true; // Tiro de Fogo liberado!
         [SerializeField] private int multiShotLevel = 0;       // 0 = 1 tiro, 1 = 2 tiros, 2 = 3 tiros
         [SerializeField] private float projectileSpeedMultiplier = 1f;
         [SerializeField] private int bonusPierce = 0;
@@ -67,6 +67,7 @@ namespace WitchShmup.Player
         private float nextFireTime = 0f;
         private bool isFiring = false;
 
+        public bool IsFiring => isFiring;
         public bool IsFireUnlocked => isFireUnlocked;
         public int MultiShotLevel => multiShotLevel;
         public bool IsDoubleShotUnlocked => multiShotLevel >= 1;

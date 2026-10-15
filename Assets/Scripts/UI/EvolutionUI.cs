@@ -2,1288 +2,724 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using WitchShmup.Core;
 
 namespace WitchShmup.UI
 {
+    /// <summary>
+    /// EvolutionUI — Árvore de Upgrades (Tab 1) + Evoluir Cajado (Tab 2).
+    ///
+    /// 10 nós:  vit → vel → foc → des → {esq: pel → ima → seg | dir: rap → dup → per}
+    ///
+    /// Estados visuais dos nós:
+    ///   Cinza   = bloqueado (requisito não atendido)
+    ///   Ciano   = disponível para comprar
+    ///   Rosa    = comprado
+    ///   Dourado = nível máximo
+    ///
+    /// Hover → anel colorido + card de detalhes à direita.
+    /// Click → seleciona + tenta comprar.
+    /// </summary>
+    [RequireComponent(typeof(Canvas))]
+    [RequireComponent(typeof(UnityEngine.UI.GraphicRaycaster))]
     public class EvolutionUI : MonoBehaviour
     {
-        [System.Serializable]
-        public class NodeConfig
+        // ─── Node data ────────────────────────────────────────────────────────
+        [Serializable]
+        public class NodeData
         {
             public string id;
-            public string name;
+            public string displayName;
             public string description;
-            public string requirementId;
-            public int maxLevel;
-            public int baseCost;
             public string effectText;
-            public string unitText;
-            public float valuePerLevel;
-            public Vector2 htmlPos; // Coordenadas originais do HTML (560x500)
+            public string requirementId;
+            public int    maxLevel;
+            public int    cost;
             public string iconText;
+            public Vector2 htmlPos;   // coordenadas no espaço HTML (560×500)
 
-            [HideInInspector] public Button nodeButton;
-            [HideInInspector] public Image nodeBorder;
-            [HideInInspector] public Image nodeFill;
-            [HideInInspector] public TextMeshProUGUI nodeIconText;
-            [HideInInspector] public TextMeshProUGUI nodeLevelText;
-            [HideInInspector] public GameObject selectionRing;
+            // runtime refs
+            [NonSerialized] public GameObject      nodeGo;
+            [NonSerialized] public Image           nodeBg;
+            [NonSerialized] public Image           nodeRing;
+            [NonSerialized] public TextMeshProUGUI levelLabel;
         }
 
-        [Header("Tabs")]
-        [SerializeField] private GameObject tabTreeContent;
-        [SerializeField] private GameObject tabStaffContent;
-        [SerializeField] private Button tabTreeButton;
-        [SerializeField] private Button tabStaffButton;
-        [SerializeField] private Image tabTreeButtonBg;
-        [SerializeField] private Image tabStaffButtonBg;
+        // ─── Colours ──────────────────────────────────────────────────────────
+        static Color C_BG      = new Color(0.05f, 0.04f, 0.09f, 0.97f);
+        static Color C_PANEL   = new Color(0.11f, 0.08f, 0.19f, 1f);
+        static Color C_DARK    = new Color(0.07f, 0.05f, 0.12f, 1f);
+        static Color C_LINE    = new Color(0.29f, 0.21f, 0.47f, 1f);
+        static Color C_LOCKED  = new Color(0.14f, 0.11f, 0.20f, 1f);
+        static Color C_AVAIL   = new Color(0.37f, 0.90f, 1.00f, 1f);
+        static Color C_BOUGHT  = new Color(1.00f, 0.36f, 0.56f, 1f);
+        static Color C_GOLD    = new Color(1.00f, 0.78f, 0.23f, 1f);
+        static Color C_MUT     = new Color(0.65f, 0.58f, 0.80f, 1f);
+        static Color C_CARD    = new Color(0.91f, 0.84f, 0.97f, 1f);
+        static Color C_DARK2   = new Color(0.16f, 0.09f, 0.25f, 1f);
 
-        [Header("Header Elements")]
-        [SerializeField] private TextMeshProUGUI skillPointsText;
-        [SerializeField] private Button closeButton;
-
-        [Header("Detail Card Elements (Tab 1)")]
-        [SerializeField] private TextMeshProUGUI detailNameText;
-        [SerializeField] private TextMeshProUGUI detailCostText;
-        [SerializeField] private TextMeshProUGUI detailDescText;
-        [SerializeField] private TextMeshProUGUI detailEffectText;
-        [SerializeField] private TextMeshProUGUI detailTotalText;
-        [SerializeField] private TextMeshProUGUI detailStatusText;
-        [SerializeField] private Button buyButton;
-        [SerializeField] private TextMeshProUGUI buyButtonText;
-        [SerializeField] private Transform pipsContainer;
-
-        [Header("Staff Evolution Elements (Tab 2)")]
-        [SerializeField] private TextMeshProUGUI currentStaffNameText;
-        [SerializeField] private TextMeshProUGUI currentStaffStatText;
-        [SerializeField] private Image currentStaffImage;
-        [SerializeField] private TextMeshProUGUI nextStaffNameText;
-        [SerializeField] private TextMeshProUGUI nextStaffStatText;
-        [SerializeField] private Image nextStaffImage;
-        [SerializeField] private GameObject nextStaffBox;
-        [SerializeField] private TextMeshProUGUI staffNeedSummaryText;
-        [SerializeField] private TextMeshProUGUI fireHeartCountText;
-        [SerializeField] private Transform fireHeartSegmentsContainer;
-        [SerializeField] private TextMeshProUGUI bossCoreCountText;
-        [SerializeField] private Transform bossCoreSegmentsContainer;
-        [SerializeField] private Button evolveStaffButton;
-        [SerializeField] private TextMeshProUGUI evolveStaffButtonText;
-        [SerializeField] private TextMeshProUGUI staffMessageText;
-
-        [Header("Nodes")]
-        [SerializeField] private List<NodeConfig> nodes = new List<NodeConfig>();
-
-        // Cores oficiais da paleta pixel art do HTML
-        private readonly Color ColorBgDark   = new Color(0.05f, 0.04f, 0.09f, 0.96f); // #0d0916
-        private readonly Color ColorPanel    = new Color(0.11f, 0.08f, 0.19f, 1f);    // #1d1530
-        private readonly Color ColorLine     = new Color(0.29f, 0.21f, 0.47f, 1f);    // #4b3677
-        private readonly Color ColorLocked   = new Color(0.14f, 0.11f, 0.20f, 1f);    // #241c34
-        private readonly Color ColorOpen     = new Color(0.37f, 0.90f, 1.0f, 1f);     // #5ee6ff Ciano
-        private readonly Color ColorBought   = new Color(1.0f, 0.36f, 0.56f, 1f);     // #ff5d8f Rosa
-        private readonly Color ColorMaxed    = new Color(1.0f, 0.78f, 0.23f, 1f);     // #ffc83a Dourado
-
-        private string selectedNodeId = "vit";
-        private bool isStaffTabActive = false;
-
-        private void Awake()
+        // ─── Node definitions ─────────────────────────────────────────────────
+        readonly List<NodeData> NODES = new List<NodeData>
         {
-            EnsureDefaultNodes();
-            BuildFullHDHierarchyIfNeeded();
-            HookListeners();
+            // Coluna central
+            new NodeData { id="vit", displayName="Vitalidade",      description="Seu corpo de mago aguenta mais pancada na masmorra.",           effectText="Mais 10 de vida",              requirementId=null,  maxLevel=1, cost=2, iconText="♥", htmlPos=new Vector2(280,440) },
+            new NodeData { id="vel", displayName="Vassoura Veloz",   description="A vassoura corta o ar mais rápido e fica fácil desviar dos tiros.", effectText="Mais 8% de velocidade",   requirementId="vit", maxLevel=1, cost=2, iconText="⚡", htmlPos=new Vector2(280,370) },
+            new NodeData { id="foc", displayName="Foco Arcano",      description="O cristal do cajado brilha mais forte e seus tiros machucam mais.", effectText="Mais 1 de dano",          requirementId="vel", maxLevel=1, cost=2, iconText="⚔", htmlPos=new Vector2(280,300) },
+            new NodeData { id="des", displayName="Despertar Arcano", description="Libera os dois caminhos: proteção e ofensiva.",                    effectText="Mais 5 de vida e 1 de dano", requirementId="foc", maxLevel=1, cost=2, iconText="★", htmlPos=new Vector2(280,230) },
+            // Ramo Esquerdo (Defesa)
+            new NodeData { id="pel", displayName="Pele de Pedra",    description="Você aprendeu um truque com o golem: pancadas doem menos.",       effectText="8% menos dano recebido",       requirementId="des", maxLevel=1, cost=2, iconText="🛡", htmlPos=new Vector2(175,160) },
+            new NodeData { id="ima", displayName="Ímã de Almas",     description="Os skill points dropados voam até você de mais longe.",            effectText="Mais 30% de alcance dos drops", requirementId="pel", maxLevel=1, cost=2, iconText="🧲", htmlPos=new Vector2(115,100) },
+            new NodeData { id="seg", displayName="Segundo Fôlego",   description="Quando a vida zera, você volta uma vez com um pouco de vida.",     effectText="Revive 1x com 30% de vida",    requirementId="ima", maxLevel=1, cost=5, iconText="☠", htmlPos=new Vector2( 55, 60) },
+            // Ramo Direito (Ofensiva)
+            new NodeData { id="rap", displayName="Tiro Rápido",      description="O cajado dispara com mais frequência.",                            effectText="Mais 10% de cadência",          requirementId="des", maxLevel=1, cost=2, iconText="🏹", htmlPos=new Vector2(385,160) },
+            new NodeData { id="dup", displayName="Tiro Duplo",       description="Cada disparo solta uma magia a mais.",                             effectText="Mais 1 projétil por disparo",   requirementId="rap", maxLevel=1, cost=4, iconText="✦", htmlPos=new Vector2(445,100) },
+            new NodeData { id="per", displayName="Tiro Perfurante",  description="As magias atravessam o primeiro inimigo e acertam o de trás.",    effectText="Tiros atravessam 1 inimigo",    requirementId="dup", maxLevel=1, cost=5, iconText="🔥", htmlPos=new Vector2(505, 60) },
+        };
+
+        // ─── Runtime UI refs ──────────────────────────────────────────────────
+        GameObject tabTreeContent, tabStaffContent;
+        Button     tabTreeBtn, tabStaffBtn;
+        Image      tabTreeBtnBg, tabStaffBtnBg;
+        Button     closeBtn;
+        TextMeshProUGUI spText;
+
+        // Card detalhes (Tab 1)
+        TextMeshProUGUI cardName, cardCost, cardDesc, cardEffect, cardStatus;
+        Button          buyBtn;
+        TextMeshProUGUI buyBtnLabel;
+
+        // Staff (Tab 2)
+        TextMeshProUGUI curStaffName, curStaffStat;
+        Image           curStaffImg;
+        TextMeshProUGUI nxtStaffName, nxtStaffStat;
+        Image           nxtStaffImg;
+        GameObject      nxtStaffBox;
+        TextMeshProUGUI needSummary, batCountTxt, coreCountTxt, staffMsg, evolveBtnLabel;
+        Button          evolveBtn;
+        Transform       batSegCont, coreSegCont;
+
+        string selectedId   = "vit";
+        bool   staffTabOpen = false;
+        bool   built        = false;
+
+        // ─── Lifecycle ────────────────────────────────────────────────────────
+        void Awake()   { EnsureBuilt(); }
+        void Start()   { EnsureBuilt(); HookAll(); RefreshUI(); }
+        void OnEnable(){ EnsureBuilt(); HookAll(); RefreshUI(); }
+
+        void EnsureBuilt() { if (built) return; Build(); built = true; }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // BUILD
+        // ═════════════════════════════════════════════════════════════════════
+        void Build()
+        {
+            // Destroy old children
+            for (int i = transform.childCount - 1; i >= 0; i--)
+                Destroy(transform.GetChild(i).gameObject);
+
+            // ── Configure the Canvas that [RequireComponent] guarantees exists ──
+            // overrideSorting breaks free from parent HUD_Canvas that has scale=(0,0,0).
+            var selfCanvas = GetComponent<Canvas>();
+            selfCanvas.overrideSorting = true;
+            selfCanvas.sortingOrder    = 100;
+
+            // Make this RectTransform fill the whole screen
+            var selfRt = GetComponent<RectTransform>();
+            if (selfRt)
+            {
+                selfRt.anchorMin       = Vector2.zero;
+                selfRt.anchorMax       = Vector2.one;
+                selfRt.sizeDelta       = Vector2.zero;
+                selfRt.anchoredPosition = Vector2.zero;
+                selfRt.localScale      = Vector3.one;   // ensure no inherited zero-scale
+            }
+            Img(gameObject, C_BG);
+
+            // Central frame — fullscreen (anchors 0→1, delta 0) with a small inset margin
+            var frame = Rect("Frame", transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(-80, -60));
+            Img(frame, C_PANEL);
+
+            BuildHeader(frame.transform);
+
+            // Tab 1
+            tabTreeContent  = Rect("Tab_Tree",  frame.transform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-48,-110));
+            SetAnchoredPos(tabTreeContent, new Vector2(0,-44));
+            BuildTreeTab(tabTreeContent.transform);
+
+            // Tab 2
+            tabStaffContent = Rect("Tab_Staff", frame.transform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-48,-110));
+            SetAnchoredPos(tabStaffContent, new Vector2(0,-44));
+            BuildStaffTab(tabStaffContent.transform);
+            tabStaffContent.SetActive(false);
         }
 
-        private void Start()
+        // ─── Header ──────────────────────────────────────────────────────────
+        void BuildHeader(Transform parent)
         {
-            EnsureDefaultNodes();
-            BuildFullHDHierarchyIfNeeded();
-            HookListeners();
-            RefreshUI();
+            var hdr = Rect("Header", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-48,62));
+            SetAnchoredPos(hdr, new Vector2(0,-16));
+
+            // Tab tree
+            var bt = Rect("Btn_Tree",  hdr.transform, new Vector2(0,0.5f), new Vector2(0,0.5f), new Vector2(0,0.5f), new Vector2(310,54));
+            tabTreeBtnBg = Img(bt, C_BOUGHT);
+            tabTreeBtn   = bt.AddComponent<Button>();
+            Txt("Text", bt.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.one, "ÁRVORE DE UPGRADES", 18, Color.white, FontStyles.Bold);
+
+            // Tab staff
+            var bs = Rect("Btn_Staff", hdr.transform, new Vector2(0,0.5f), new Vector2(0,0.5f), new Vector2(0,0.5f), new Vector2(260,54));
+            SetAnchoredPos(bs, new Vector2(324,0));
+            tabStaffBtnBg = Img(bs, C_LINE);
+            tabStaffBtn   = bs.AddComponent<Button>();
+            Txt("Text", bs.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.one, "EVOLUIR CAJADO", 18, Color.white, FontStyles.Bold);
+
+            // Skill points
+            var spBox = Rect("SP_Box", hdr.transform, new Vector2(1,0.5f), new Vector2(1,0.5f), new Vector2(1,0.5f), new Vector2(200,54));
+            SetAnchoredPos(spBox, new Vector2(-60,0));
+            Img(spBox, new Color(0.04f,0.03f,0.06f,1f));
+            spText = Txt("SP", spBox.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.one, "SP: 0", 20, C_GOLD, FontStyles.Bold);
+            spText.alignment = TextAlignmentOptions.Center;
+
+            // Close
+            var clo = Rect("Btn_Close", hdr.transform, new Vector2(1,0.5f), new Vector2(1,0.5f), new Vector2(1,0.5f), new Vector2(54,54));
+            Img(clo, C_BOUGHT);
+            closeBtn = clo.AddComponent<Button>();
+            Txt("X", clo.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.one, "✕", 26, Color.white, FontStyles.Bold);
         }
 
-        private void OnEnable()
+        // ─── Tab 1: Tree ──────────────────────────────────────────────────────
+        void BuildTreeTab(Transform parent)
         {
-            EnsureDefaultNodes();
-            HookListeners();
-            RefreshUI();
+            // Subtitle
+            var sub = Txt("Sub", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(0,28),
+                "Inimigos dropam skill points. Passe o mouse num nó e clique para desbloquear.",
+                18, C_MUT, FontStyles.Normal);
+            sub.alignment = TextAlignmentOptions.Center;
+
+            // Left: tree canvas (0..58% width)
+            var treeBox = Rect("TreeCanvas", parent, Vector2.zero, new Vector2(0.57f,1), Vector2.zero, new Vector2(0,-34));
+            Img(treeBox, C_DARK);
+
+            // Right: detail card (60..100%)
+            var card = Rect("Card", parent, new Vector2(0.61f,0), new Vector2(1,1), new Vector2(0,0), new Vector2(0,0));
+            Img(card, C_CARD);
+            BuildDetailCard(card.transform);
+
+            // Lines behind nodes
+            var linesRoot = Rect("Lines", treeBox.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), Vector2.zero);
+            foreach (var n in NODES)
+            {
+                if (string.IsNullOrEmpty(n.requirementId)) continue;
+                var req = GetNode(n.requirementId);
+                if (req == null) continue;
+                DrawLine(linesRoot.transform, HtmlToCanvas(req.htmlPos), HtmlToCanvas(n.htmlPos));
+            }
+
+            // Nodes
+            foreach (var n in NODES)
+            {
+                Vector2 pos = HtmlToCanvas(n.htmlPos);
+
+                var nodeGo = Rect($"Node_{n.id}", treeBox.transform, new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(68,68));
+                SetAnchoredPos(nodeGo, pos);
+                n.nodeGo = nodeGo;
+
+                // Background
+                n.nodeBg = Img(nodeGo, C_LOCKED);
+
+                // Hover ring (larger, behind bg via SetAsFirstSibling)
+                var ringGo = Rect("Ring", nodeGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), new Vector2(12,12));
+                n.nodeRing = Img(ringGo, new Color(C_AVAIL.r,C_AVAIL.g,C_AVAIL.b,0f));
+                ringGo.transform.SetAsFirstSibling();
+
+                // Icon
+                var icon = Txt("Icon", nodeGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), new Vector2(0,-6),
+                    n.iconText, 26, Color.white, FontStyles.Bold);
+                icon.alignment = TextAlignmentOptions.Center;
+
+                // Level label (below node)
+                n.levelLabel = Txt("Lv", nodeGo.transform, new Vector2(0,0), new Vector2(0,0), new Vector2(0.5f,0), new Vector2(68,22),
+                    "0/1", 13, C_MUT, FontStyles.Normal);
+                n.levelLabel.alignment = TextAlignmentOptions.Center;
+                SetAnchoredPos(n.levelLabel.gameObject, new Vector2(0,-42));
+
+                // Interaction via EventTrigger
+                var trig = nodeGo.AddComponent<EventTrigger>();
+                AddTrigger(trig, EventTriggerType.PointerEnter, _ => { SelectNode(n.id); PulseRing(n, true);  });
+                AddTrigger(trig, EventTriggerType.PointerExit,  _ =>                      PulseRing(n, false) );
+                AddTrigger(trig, EventTriggerType.PointerClick, _ => { SelectNode(n.id); TryBuy(n.id);        });
+            }
+        }
+
+        void BuildDetailCard(Transform parent)
+        {
+            // Node name
+            cardName = Txt("Name", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-16,40),
+                "Vitalidade", 26, C_DARK2, FontStyles.Bold);
+            SetAnchoredPos(cardName.gameObject, new Vector2(12,-12));
+
+            // Cost badge
+            var costBx = Rect("CostBox", parent, new Vector2(1,1), new Vector2(1,1), new Vector2(1,1), new Vector2(110,34));
+            SetAnchoredPos(costBx, new Vector2(-12,-12));
+            Img(costBx, new Color(0.04f,0.03f,0.06f,1f));
+            cardCost = Txt("CostTxt", costBx.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), Vector2.zero,
+                "CUSTO 2", 16, C_GOLD, FontStyles.Bold);
+            cardCost.alignment = TextAlignmentOptions.Center;
+
+            // "Descrição:"
+            var lblDesc = Txt("LblDesc", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-16,22),
+                "Descrição:", 16, C_MUT, FontStyles.Italic);
+            SetAnchoredPos(lblDesc.gameObject, new Vector2(12,-56));
+
+            // Description text
+            cardDesc = Txt("Desc", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-24,90),
+                "", 20, C_DARK2, FontStyles.Normal);
+            SetAnchoredPos(cardDesc.gameObject, new Vector2(12,-80));
+            cardDesc.textWrappingMode = TMPro.TextWrappingModes.Normal;
+
+            // Effect (rosa em negrito)
+            cardEffect = Txt("Effect", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-24,30),
+                "", 22, C_BOUGHT, FontStyles.Bold);
+            SetAnchoredPos(cardEffect.gameObject, new Vector2(12,-178));
+            cardEffect.alignment = TextAlignmentOptions.Center;
+
+            // Status message (above button)
+            cardStatus = Txt("Status", parent, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(-24,26),
+                "", 16, C_MUT, FontStyles.Italic);
+            SetAnchoredPos(cardStatus.gameObject, new Vector2(0,66));
+            cardStatus.alignment = TextAlignmentOptions.Center;
+
+            // Buy button
+            var btnGo = Rect("Btn_Buy", parent, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(-24,54));
+            SetAnchoredPos(btnGo, new Vector2(0,8));
+            Img(btnGo, C_BOUGHT);
+            buyBtn = btnGo.AddComponent<Button>();
+            buyBtnLabel = Txt("Label", btnGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), Vector2.zero,
+                "DESBLOQUEAR", 20, Color.white, FontStyles.Bold);
+            buyBtnLabel.alignment = TextAlignmentOptions.Center;
+            buyBtn.onClick.AddListener(() => TryBuy(selectedId));
+        }
+
+        // ─── Tab 2: Staff ─────────────────────────────────────────────────────
+        void BuildStaffTab(Transform parent)
+        {
+            // Title
+            var title = Txt("Title", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(0,48),
+                "EVOLUIR", 34, C_BOUGHT, FontStyles.Bold);
+            SetAnchoredPos(title.gameObject, new Vector2(0,-8));
+            title.alignment = TextAlignmentOptions.Center;
+
+            var sub = Txt("Sub", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(0,30),
+                "Troque drops dos inimigos por uma versão mais forte do seu cajado.", 20, C_MUT, FontStyles.Normal);
+            SetAnchoredPos(sub.gameObject, new Vector2(0,-58));
+            sub.alignment = TextAlignmentOptions.Center;
+
+            // ── Row: ATUAL | → | PRÓXIMO ──
+            float rowTop = -96f;
+
+            // Box Atual (left third)
+            var boxCur = Rect("Box_Cur", parent, new Vector2(0,1), new Vector2(0.42f,1), new Vector2(0,1), new Vector2(0,-260));
+            SetAnchoredPos(boxCur, new Vector2(24, rowTop));
+            Img(boxCur, C_DARK);
+            var curTag = Txt("Tag", boxCur.transform, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(0,24),
+                "ATUAL", 13, C_MUT, FontStyles.Normal);
+            SetAnchoredPos(curTag.gameObject, new Vector2(0,-8));
+            curTag.alignment = TextAlignmentOptions.Center;
+
+            curStaffImg = MakeImg("Img", boxCur.transform, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(72,120));
+            SetAnchoredPos(curStaffImg.gameObject, new Vector2(0,-36));
+            curStaffImg.preserveAspect = true;
+            curStaffImg.sprite = Resources.Load<Sprite>("Sprites/Staff_Basic");
+
+            curStaffName = Txt("Name", boxCur.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,28),
+                "Cajado de Madeira", 20, Color.white, FontStyles.Bold);
+            SetAnchoredPos(curStaffName.gameObject, new Vector2(0,44));
+            curStaffName.alignment = TextAlignmentOptions.Center;
+
+            curStaffStat = Txt("Stat", boxCur.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,24),
+                "Dano 5", 18, C_GOLD, FontStyles.Normal);
+            SetAnchoredPos(curStaffStat.gameObject, new Vector2(0,16));
+            curStaffStat.alignment = TextAlignmentOptions.Center;
+
+            // Arrow centre
+            var arw = Txt("Arrow", parent, new Vector2(0.42f,1), new Vector2(0.58f,1), new Vector2(0.5f,1), new Vector2(0,80),
+                "➔", 44, C_BOUGHT, FontStyles.Bold);
+            SetAnchoredPos(arw.gameObject, new Vector2(0, rowTop - 80f));
+            arw.alignment = TextAlignmentOptions.Center;
+
+            // Box Próximo (right third)
+            nxtStaffBox = Rect("Box_Nxt", parent, new Vector2(0.58f,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-24,-260));
+            SetAnchoredPos(nxtStaffBox, new Vector2(0, rowTop));
+            Img(nxtStaffBox, C_DARK);
+
+            var nxtTag = Txt("Tag", nxtStaffBox.transform, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(0,24),
+                "PRÓXIMO", 13, C_GOLD, FontStyles.Normal);
+            SetAnchoredPos(nxtTag.gameObject, new Vector2(0,-8));
+            nxtTag.alignment = TextAlignmentOptions.Center;
+
+            nxtStaffImg = MakeImg("Img", nxtStaffBox.transform, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(72,120));
+            SetAnchoredPos(nxtStaffImg.gameObject, new Vector2(0,-36));
+            nxtStaffImg.preserveAspect = true;
+            nxtStaffImg.sprite = Resources.Load<Sprite>("Sprites/Staff_Evolved");
+
+            nxtStaffName = Txt("Name", nxtStaffBox.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,28),
+                "Cajado Arcano", 20, Color.white, FontStyles.Bold);
+            SetAnchoredPos(nxtStaffName.gameObject, new Vector2(0,44));
+            nxtStaffName.alignment = TextAlignmentOptions.Center;
+
+            nxtStaffStat = Txt("Stat", nxtStaffBox.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,24),
+                "+3 de dano", 18, C_GOLD, FontStyles.Normal);
+            SetAnchoredPos(nxtStaffStat.gameObject, new Vector2(0,16));
+            nxtStaffStat.alignment = TextAlignmentOptions.Center;
+
+            // Need summary
+            needSummary = Txt("Need", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-40,36),
+                "Requer <color=#ffc83a>5</color> drops do morcego e <color=#ffc83a>1</color> drop do boss",
+                22, Color.white, FontStyles.Normal);
+            SetAnchoredPos(needSummary.gameObject, new Vector2(0, rowTop - 270f));
+            needSummary.alignment = TextAlignmentOptions.Center;
+            needSummary.richText  = true;
+
+            // Mat rows
+            float matY = rowTop - 315f;
+            BuildMatRow(parent, new Vector2(0, matY),       "🦇  Presa de Morcego", 5, out batSegCont,  out batCountTxt);
+            BuildMatRow(parent, new Vector2(0, matY - 72f), "💠  Núcleo do Boss",   1, out coreSegCont, out coreCountTxt);
+
+            // Evolve button
+            var evGo = Rect("Btn_Evolve", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-40,54));
+            SetAnchoredPos(evGo, new Vector2(0, matY - 160f));
+            Img(evGo, C_BOUGHT);
+            evolveBtn      = evGo.AddComponent<Button>();
+            evolveBtnLabel = Txt("Label", evGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), Vector2.zero,
+                "EVOLUIR", 22, Color.white, FontStyles.Bold);
+            evolveBtnLabel.alignment = TextAlignmentOptions.Center;
+            evolveBtn.onClick.AddListener(OnEvolveClicked);
+
+            staffMsg = Txt("Msg", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-40,28),
+                "Derrote inimigos para coletar os drops que faltam.", 18, C_MUT, FontStyles.Italic);
+            SetAnchoredPos(staffMsg.gameObject, new Vector2(0, matY - 202f));
+            staffMsg.alignment = TextAlignmentOptions.Center;
+        }
+
+        void BuildMatRow(Transform parent, Vector2 anchoredPos, string label, int total,
+                         out Transform segContainer, out TextMeshProUGUI countTxt)
+        {
+            var box = Rect("Mat_"+label, parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-60,58));
+            SetAnchoredPos(box, anchoredPos);
+            Img(box, C_DARK);
+
+            // Icon + label
+            var lbl = Txt("Lbl", box.transform, new Vector2(0,0.5f), new Vector2(0.6f,0.5f), new Vector2(0,0.5f), new Vector2(0,28),
+                label, 18, Color.white, FontStyles.Normal);
+            SetAnchoredPos(lbl.gameObject, new Vector2(12,0));
+
+            // Segments
+            var segsGo = Rect("Segs", box.transform, new Vector2(0,0.5f), new Vector2(0.6f,0.5f), new Vector2(0,0.5f), new Vector2(0,10));
+            SetAnchoredPos(segsGo, new Vector2(14,-16));
+            var hlg = segsGo.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 5; hlg.childForceExpandWidth = true; hlg.childForceExpandHeight = true;
+            segContainer = segsGo.transform;
+            for (int i = 0; i < total; i++)
+            {
+                var s = new GameObject($"Seg_{i}"); s.transform.SetParent(segContainer, false);
+                s.AddComponent<Image>().color = C_LOCKED;
+            }
+
+            // Count (right side)
+            countTxt = Txt("Count", box.transform, new Vector2(1,0.5f), new Vector2(1,0.5f), new Vector2(1,0.5f), new Vector2(80,28),
+                $"0/{total}", 18, Color.white, FontStyles.Bold);
+            SetAnchoredPos(countTxt.gameObject, new Vector2(-14,0));
+            countTxt.alignment = TextAlignmentOptions.MidlineRight;
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // HOOK + REFRESH
+        // ═════════════════════════════════════════════════════════════════════
+        void HookAll()
+        {
+            if (tabTreeBtn  != null) { tabTreeBtn .onClick.RemoveAllListeners(); tabTreeBtn .onClick.AddListener(() => SwitchTab(false)); }
+            if (tabStaffBtn != null) { tabStaffBtn.onClick.RemoveAllListeners(); tabStaffBtn.onClick.AddListener(() => SwitchTab(true));  }
+            if (closeBtn    != null) { closeBtn   .onClick.RemoveAllListeners(); closeBtn   .onClick.AddListener(OnClose); }
         }
 
         public void SwitchTab(bool toStaff)
         {
-            isStaffTabActive = toStaff;
-            if (tabTreeContent != null) tabTreeContent.SetActive(!toStaff);
+            staffTabOpen = toStaff;
+            if (tabTreeContent  != null) tabTreeContent .SetActive(!toStaff);
             if (tabStaffContent != null) tabStaffContent.SetActive(toStaff);
-
-            if (tabTreeButtonBg != null)
-                tabTreeButtonBg.color = !toStaff ? ColorBought : new Color(0.16f, 0.12f, 0.27f, 1f);
-
-            if (tabStaffButtonBg != null)
-                tabStaffButtonBg.color = toStaff ? ColorMaxed : new Color(0.16f, 0.12f, 0.27f, 1f);
-
+            if (tabTreeBtnBg    != null) tabTreeBtnBg .color = !toStaff ? C_BOUGHT : C_LINE;
+            if (tabStaffBtnBg   != null) tabStaffBtnBg.color =  toStaff ? C_BOUGHT : C_LINE;
             RefreshUI();
         }
 
-        private void EnsureDefaultNodes()
-        {
-            if (nodes != null && nodes.Count == 10) return;
-
-            // 10 nós com posições originais exatas do HTML (arvore_de_upgrades.html viewBox: 560 x 500)
-            nodes = new List<NodeConfig>
-            {
-                new NodeConfig { id = "vit", name = "Vitalidade", description = "Seu corpo de mago aguenta mais pancada na masmorra.", requirementId = null, maxLevel = 5, baseCost = 1, effectText = "+1 Vida Máxima (Coração Extra)", unitText = " de vida", valuePerLevel = 1f, htmlPos = new Vector2(280f, 440f), iconText = "♥" },
-                new NodeConfig { id = "vel", name = "Vassoura Veloz", description = "A vassoura corta o ar mais rápido e fica fácil desviar dos tiros.", requirementId = "vit", maxLevel = 3, baseCost = 1, effectText = "+8% Movimento e +25% Vel. dos Tiros", unitText = "% velocidade", valuePerLevel = 25f, htmlPos = new Vector2(280f, 370f), iconText = "⚡" },
-                new NodeConfig { id = "foc", name = "Foco Arcano", description = "O cristal do cajado brilha mais forte e seus tiros de gelo machucam mais.", requirementId = "vel", maxLevel = 3, baseCost = 2, effectText = "+35% Dano Glacial e Lentidão", unitText = "% poder gelo", valuePerLevel = 35f, htmlPos = new Vector2(280f, 300f), iconText = "⚔" },
-                new NodeConfig { id = "des", name = "Despertar Arcano", description = "Libera os dois caminhos: proteção e ofensiva.", requirementId = "foc", maxLevel = 1, baseCost = 2, effectText = "+1 Coração e +0.5 Dano Base", unitText = "", valuePerLevel = 0f, htmlPos = new Vector2(280f, 230f), iconText = "★" },
-
-                // Ramo Esquerdo (Defesa)
-                new NodeConfig { id = "pel", name = "Pele de Pedra", description = "Você aprendeu um truque com o golem: pancadas doem menos.", requirementId = "des", maxLevel = 3, baseCost = 2, effectText = "8% Menos Dano Recebido", unitText = "% menos dano", valuePerLevel = 8f, htmlPos = new Vector2(218f, 172f), iconText = "🛡" },
-                new NodeConfig { id = "ima", name = "Ímã de Almas", description = "Os skill points e corações dropados voam até você de mais longe.", requirementId = "pel", maxLevel = 2, baseCost = 2, effectText = "+35% Alcance Magnético de Drops", unitText = "% alcance", valuePerLevel = 35f, htmlPos = new Vector2(158f, 118f), iconText = "🧲" },
-                new NodeConfig { id = "seg", name = "Segundo Fôlego", description = "Quando a vida zera, a magia do mago revive-o com 35% de vida.", requirementId = "ima", maxLevel = 1, baseCost = 5, effectText = "Revive 1x por partida", unitText = "", valuePerLevel = 0f, htmlPos = new Vector2(84f, 96f), iconText = "☠" },
-
-                // Ramo Direito (Ofensiva)
-                new NodeConfig { id = "rap", name = "Tiro Rápido", description = "O cajado dispara magias em rápida sucessão.", requirementId = "des", maxLevel = 4, baseCost = 2, effectText = "+10% de Cadência de Disparo", unitText = "% cadência", valuePerLevel = 10f, htmlPos = new Vector2(342f, 172f), iconText = "🏹" },
-                new NodeConfig { id = "dup", name = "Tiro Duplo", description = "Cada disparo solta uma magia a mais (Lv1: Duplo, Lv2: Triplo).", requirementId = "rap", maxLevel = 2, baseCost = 3, effectText = "+1 Projétil por disparo (Lv1: Duplo, Lv2: Triplo)", unitText = " projéteis", valuePerLevel = 1f, htmlPos = new Vector2(402f, 118f), iconText = "✦" },
-                new NodeConfig { id = "per", name = "Tiro Perfurante", description = "Magias flamejantes atravessam os inimigos causando devastação em massa.", requirementId = "dup", maxLevel = 2, baseCost = 4, effectText = "Tiros Perfuram Inimigos e +45% Dano de Fogo", unitText = "% poder fogo", valuePerLevel = 45f, htmlPos = new Vector2(476f, 96f), iconText = "🔥" }
-            };
-        }
-
-        private void BuildFullHDHierarchyIfNeeded()
-        {
-            // Se a hierarquia já foi construída e possui as referências, não precisa recriar
-            if (tabTreeContent != null && tabStaffContent != null && buyButton != null && evolveStaffButton != null)
-            {
-                return;
-            }
-
-            // Limpa filhos antigos para reconstruir limpo
-            for (int i = transform.childCount - 1; i >= 0; i--)
-            {
-                Destroy(transform.GetChild(i).gameObject);
-            }
-
-            var rect = GetComponent<RectTransform>();
-            if (rect != null)
-            {
-                rect.anchorMin = Vector2.zero;
-                rect.anchorMax = Vector2.one;
-                rect.sizeDelta = Vector2.zero;
-            }
-
-            var bgImg = GetComponent<Image>();
-            if (bgImg == null) bgImg = gameObject.AddComponent<Image>();
-            bgImg.color = ColorBgDark;
-
-            // Frame Central (1640 x 920 Full HD)
-            GameObject frame = new GameObject("Frame");
-            frame.transform.SetParent(transform, false);
-            var fRect = frame.AddComponent<RectTransform>();
-            fRect.anchorMin = new Vector2(0.5f, 0.5f);
-            fRect.anchorMax = new Vector2(0.5f, 0.5f);
-            fRect.sizeDelta = new Vector2(1640f, 920f);
-            var fImg = frame.AddComponent<Image>();
-            fImg.color = ColorPanel;
-
-            // Top Header: Tabs + Skill Points + Close
-            GameObject header = new GameObject("Header");
-            header.transform.SetParent(frame.transform, false);
-            var hRect = header.AddComponent<RectTransform>();
-            hRect.anchorMin = new Vector2(0f, 1f);
-            hRect.anchorMax = new Vector2(1f, 1f);
-            hRect.pivot = new Vector2(0.5f, 1f);
-            hRect.anchoredPosition = new Vector2(0f, -16f);
-            hRect.sizeDelta = new Vector2(-48f, 68f);
-
-            // Tab 1 Button: ÁRVORE DE UPGRADES
-            GameObject btnTabTree = new GameObject("Btn_Tab_Tree");
-            btnTabTree.transform.SetParent(header.transform, false);
-            var bttRect = btnTabTree.AddComponent<RectTransform>();
-            bttRect.anchorMin = new Vector2(0f, 0.5f);
-            bttRect.anchorMax = new Vector2(0f, 0.5f);
-            bttRect.pivot = new Vector2(0f, 0.5f);
-            bttRect.anchoredPosition = new Vector2(0f, 0f);
-            bttRect.sizeDelta = new Vector2(300f, 54f);
-            tabTreeButtonBg = btnTabTree.AddComponent<Image>();
-            tabTreeButtonBg.color = ColorBought;
-            tabTreeButton = btnTabTree.AddComponent<Button>();
-
-            GameObject bttTxt = new GameObject("Text");
-            bttTxt.transform.SetParent(btnTabTree.transform, false);
-            var btttRect = bttTxt.AddComponent<RectTransform>();
-            btttRect.anchorMin = Vector2.zero;
-            btttRect.anchorMax = Vector2.one;
-            btttRect.sizeDelta = Vector2.zero;
-            var btttTmp = bttTxt.AddComponent<TextMeshProUGUI>();
-            btttTmp.text = "ÁRVORE DE UPGRADES";
-            btttTmp.fontSize = 20;
-            btttTmp.fontStyle = FontStyles.Bold;
-            btttTmp.alignment = TextAlignmentOptions.Center;
-            btttTmp.color = Color.white;
-
-            // Tab 2 Button: EVOLUIR CAJADO
-            GameObject btnTabStaff = new GameObject("Btn_Tab_Staff");
-            btnTabStaff.transform.SetParent(header.transform, false);
-            var btsRect = btnTabStaff.AddComponent<RectTransform>();
-            btsRect.anchorMin = new Vector2(0f, 0.5f);
-            btsRect.anchorMax = new Vector2(0f, 0.5f);
-            btsRect.pivot = new Vector2(0f, 0.5f);
-            btsRect.anchoredPosition = new Vector2(320f, 0f);
-            btsRect.sizeDelta = new Vector2(280f, 54f);
-            tabStaffButtonBg = btnTabStaff.AddComponent<Image>();
-            tabStaffButtonBg.color = new Color(0.16f, 0.12f, 0.27f, 1f);
-            tabStaffButton = btnTabStaff.AddComponent<Button>();
-
-            GameObject btsTxt = new GameObject("Text");
-            btsTxt.transform.SetParent(btnTabStaff.transform, false);
-            var btstRect = btsTxt.AddComponent<RectTransform>();
-            btstRect.anchorMin = Vector2.zero;
-            btstRect.anchorMax = Vector2.one;
-            btstRect.sizeDelta = Vector2.zero;
-            var btstTmp = btsTxt.AddComponent<TextMeshProUGUI>();
-            btstTmp.text = "EVOLUIR CAJADO";
-            btstTmp.fontSize = 20;
-            btstTmp.fontStyle = FontStyles.Bold;
-            btstTmp.alignment = TextAlignmentOptions.Center;
-            btstTmp.color = Color.white;
-
-            // Skill Points Box (Top Right)
-            GameObject spBox = new GameObject("SP_Box");
-            spBox.transform.SetParent(header.transform, false);
-            var spbRect = spBox.AddComponent<RectTransform>();
-            spbRect.anchorMin = new Vector2(1f, 0.5f);
-            spbRect.anchorMax = new Vector2(1f, 0.5f);
-            spbRect.pivot = new Vector2(1f, 0.5f);
-            spbRect.anchoredPosition = new Vector2(-70f, 0f);
-            spbRect.sizeDelta = new Vector2(250f, 54f);
-            var spbImg = spBox.AddComponent<Image>();
-            spbImg.color = new Color(0.04f, 0.03f, 0.06f, 1f);
-
-            GameObject spTxt = new GameObject("Text");
-            spTxt.transform.SetParent(spBox.transform, false);
-            var sptRect = spTxt.AddComponent<RectTransform>();
-            sptRect.anchorMin = Vector2.zero;
-            sptRect.anchorMax = Vector2.one;
-            sptRect.sizeDelta = Vector2.zero;
-            skillPointsText = spTxt.AddComponent<TextMeshProUGUI>();
-            skillPointsText.text = "SKILL POINTS: 0";
-            skillPointsText.fontSize = 22;
-            skillPointsText.fontStyle = FontStyles.Bold;
-            skillPointsText.alignment = TextAlignmentOptions.Center;
-            skillPointsText.color = ColorMaxed;
-
-            // Close Button [X]
-            GameObject closeObj = new GameObject("Btn_Close");
-            closeObj.transform.SetParent(header.transform, false);
-            var cRect = closeObj.AddComponent<RectTransform>();
-            cRect.anchorMin = new Vector2(1f, 0.5f);
-            cRect.anchorMax = new Vector2(1f, 0.5f);
-            cRect.pivot = new Vector2(1f, 0.5f);
-            cRect.anchoredPosition = new Vector2(0f, 0f);
-            cRect.sizeDelta = new Vector2(54f, 54f);
-            var cImg = closeObj.AddComponent<Image>();
-            cImg.color = ColorBought;
-            closeButton = closeObj.AddComponent<Button>();
-
-            GameObject closeTxt = new GameObject("Text");
-            closeTxt.transform.SetParent(closeObj.transform, false);
-            var ctRect = closeTxt.AddComponent<RectTransform>();
-            ctRect.anchorMin = Vector2.zero;
-            ctRect.anchorMax = Vector2.one;
-            ctRect.sizeDelta = Vector2.zero;
-            var ctTmp = closeTxt.AddComponent<TextMeshProUGUI>();
-            ctTmp.text = "X";
-            ctTmp.fontSize = 28;
-            ctTmp.fontStyle = FontStyles.Bold;
-            ctTmp.alignment = TextAlignmentOptions.Center;
-            ctTmp.color = Color.white;
-
-            // --- TAB 1 CONTENT: ÁRVORE DE UPGRADES ---
-            tabTreeContent = new GameObject("Tab_TreeContent");
-            tabTreeContent.transform.SetParent(frame.transform, false);
-            var ttcRect = tabTreeContent.AddComponent<RectTransform>();
-            ttcRect.anchorMin = new Vector2(0f, 0f);
-            ttcRect.anchorMax = new Vector2(1f, 1f);
-            ttcRect.anchoredPosition = new Vector2(0f, -44f);
-            ttcRect.sizeDelta = new Vector2(-48f, -110f);
-
-            BuildTreeTab(tabTreeContent.transform);
-
-            // --- TAB 2 CONTENT: EVOLUIR CAJADO ---
-            tabStaffContent = new GameObject("Tab_StaffContent");
-            tabStaffContent.transform.SetParent(frame.transform, false);
-            var tscRect = tabStaffContent.AddComponent<RectTransform>();
-            tscRect.anchorMin = new Vector2(0f, 0f);
-            tscRect.anchorMax = new Vector2(1f, 1f);
-            tscRect.anchoredPosition = new Vector2(0f, -44f);
-            tscRect.sizeDelta = new Vector2(-48f, -110f);
-
-            BuildStaffTab(tabStaffContent.transform);
-
-            tabStaffContent.SetActive(false);
-        }
-
-        private void BuildTreeTab(Transform parent)
-        {
-            // Container da Árvore (Esquerda, 960 x 740)
-            GameObject treeBox = new GameObject("TreeContainer");
-            treeBox.transform.SetParent(parent, false);
-            var tbRect = treeBox.AddComponent<RectTransform>();
-            tbRect.anchorMin = new Vector2(0f, 0.5f);
-            tbRect.anchorMax = new Vector2(0f, 0.5f);
-            tbRect.pivot = new Vector2(0f, 0.5f);
-            tbRect.anchoredPosition = new Vector2(0f, 0f);
-            tbRect.sizeDelta = new Vector2(980f, 750f);
-            var tbImg = treeBox.AddComponent<Image>();
-            tbImg.color = new Color(0.07f, 0.05f, 0.12f, 1f);
-
-            // Container de Linhas
-            GameObject linesBox = new GameObject("Lines");
-            linesBox.transform.SetParent(treeBox.transform, false);
-            var lbRect = linesBox.AddComponent<RectTransform>();
-            lbRect.anchorMin = Vector2.zero;
-            lbRect.anchorMax = Vector2.one;
-            lbRect.sizeDelta = Vector2.zero;
-
-            // Converte coordenadas do HTML (560x500) para o container (980x750)
-            Dictionary<string, Vector2> nodeCanvasPositions = new Dictionary<string, Vector2>();
-            foreach (var n in nodes)
-            {
-                float posX = (n.htmlPos.x / 560f - 0.5f) * 860f;
-                float posY = (0.5f - n.htmlPos.y / 500f) * 650f;
-                nodeCanvasPositions[n.id] = new Vector2(posX, posY);
-            }
-
-            // Desenha linhas de requisitos
-            foreach (var n in nodes)
-            {
-                if (!string.IsNullOrEmpty(n.requirementId) && nodeCanvasPositions.ContainsKey(n.requirementId))
-                {
-                    Vector2 start = nodeCanvasPositions[n.requirementId];
-                    Vector2 end = nodeCanvasPositions[n.id];
-                    CreateLine(linesBox.transform, start, end);
-                }
-            }
-
-            // Cria os nós
-            foreach (var n in nodes)
-            {
-                Vector2 pos = nodeCanvasPositions[n.id];
-
-                GameObject nodeObj = new GameObject($"Node_{n.id}");
-                nodeObj.transform.SetParent(treeBox.transform, false);
-                var nRect = nodeObj.AddComponent<RectTransform>();
-                nRect.anchoredPosition = pos;
-                nRect.sizeDelta = new Vector2(72f, 72f);
-
-                // Anel de seleção
-                GameObject ringObj = new GameObject("Ring");
-                ringObj.transform.SetParent(nodeObj.transform, false);
-                var rRect = ringObj.AddComponent<RectTransform>();
-                rRect.anchorMin = Vector2.zero;
-                rRect.anchorMax = Vector2.one;
-                rRect.sizeDelta = new Vector2(16f, 16f);
-                var rImg = ringObj.AddComponent<Image>();
-                rImg.color = ColorOpen;
-                n.selectionRing = ringObj;
-                ringObj.SetActive(false);
-
-                // Borda do Nó
-                n.nodeBorder = nodeObj.AddComponent<Image>();
-                n.nodeBorder.color = ColorLocked;
-
-                // Botão
-                n.nodeButton = nodeObj.AddComponent<Button>();
-
-                // Ícone do Nó
-                GameObject icObj = new GameObject("Icon");
-                icObj.transform.SetParent(nodeObj.transform, false);
-                var icRect = icObj.AddComponent<RectTransform>();
-                icRect.anchorMin = Vector2.zero;
-                icRect.anchorMax = Vector2.one;
-                icRect.sizeDelta = Vector2.zero;
-                n.nodeIconText = icObj.AddComponent<TextMeshProUGUI>();
-                n.nodeIconText.text = n.iconText;
-                n.nodeIconText.fontSize = 28;
-                n.nodeIconText.fontStyle = FontStyles.Bold;
-                n.nodeIconText.alignment = TextAlignmentOptions.Center;
-                n.nodeIconText.color = Color.white;
-
-                // Nível do Nó (badge abaixo)
-                GameObject lvlObj = new GameObject("LevelText");
-                lvlObj.transform.SetParent(nodeObj.transform, false);
-                var lRect = lvlObj.AddComponent<RectTransform>();
-                lRect.anchoredPosition = new Vector2(0f, -48f);
-                lRect.sizeDelta = new Vector2(90f, 26f);
-                n.nodeLevelText = lvlObj.AddComponent<TextMeshProUGUI>();
-                n.nodeLevelText.text = $"0/{n.maxLevel}";
-                n.nodeLevelText.fontSize = 18;
-                n.nodeLevelText.fontStyle = FontStyles.Bold;
-                n.nodeLevelText.alignment = TextAlignmentOptions.Center;
-                n.nodeLevelText.color = new Color(0.7f, 0.65f, 0.85f, 1f);
-            }
-
-            // Card de Detalhes (Direita, 580 x 750) — Estilo do HTML .card (#e9d6f7)
-            GameObject card = new GameObject("DetailCard");
-            card.transform.SetParent(parent, false);
-            var cRect = card.AddComponent<RectTransform>();
-            cRect.anchorMin = new Vector2(1f, 0.5f);
-            cRect.anchorMax = new Vector2(1f, 0.5f);
-            cRect.pivot = new Vector2(1f, 0.5f);
-            cRect.anchoredPosition = new Vector2(0f, 0f);
-            cRect.sizeDelta = new Vector2(580f, 750f);
-            var cardImg = card.AddComponent<Image>();
-            cardImg.color = new Color(0.91f, 0.84f, 0.97f, 1f); // #e9d6f7 Lilás claro
-
-            // Top Row: Nome + Custo SP
-            GameObject topRow = new GameObject("TopRow");
-            topRow.transform.SetParent(card.transform, false);
-            var trRect = topRow.AddComponent<RectTransform>();
-            trRect.anchorMin = new Vector2(0f, 1f);
-            trRect.anchorMax = new Vector2(1f, 1f);
-            trRect.pivot = new Vector2(0.5f, 1f);
-            trRect.anchoredPosition = new Vector2(0f, -24f);
-            trRect.sizeDelta = new Vector2(-40f, 54f);
-
-            GameObject nameObj = new GameObject("DetailName");
-            nameObj.transform.SetParent(topRow.transform, false);
-            var noRect = nameObj.AddComponent<RectTransform>();
-            noRect.anchorMin = new Vector2(0f, 0.5f);
-            noRect.anchorMax = new Vector2(0.68f, 0.5f);
-            noRect.pivot = new Vector2(0f, 0.5f);
-            detailNameText = nameObj.AddComponent<TextMeshProUGUI>();
-            detailNameText.text = "Vitalidade";
-            detailNameText.fontSize = 28;
-            detailNameText.fontStyle = FontStyles.Bold;
-            detailNameText.color = new Color(0.16f, 0.09f, 0.25f, 1f);
-
-            GameObject costBox = new GameObject("DetailCost");
-            costBox.transform.SetParent(topRow.transform, false);
-            var cbRect = costBox.AddComponent<RectTransform>();
-            cbRect.anchorMin = new Vector2(0.7f, 0.5f);
-            cbRect.anchorMax = new Vector2(1f, 0.5f);
-            cbRect.pivot = new Vector2(1f, 0.5f);
-            cbRect.sizeDelta = new Vector2(160f, 44f);
-            var cbImg = costBox.AddComponent<Image>();
-            cbImg.color = new Color(0.04f, 0.03f, 0.06f, 1f);
-
-            detailCostText = costBox.AddComponent<TextMeshProUGUI>();
-            detailCostText.text = "CUSTO: 1 SP";
-            detailCostText.fontSize = 18;
-            detailCostText.fontStyle = FontStyles.Bold;
-            detailCostText.alignment = TextAlignmentOptions.Center;
-            detailCostText.color = ColorMaxed;
-
-            // Label Descrição
-            GameObject lblDesc = new GameObject("LblDesc");
-            lblDesc.transform.SetParent(card.transform, false);
-            var ldRect = lblDesc.AddComponent<RectTransform>();
-            ldRect.anchoredPosition = new Vector2(0f, 260f);
-            ldRect.sizeDelta = new Vector2(500f, 24f);
-            var ldTmp = lblDesc.AddComponent<TextMeshProUGUI>();
-            ldTmp.text = "Descrição:";
-            ldTmp.fontSize = 20;
-            ldTmp.color = new Color(0.42f, 0.29f, 0.59f, 1f);
-
-            // Texto Descrição
-            GameObject descObj = new GameObject("DetailDesc");
-            descObj.transform.SetParent(card.transform, false);
-            var dRect = descObj.AddComponent<RectTransform>();
-            dRect.anchoredPosition = new Vector2(0f, 205f);
-            dRect.sizeDelta = new Vector2(500f, 80f);
-            detailDescText = descObj.AddComponent<TextMeshProUGUI>();
-            detailDescText.text = "Seu corpo de mago aguenta mais pancada na masmorra.";
-            detailDescText.fontSize = 22;
-            detailDescText.color = new Color(0.16f, 0.09f, 0.25f, 1f);
-
-            // Art Frame (#2a1f45)
-            GameObject artFrame = new GameObject("ArtFrame");
-            artFrame.transform.SetParent(card.transform, false);
-            var afRect = artFrame.AddComponent<RectTransform>();
-            afRect.anchoredPosition = new Vector2(0f, 45f);
-            afRect.sizeDelta = new Vector2(500f, 180f);
-            var afImg = artFrame.AddComponent<Image>();
-            afImg.color = new Color(0.16f, 0.12f, 0.27f, 1f);
-
-            // Ícone grande dentro da moldura
-            GameObject artIcon = new GameObject("ArtIcon");
-            artIcon.transform.SetParent(artFrame.transform, false);
-            var aicRect = artIcon.AddComponent<RectTransform>();
-            aicRect.anchoredPosition = new Vector2(0f, 25f);
-            aicRect.sizeDelta = new Vector2(100f, 70f);
-            var aicTmp = artIcon.AddComponent<TextMeshProUGUI>();
-            aicTmp.text = "✦";
-            aicTmp.fontSize = 54;
-            aicTmp.alignment = TextAlignmentOptions.Center;
-            aicTmp.color = ColorBought;
-
-            // Pips Container (indicadores de nível)
-            GameObject pipsObj = new GameObject("Pips");
-            pipsObj.transform.SetParent(artFrame.transform, false);
-            var pRect = pipsObj.AddComponent<RectTransform>();
-            pRect.anchoredPosition = new Vector2(0f, -48f);
-            pRect.sizeDelta = new Vector2(300f, 30f);
-            var pHlg = pipsObj.AddComponent<HorizontalLayoutGroup>();
-            pHlg.spacing = 10f;
-            pHlg.childAlignment = TextAnchor.MiddleCenter;
-            pHlg.childForceExpandWidth = false;
-            pHlg.childForceExpandHeight = false;
-            pipsContainer = pipsObj.transform;
-
-            for (int p = 0; p < 5; p++)
-            {
-                GameObject pip = new GameObject($"Pip_{p}");
-                pip.transform.SetParent(pipsContainer, false);
-                var pipRect = pip.AddComponent<RectTransform>();
-                pipRect.sizeDelta = new Vector2(22f, 22f);
-                var pipImg = pip.AddComponent<Image>();
-                pipImg.color = ColorLocked;
-            }
-
-            // Efeito
-            GameObject effObj = new GameObject("DetailEffect");
-            effObj.transform.SetParent(card.transform, false);
-            var efRect = effObj.AddComponent<RectTransform>();
-            efRect.anchoredPosition = new Vector2(0f, -80f);
-            efRect.sizeDelta = new Vector2(500f, 40f);
-            detailEffectText = effObj.AddComponent<TextMeshProUGUI>();
-            detailEffectText.text = "+1 Vida Máxima (Coração Extra)";
-            detailEffectText.fontSize = 26;
-            detailEffectText.fontStyle = FontStyles.Bold;
-            detailEffectText.alignment = TextAlignmentOptions.Center;
-            detailEffectText.color = new Color(0.54f, 0.12f, 0.33f, 1f);
-
-            // Total Atual
-            GameObject totObj = new GameObject("DetailTotal");
-            totObj.transform.SetParent(card.transform, false);
-            var totRect = totObj.AddComponent<RectTransform>();
-            totRect.anchoredPosition = new Vector2(0f, -125f);
-            totRect.sizeDelta = new Vector2(500f, 32f);
-            detailTotalText = totObj.AddComponent<TextMeshProUGUI>();
-            detailTotalText.text = "Total Atual: +0 de vida";
-            detailTotalText.fontSize = 20;
-            detailTotalText.alignment = TextAlignmentOptions.Center;
-            detailTotalText.color = new Color(0.42f, 0.29f, 0.59f, 1f);
-
-            // Botão Desbloquear
-            GameObject buyBtnObj = new GameObject("Btn_Buy");
-            buyBtnObj.transform.SetParent(card.transform, false);
-            var bbRect = buyBtnObj.AddComponent<RectTransform>();
-            bbRect.anchoredPosition = new Vector2(0f, -205f);
-            bbRect.sizeDelta = new Vector2(500f, 68f);
-            var bbImg = buyBtnObj.AddComponent<Image>();
-            bbImg.color = ColorBought;
-            buyButton = buyBtnObj.AddComponent<Button>();
-
-            GameObject bbtTxt = new GameObject("Text");
-            bbtTxt.transform.SetParent(buyBtnObj.transform, false);
-            var bbtRect = bbtTxt.AddComponent<RectTransform>();
-            bbtRect.anchorMin = Vector2.zero;
-            bbtRect.anchorMax = Vector2.one;
-            bbtRect.sizeDelta = Vector2.zero;
-            buyButtonText = bbtTxt.AddComponent<TextMeshProUGUI>();
-            buyButtonText.text = "DESBLOQUEAR";
-            buyButtonText.fontSize = 24;
-            buyButtonText.fontStyle = FontStyles.Bold;
-            buyButtonText.alignment = TextAlignmentOptions.Center;
-            buyButtonText.color = Color.white;
-
-            // Mensagem de Status
-            GameObject statusObj = new GameObject("DetailStatus");
-            statusObj.transform.SetParent(card.transform, false);
-            var stRect = statusObj.AddComponent<RectTransform>();
-            stRect.anchoredPosition = new Vector2(0f, -275f);
-            stRect.sizeDelta = new Vector2(500f, 34f);
-            detailStatusText = statusObj.AddComponent<TextMeshProUGUI>();
-            detailStatusText.text = "Pronto para desbloquear";
-            detailStatusText.fontSize = 20;
-            detailStatusText.alignment = TextAlignmentOptions.Center;
-            detailStatusText.color = new Color(0.29f, 0.17f, 0.35f, 1f);
-        }
-
-        private void BuildStaffTab(Transform parent)
-        {
-            // Título
-            GameObject titleObj = new GameObject("Title");
-            titleObj.transform.SetParent(parent, false);
-            var tRect = titleObj.AddComponent<RectTransform>();
-            tRect.anchoredPosition = new Vector2(0f, 320f);
-            tRect.sizeDelta = new Vector2(1000f, 50f);
-            var tTmp = titleObj.AddComponent<TextMeshProUGUI>();
-            tTmp.text = "EVOLUÇÃO DO CAJADO MÁGICO";
-            tTmp.fontSize = 36;
-            tTmp.fontStyle = FontStyles.Bold;
-            tTmp.alignment = TextAlignmentOptions.Center;
-            tTmp.color = new Color(1f, 0.61f, 0.73f, 1f);
-
-            // Subtítulo
-            GameObject subObj = new GameObject("Subtitle");
-            subObj.transform.SetParent(parent, false);
-            var sRect = subObj.AddComponent<RectTransform>();
-            sRect.anchoredPosition = new Vector2(0f, 275f);
-            sRect.sizeDelta = new Vector2(1000f, 36f);
-            var sTmp = subObj.AddComponent<TextMeshProUGUI>();
-            sTmp.text = "Troque drops dos inimigos por uma versão flamejante do seu cajado.";
-            sTmp.fontSize = 22;
-            sTmp.alignment = TextAlignmentOptions.Center;
-            sTmp.color = new Color(0.65f, 0.58f, 0.8f, 1f);
-
-            // 3 Caixas: [Atual] ---> [Próximo]
-            // Caixa Atual (Esquerda)
-            GameObject boxCur = new GameObject("Box_Current");
-            boxCur.transform.SetParent(parent, false);
-            var bcRect = boxCur.AddComponent<RectTransform>();
-            bcRect.anchoredPosition = new Vector2(-360f, 100f);
-            bcRect.sizeDelta = new Vector2(380f, 260f);
-            var bcImg = boxCur.AddComponent<Image>();
-            bcImg.color = new Color(0.07f, 0.05f, 0.12f, 1f);
-
-            GameObject curTag = new GameObject("Tag");
-            curTag.transform.SetParent(boxCur.transform, false);
-            var ctRect = curTag.AddComponent<RectTransform>();
-            ctRect.anchoredPosition = new Vector2(0f, 100f);
-            ctRect.sizeDelta = new Vector2(300f, 24f);
-            var ctTmp = curTag.AddComponent<TextMeshProUGUI>();
-            ctTmp.text = "ATUAL";
-            ctTmp.fontSize = 16;
-            ctTmp.alignment = TextAlignmentOptions.Center;
-            ctTmp.color = new Color(0.65f, 0.58f, 0.8f, 1f);
-
-            GameObject curImgObj = new GameObject("StaffImage");
-            curImgObj.transform.SetParent(boxCur.transform, false);
-            var ciRect = curImgObj.AddComponent<RectTransform>();
-            ciRect.anchoredPosition = new Vector2(0f, 15f);
-            ciRect.sizeDelta = new Vector2(90f, 120f);
-            currentStaffImage = curImgObj.AddComponent<Image>();
-            currentStaffImage.sprite = Resources.Load<Sprite>("Sprites/Staff_Basic");
-            currentStaffImage.preserveAspect = true;
-
-            GameObject curName = new GameObject("Name");
-            curName.transform.SetParent(boxCur.transform, false);
-            var cnRect = curName.AddComponent<RectTransform>();
-            cnRect.anchoredPosition = new Vector2(0f, -65f);
-            cnRect.sizeDelta = new Vector2(340f, 30f);
-            currentStaffNameText = curName.AddComponent<TextMeshProUGUI>();
-            currentStaffNameText.text = "Cajado Básico";
-            currentStaffNameText.fontSize = 22;
-            currentStaffNameText.fontStyle = FontStyles.Bold;
-            currentStaffNameText.alignment = TextAlignmentOptions.Center;
-            currentStaffNameText.color = Color.white;
-
-            GameObject curStat = new GameObject("Stat");
-            curStat.transform.SetParent(boxCur.transform, false);
-            var csRect = curStat.AddComponent<RectTransform>();
-            csRect.anchoredPosition = new Vector2(0f, -95f);
-            csRect.sizeDelta = new Vector2(340f, 26f);
-            currentStaffStatText = curStat.AddComponent<TextMeshProUGUI>();
-            currentStaffStatText.text = "Magia de Gelo (Dano 1)";
-            currentStaffStatText.fontSize = 18;
-            currentStaffStatText.alignment = TextAlignmentOptions.Center;
-            currentStaffStatText.color = ColorOpen;
-
-            // Seta Central
-            GameObject arrowObj = new GameObject("Arrow");
-            arrowObj.transform.SetParent(parent, false);
-            var aRect = arrowObj.AddComponent<RectTransform>();
-            aRect.anchoredPosition = new Vector2(0f, 100f);
-            aRect.sizeDelta = new Vector2(120f, 60f);
-            var aTmp = arrowObj.AddComponent<TextMeshProUGUI>();
-            aTmp.text = "➔";
-            aTmp.fontSize = 64;
-            aTmp.fontStyle = FontStyles.Bold;
-            aTmp.alignment = TextAlignmentOptions.Center;
-            aTmp.color = ColorBought;
-
-            // Caixa Próximo (Direita)
-            nextStaffBox = new GameObject("Box_Next");
-            nextStaffBox.transform.SetParent(parent, false);
-            var bnRect = nextStaffBox.AddComponent<RectTransform>();
-            bnRect.anchoredPosition = new Vector2(360f, 100f);
-            bnRect.sizeDelta = new Vector2(380f, 260f);
-            var bnImg = nextStaffBox.AddComponent<Image>();
-            bnImg.color = new Color(0.07f, 0.05f, 0.12f, 1f);
-
-            GameObject nextTag = new GameObject("Tag");
-            nextTag.transform.SetParent(nextStaffBox.transform, false);
-            var ntRect = nextTag.AddComponent<RectTransform>();
-            ntRect.anchoredPosition = new Vector2(0f, 100f);
-            ntRect.sizeDelta = new Vector2(300f, 24f);
-            var ntTmp = nextTag.AddComponent<TextMeshProUGUI>();
-            ntTmp.text = "PRÓXIMO NÍVEL";
-            ntTmp.fontSize = 16;
-            ntTmp.alignment = TextAlignmentOptions.Center;
-            ntTmp.color = ColorMaxed;
-
-            GameObject nextImgObj = new GameObject("StaffImage");
-            nextImgObj.transform.SetParent(nextStaffBox.transform, false);
-            var niRect = nextImgObj.AddComponent<RectTransform>();
-            niRect.anchoredPosition = new Vector2(0f, 15f);
-            niRect.sizeDelta = new Vector2(90f, 120f);
-            nextStaffImage = nextImgObj.AddComponent<Image>();
-            nextStaffImage.sprite = Resources.Load<Sprite>("Sprites/Staff_Evolved");
-            nextStaffImage.preserveAspect = true;
-
-            GameObject nextName = new GameObject("Name");
-            nextName.transform.SetParent(nextStaffBox.transform, false);
-            var nnRect = nextName.AddComponent<RectTransform>();
-            nnRect.anchoredPosition = new Vector2(0f, -65f);
-            nnRect.sizeDelta = new Vector2(340f, 30f);
-            nextStaffNameText = nextName.AddComponent<TextMeshProUGUI>();
-            nextStaffNameText.text = "Cajado Flamejante";
-            nextStaffNameText.fontSize = 22;
-            nextStaffNameText.fontStyle = FontStyles.Bold;
-            nextStaffNameText.alignment = TextAlignmentOptions.Center;
-            nextStaffNameText.color = Color.white;
-
-            GameObject nextStat = new GameObject("Stat");
-            nextStat.transform.SetParent(nextStaffBox.transform, false);
-            var nsRect = nextStat.AddComponent<RectTransform>();
-            nsRect.anchoredPosition = new Vector2(0f, -95f);
-            nsRect.sizeDelta = new Vector2(340f, 26f);
-            nextStaffStatText = nextStat.AddComponent<TextMeshProUGUI>();
-            nextStaffStatText.text = "Libera FOGO (+60% Dano & Cadência!)";
-            nextStaffStatText.fontSize = 18;
-            nextStaffStatText.alignment = TextAlignmentOptions.Center;
-            nextStaffStatText.color = ColorMaxed;
-
-            // Linha de Requisitos de Materiais
-            GameObject reqSummary = new GameObject("ReqSummary");
-            reqSummary.transform.SetParent(parent, false);
-            var rsRect = reqSummary.AddComponent<RectTransform>();
-            rsRect.anchoredPosition = new Vector2(0f, -60f);
-            rsRect.sizeDelta = new Vector2(800f, 36f);
-            staffNeedSummaryText = reqSummary.AddComponent<TextMeshProUGUI>();
-            staffNeedSummaryText.text = "Requer 3 Corações de Fogo e 1 Núcleo do Boss";
-            staffNeedSummaryText.fontSize = 24;
-            staffNeedSummaryText.fontStyle = FontStyles.Bold;
-            staffNeedSummaryText.alignment = TextAlignmentOptions.Center;
-            staffNeedSummaryText.color = ColorMaxed;
-
-            // Box Coração de Fogo
-            GameObject hBox = new GameObject("Mat_FireHeart");
-            hBox.transform.SetParent(parent, false);
-            var hbRect = hBox.AddComponent<RectTransform>();
-            hbRect.anchoredPosition = new Vector2(-220f, -130f);
-            hbRect.sizeDelta = new Vector2(400f, 64f);
-            var hbImg = hBox.AddComponent<Image>();
-            hbImg.color = new Color(0.07f, 0.05f, 0.12f, 1f);
-
-            GameObject hIcon = new GameObject("Icon");
-            hIcon.transform.SetParent(hBox.transform, false);
-            var hiRect = hIcon.AddComponent<RectTransform>();
-            hiRect.anchorMin = new Vector2(0f, 0.5f);
-            hiRect.anchorMax = new Vector2(0f, 0.5f);
-            hiRect.pivot = new Vector2(0f, 0.5f);
-            hiRect.anchoredPosition = new Vector2(12f, 0f);
-            hiRect.sizeDelta = new Vector2(44f, 44f);
-            var hiImg = hIcon.AddComponent<Image>();
-            hiImg.sprite = Resources.Load<Sprite>("Sprites/FireHeart");
-            hiImg.preserveAspect = true;
-
-            GameObject hTitle = new GameObject("Title");
-            hTitle.transform.SetParent(hBox.transform, false);
-            var htRect = hTitle.AddComponent<RectTransform>();
-            htRect.anchoredPosition = new Vector2(0f, 12f);
-            htRect.sizeDelta = new Vector2(180f, 24f);
-            var htTmp = hTitle.AddComponent<TextMeshProUGUI>();
-            htTmp.text = "Coração de Fogo";
-            htTmp.fontSize = 18;
-            htTmp.alignment = TextAlignmentOptions.MidlineLeft;
-            htTmp.color = Color.white;
-
-            GameObject hSegs = new GameObject("Segments");
-            hSegs.transform.SetParent(hBox.transform, false);
-            var hsgRect = hSegs.AddComponent<RectTransform>();
-            hsgRect.anchoredPosition = new Vector2(0f, -14f);
-            hsgRect.sizeDelta = new Vector2(180f, 14f);
-            var hhlg = hSegs.AddComponent<HorizontalLayoutGroup>();
-            hhlg.spacing = 6f;
-            hhlg.childForceExpandWidth = true;
-            hhlg.childForceExpandHeight = true;
-            fireHeartSegmentsContainer = hSegs.transform;
-
-            for (int i = 0; i < 3; i++)
-            {
-                GameObject seg = new GameObject($"Seg_{i}");
-                seg.transform.SetParent(fireHeartSegmentsContainer, false);
-                var segImg = seg.AddComponent<Image>();
-                segImg.color = ColorLocked;
-            }
-
-            GameObject hCount = new GameObject("Count");
-            hCount.transform.SetParent(hBox.transform, false);
-            var hcRect = hCount.AddComponent<RectTransform>();
-            hcRect.anchorMin = new Vector2(1f, 0.5f);
-            hcRect.anchorMax = new Vector2(1f, 0.5f);
-            hcRect.pivot = new Vector2(1f, 0.5f);
-            hcRect.anchoredPosition = new Vector2(-16f, 0f);
-            hcRect.sizeDelta = new Vector2(90f, 32f);
-            fireHeartCountText = hCount.AddComponent<TextMeshProUGUI>();
-            fireHeartCountText.text = "0 / 3";
-            fireHeartCountText.fontSize = 20;
-            fireHeartCountText.fontStyle = FontStyles.Bold;
-            fireHeartCountText.alignment = TextAlignmentOptions.MidlineRight;
-            fireHeartCountText.color = Color.white;
-
-            // Box Núcleo do Boss
-            GameObject cBox = new GameObject("Mat_BossCore");
-            cBox.transform.SetParent(parent, false);
-            var cbBoxRect = cBox.AddComponent<RectTransform>();
-            cbBoxRect.anchoredPosition = new Vector2(220f, -130f);
-            cbBoxRect.sizeDelta = new Vector2(400f, 64f);
-            var cbBoxImg = cBox.AddComponent<Image>();
-            cbBoxImg.color = new Color(0.07f, 0.05f, 0.12f, 1f);
-
-            GameObject cIcon = new GameObject("Icon");
-            cIcon.transform.SetParent(cBox.transform, false);
-            var ciIconRect = cIcon.AddComponent<RectTransform>();
-            ciIconRect.anchorMin = new Vector2(0f, 0.5f);
-            ciIconRect.anchorMax = new Vector2(0f, 0.5f);
-            ciIconRect.pivot = new Vector2(0f, 0.5f);
-            ciIconRect.anchoredPosition = new Vector2(12f, 0f);
-            ciIconRect.sizeDelta = new Vector2(44f, 44f);
-            var ciImg = cIcon.AddComponent<Image>();
-            ciImg.sprite = Resources.Load<Sprite>("Sprites/BossCore");
-            ciImg.preserveAspect = true;
-
-            GameObject cTitle = new GameObject("Title");
-            cTitle.transform.SetParent(cBox.transform, false);
-            var ctTitleRect = cTitle.AddComponent<RectTransform>();
-            ctTitleRect.anchoredPosition = new Vector2(0f, 12f);
-            ctTitleRect.sizeDelta = new Vector2(180f, 24f);
-            var cttTmp = cTitle.AddComponent<TextMeshProUGUI>();
-            cttTmp.text = "Núcleo do Boss";
-            cttTmp.fontSize = 18;
-            cttTmp.alignment = TextAlignmentOptions.MidlineLeft;
-            cttTmp.color = Color.white;
-
-            GameObject cSegs = new GameObject("Segments");
-            cSegs.transform.SetParent(cBox.transform, false);
-            var csgRect = cSegs.AddComponent<RectTransform>();
-            csgRect.anchoredPosition = new Vector2(0f, -14f);
-            csgRect.sizeDelta = new Vector2(180f, 14f);
-            var chlg = cSegs.AddComponent<HorizontalLayoutGroup>();
-            chlg.spacing = 6f;
-            chlg.childForceExpandWidth = true;
-            chlg.childForceExpandHeight = true;
-            bossCoreSegmentsContainer = cSegs.transform;
-
-            GameObject cseg0 = new GameObject("Seg_0");
-            cseg0.transform.SetParent(bossCoreSegmentsContainer, false);
-            var csegImg = cseg0.AddComponent<Image>();
-            csegImg.color = ColorLocked;
-
-            GameObject cCount = new GameObject("Count");
-            cCount.transform.SetParent(cBox.transform, false);
-            var ccRect = cCount.AddComponent<RectTransform>();
-            ccRect.anchorMin = new Vector2(1f, 0.5f);
-            ccRect.anchorMax = new Vector2(1f, 0.5f);
-            ccRect.pivot = new Vector2(1f, 0.5f);
-            ccRect.anchoredPosition = new Vector2(-16f, 0f);
-            ccRect.sizeDelta = new Vector2(90f, 32f);
-            bossCoreCountText = cCount.AddComponent<TextMeshProUGUI>();
-            bossCoreCountText.text = "0 / 1";
-            bossCoreCountText.fontSize = 20;
-            bossCoreCountText.fontStyle = FontStyles.Bold;
-            bossCoreCountText.alignment = TextAlignmentOptions.MidlineRight;
-            bossCoreCountText.color = Color.white;
-
-            // Botão Evoluir
-            GameObject btnEvolve = new GameObject("Btn_Evolve");
-            btnEvolve.transform.SetParent(parent, false);
-            var beRect = btnEvolve.AddComponent<RectTransform>();
-            beRect.anchoredPosition = new Vector2(0f, -220f);
-            beRect.sizeDelta = new Vector2(440f, 68f);
-            var beImg = btnEvolve.AddComponent<Image>();
-            beImg.color = ColorBought;
-            evolveStaffButton = btnEvolve.AddComponent<Button>();
-
-            GameObject beTxt = new GameObject("Text");
-            beTxt.transform.SetParent(btnEvolve.transform, false);
-            var betRect = beTxt.AddComponent<RectTransform>();
-            betRect.anchorMin = Vector2.zero;
-            betRect.anchorMax = Vector2.one;
-            betRect.sizeDelta = Vector2.zero;
-            evolveStaffButtonText = beTxt.AddComponent<TextMeshProUGUI>();
-            evolveStaffButtonText.text = "EVOLUIR CAJADO";
-            evolveStaffButtonText.fontSize = 24;
-            evolveStaffButtonText.fontStyle = FontStyles.Bold;
-            evolveStaffButtonText.alignment = TextAlignmentOptions.Center;
-            evolveStaffButtonText.color = Color.white;
-
-            // Mensagem de Status
-            GameObject sMsg = new GameObject("StaffMessage");
-            sMsg.transform.SetParent(parent, false);
-            var smRect = sMsg.AddComponent<RectTransform>();
-            smRect.anchoredPosition = new Vector2(0f, -285f);
-            smRect.sizeDelta = new Vector2(800f, 32f);
-            staffMessageText = sMsg.AddComponent<TextMeshProUGUI>();
-            staffMessageText.text = "Derrote morcegos e o golem para coletar os materiais!";
-            staffMessageText.fontSize = 20;
-            staffMessageText.alignment = TextAlignmentOptions.Center;
-            staffMessageText.color = new Color(0.65f, 0.58f, 0.8f, 1f);
-        }
-
-        private void CreateLine(Transform parent, Vector2 start, Vector2 end)
-        {
-            GameObject line = new GameObject("Line");
-            line.transform.SetParent(parent, false);
-            var rect = line.AddComponent<RectTransform>();
-
-            Vector2 dir = end - start;
-            float distance = dir.magnitude;
-            float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-
-            rect.anchoredPosition = (start + end) * 0.5f;
-            rect.sizeDelta = new Vector2(distance, 6f);
-            rect.localRotation = Quaternion.Euler(0, 0, angle);
-
-            var img = line.AddComponent<Image>();
-            img.color = ColorLine;
-        }
-
-        private void HookListeners()
-        {
-            if (tabTreeButton != null)
-            {
-                tabTreeButton.onClick.RemoveAllListeners();
-                tabTreeButton.onClick.AddListener(() => SwitchTab(false));
-            }
-
-            if (tabStaffButton != null)
-            {
-                tabStaffButton.onClick.RemoveAllListeners();
-                tabStaffButton.onClick.AddListener(() => SwitchTab(true));
-            }
-
-            if (closeButton != null)
-            {
-                closeButton.onClick.RemoveAllListeners();
-                closeButton.onClick.AddListener(OnCloseClicked);
-            }
-
-            if (buyButton != null)
-            {
-                buyButton.onClick.RemoveAllListeners();
-                buyButton.onClick.AddListener(OnBuyClicked);
-            }
-
-            if (evolveStaffButton != null)
-            {
-                evolveStaffButton.onClick.RemoveAllListeners();
-                evolveStaffButton.onClick.AddListener(OnEvolveStaffClicked);
-            }
-
-            foreach (var node in nodes)
-            {
-                if (node.nodeButton != null)
-                {
-                    string id = node.id;
-                    node.nodeButton.onClick.RemoveAllListeners();
-                    node.nodeButton.onClick.AddListener(() => SelectNode(id));
-                }
-            }
-        }
-
-        public void SelectNode(string id)
-        {
-            selectedNodeId = id;
-            RefreshUI();
-        }
+        public void SelectNode(string id) { selectedId = id; RefreshDetailCard(); }
 
         public void RefreshUI()
         {
             if (GameManager.Instance == null) return;
-
-            int currentSP = GameManager.Instance.SkillPoints;
-
-            // 1. Atualiza Skill Points no Topo
-            if (skillPointsText != null)
-            {
-                skillPointsText.text = $"SKILL POINTS: {currentSP}";
-            }
-
-            // 2. Atualiza os nós da árvore
-            foreach (var n in nodes)
-            {
-                int lvl = GameManager.Instance.GetSkillLevel(n.id);
-                bool reach = IsNodeReachable(n);
-                int cost = GetCost(n, lvl);
-                bool canBuy = reach && (lvl < n.maxLevel) && (currentSP >= cost);
-
-                if (n.nodeLevelText != null)
-                {
-                    n.nodeLevelText.text = reach ? $"{lvl}/{n.maxLevel}" : "";
-                }
-
-                if (n.nodeBorder != null)
-                {
-                    if (lvl >= n.maxLevel) n.nodeBorder.color = ColorMaxed;
-                    else if (lvl > 0) n.nodeBorder.color = ColorBought;
-                    else if (canBuy) n.nodeBorder.color = ColorOpen;
-                    else n.nodeBorder.color = ColorLocked;
-                }
-
-                if (n.selectionRing != null)
-                {
-                    n.selectionRing.SetActive(n.id == selectedNodeId);
-                }
-            }
-
-            // 3. Atualiza o Card de Detalhes
-            UpdateDetailCard();
-
-            // 4. Atualiza a tela de Evolução de Cajado
-            UpdateStaffTab();
+            int sp = GameManager.Instance.SkillPoints;
+            if (spText != null) spText.text = $"SKILL POINTS: {sp}";
+            RefreshNodes();
+            if (!staffTabOpen) RefreshDetailCard();
+            else               RefreshStaffTab();
         }
 
-        private void UpdateDetailCard()
+        void RefreshNodes()
         {
-            NodeConfig node = GetNodeConfig(selectedNodeId);
-            if (node == null) return;
-
+            if (GameManager.Instance == null) return;
             int sp = GameManager.Instance.SkillPoints;
-            int lvl = GameManager.Instance.GetSkillLevel(node.id);
-            bool reach = IsNodeReachable(node);
-            int cost = GetCost(node, lvl);
-            bool canBuy = reach && (lvl < node.maxLevel) && (sp >= cost);
-
-            if (detailNameText != null) detailNameText.text = node.name;
-            if (detailCostText != null) detailCostText.text = (lvl >= node.maxLevel) ? "CUSTO: -" : $"CUSTO: {cost} SP";
-            if (detailDescText != null) detailDescText.text = node.description;
-            if (detailEffectText != null) detailEffectText.text = node.effectText;
-
-            if (detailTotalText != null)
+            foreach (var n in NODES)
             {
-                if (lvl > 0 && node.valuePerLevel > 0f)
+                if (n.nodeBg == null) continue;
+                int  lvl     = GameManager.Instance.GetSkillLevel(n.id);
+                bool reached = IsReachable(n);
+                bool maxed   = lvl >= n.maxLevel;
+                bool canBuy  = reached && !maxed && sp >= n.cost;
+
+                // Background colour
+                if (maxed)         n.nodeBg.color = C_GOLD;
+                else if (lvl > 0)  n.nodeBg.color = C_BOUGHT;
+                else if (canBuy)   n.nodeBg.color = C_AVAIL;
+                else               n.nodeBg.color = C_LOCKED;
+
+                // Ring base colour (alpha preserved from hover)
+                if (n.nodeRing != null)
                 {
-                    float totalVal = node.valuePerLevel * lvl;
-                    detailTotalText.text = $"Total Atual: +{totalVal}{node.unitText}";
+                    Color rc = maxed ? C_GOLD : canBuy ? C_AVAIL : C_BOUGHT;
+                    float a  = n.nodeRing.color.a;
+                    n.nodeRing.color = new Color(rc.r, rc.g, rc.b, a);
                 }
-                else
-                {
-                    detailTotalText.text = (lvl > 0) ? "Desbloqueado!" : "";
-                }
+
+                if (n.levelLabel != null)
+                    n.levelLabel.text = reached ? $"{lvl}/{n.maxLevel}" : "";
             }
+        }
 
-            // Pips de nível
-            UpdatePips(node, lvl);
+        void RefreshDetailCard()
+        {
+            if (GameManager.Instance == null) return;
+            NodeData n = GetNode(selectedId);
+            if (n == null) return;
 
-            // Estado do Botão
+            int  sp      = GameManager.Instance.SkillPoints;
+            int  lvl     = GameManager.Instance.GetSkillLevel(n.id);
+            bool reached = IsReachable(n);
+            bool maxed   = lvl >= n.maxLevel;
+            bool canBuy  = reached && !maxed && sp >= n.cost;
+
+            if (cardName   != null) cardName.text   = n.displayName;
+            if (cardCost   != null) cardCost.text   = maxed ? "CUSTO -" : $"CUSTO {n.cost} SP";
+            if (cardDesc   != null) cardDesc.text   = n.description;
+            if (cardEffect != null) cardEffect.text = n.effectText;
+
             string statusMsg = "";
-            bool btnInteractable = false;
-            string btnLabel = "DESBLOQUEAR";
+            bool   btnActive = false;
+            string btnLabel  = "DESBLOQUEAR";
+            Color  btnColor  = new Color(0.35f,0.28f,0.48f,1f);
 
-            if (lvl >= node.maxLevel)
+            if (maxed)
             {
                 statusMsg = "Nível máximo alcançado!";
-                btnLabel = "MÁXIMO";
+                btnLabel  = "MÁXIMO";
             }
-            else if (!reach)
+            else if (!reached)
             {
-                NodeConfig req = GetNodeConfig(node.requirementId);
-                statusMsg = $"Requer: {(req != null ? req.name : "Anterior")}";
-                btnLabel = "BLOQUEADO";
+                var req = GetNode(n.requirementId);
+                statusMsg = $"Requer: {(req != null ? req.displayName : "anterior")}";
+                btnLabel  = "BLOQUEADO";
             }
-            else if (sp < cost)
+            else if (sp < n.cost)
             {
-                statusMsg = $"Faltam {cost - sp} skill point(s)";
-                btnLabel = "SP INSUFICIENTE";
+                statusMsg = $"Faltam {n.cost - sp} skill point(s)";
+                btnLabel  = "SP INSUFICIENTE";
             }
             else
             {
                 statusMsg = "Pronto para desbloquear!";
-                btnInteractable = true;
-                btnLabel = "DESBLOQUEAR";
+                btnActive = true;
+                btnLabel  = "DESBLOQUEAR";
+                btnColor  = C_BOUGHT;
             }
 
-            if (detailStatusText != null) detailStatusText.text = statusMsg;
-
-            if (buyButton != null)
+            if (cardStatus  != null) cardStatus.text = statusMsg;
+            if (buyBtnLabel != null) buyBtnLabel.text = btnLabel;
+            if (buyBtn      != null)
             {
-                buyButton.interactable = btnInteractable;
-                var btnImg = buyButton.GetComponent<Image>();
-                if (btnImg != null)
-                {
-                    btnImg.color = btnInteractable ? ColorBought : new Color(0.45f, 0.35f, 0.55f, 1f);
-                }
-                if (buyButtonText != null) buyButtonText.text = btnLabel;
+                buyBtn.interactable = btnActive;
+                var bi = buyBtn.GetComponent<Image>();
+                if (bi) bi.color = btnColor;
             }
         }
 
-        private void UpdatePips(NodeConfig node, int currentLevel)
-        {
-            if (pipsContainer == null) return;
-
-            int childCount = pipsContainer.childCount;
-            for (int i = 0; i < childCount; i++)
-            {
-                var child = pipsContainer.GetChild(i).gameObject;
-                if (i < node.maxLevel)
-                {
-                    child.SetActive(true);
-                    var img = child.GetComponent<Image>();
-                    if (img != null)
-                    {
-                        img.color = (i < currentLevel) ? ColorBought : ColorLocked;
-                    }
-                }
-                else
-                {
-                    child.SetActive(false);
-                }
-            }
-        }
-
-        private void UpdateStaffTab()
+        void RefreshStaffTab()
         {
             if (GameManager.Instance == null) return;
 
-            bool isEvolved = GameManager.Instance.IsStaffEvolved;
-            int hearts = GameManager.Instance.FireHeartsCount;
-            int reqHearts = GameManager.Instance.FireHeartsRequired;
-            int cores = GameManager.Instance.BossCoresCount;
-            int reqCores = GameManager.Instance.BossCoresRequired;
+            bool evolved  = GameManager.Instance.IsStaffEvolved;
+            int  bat      = GameManager.Instance.FireHeartsCount;
+            int  reqBat   = GameManager.Instance.FireHeartsRequired;
+            int  core     = GameManager.Instance.BossCoresCount;
+            int  reqCore  = GameManager.Instance.BossCoresRequired;
 
-            // Atualiza contadores e segmentos
-            if (fireHeartCountText != null)
+            if (batCountTxt  != null) { batCountTxt .text  = $"{bat}/{reqBat}";   batCountTxt .color = bat  >= reqBat  ? C_GOLD : Color.white; }
+            if (coreCountTxt != null) { coreCountTxt.text  = $"{core}/{reqCore}"; coreCountTxt.color = core >= reqCore ? C_GOLD : Color.white; }
+
+            UpdateSegs(batSegCont,  bat,  reqBat);
+            UpdateSegs(coreSegCont, core, reqCore);
+
+            bool canEvolve = !evolved && GameManager.Instance.CanEvolveStaff();
+
+            if (evolved)
             {
-                fireHeartCountText.text = $"{hearts} / {reqHearts}";
-                fireHeartCountText.color = (hearts >= reqHearts) ? ColorMaxed : Color.white;
-            }
-
-            if (fireHeartSegmentsContainer != null)
-            {
-                for (int i = 0; i < fireHeartSegmentsContainer.childCount; i++)
-                {
-                    var segImg = fireHeartSegmentsContainer.GetChild(i).GetComponent<Image>();
-                    if (segImg != null)
-                    {
-                        segImg.color = (i < hearts) ? (hearts >= reqHearts ? ColorMaxed : ColorBought) : ColorLocked;
-                    }
-                }
-            }
-
-            if (bossCoreCountText != null)
-            {
-                bossCoreCountText.text = $"{cores} / {reqCores}";
-                bossCoreCountText.color = (cores >= reqCores) ? ColorMaxed : Color.white;
-            }
-
-            if (bossCoreSegmentsContainer != null)
-            {
-                for (int i = 0; i < bossCoreSegmentsContainer.childCount; i++)
-                {
-                    var segImg = bossCoreSegmentsContainer.GetChild(i).GetComponent<Image>();
-                    if (segImg != null)
-                    {
-                        segImg.color = (i < cores) ? ColorMaxed : ColorLocked;
-                    }
-                }
-            }
-
-            if (isEvolved)
-            {
-                if (currentStaffNameText != null) currentStaffNameText.text = "Cajado Flamejante";
-                if (currentStaffStatText != null) currentStaffStatText.text = "Poder Mágico Máximo (+60% Dano & Fogo)";
-                if (currentStaffImage != null) currentStaffImage.sprite = Resources.Load<Sprite>("Sprites/Staff_Evolved");
-
-                if (nextStaffBox != null) nextStaffBox.SetActive(false);
-                if (staffNeedSummaryText != null) staffNeedSummaryText.text = "Cajado Totalmente Evoluído!";
-
-                if (evolveStaffButton != null)
-                {
-                    evolveStaffButton.interactable = false;
-                    var bImg = evolveStaffButton.GetComponent<Image>();
-                    if (bImg != null) bImg.color = new Color(0.3f, 0.25f, 0.4f, 1f);
-                    if (evolveStaffButtonText != null) evolveStaffButtonText.text = "MÁXIMO";
-                }
-
-                if (staffMessageText != null)
-                {
-                    staffMessageText.text = "Seu cajado atingiu a maestria suprema do fogo e gelo!";
-                }
+                if (curStaffName  != null) curStaffName.text  = "Cajado Arcano";
+                if (curStaffStat  != null) curStaffStat.text  = "Dano 8";
+                if (curStaffImg   != null) curStaffImg.sprite = Resources.Load<Sprite>("Sprites/Staff_Evolved");
+                if (nxtStaffBox   != null) nxtStaffBox.SetActive(false);
+                if (needSummary   != null) needSummary.text   = "Cajado totalmente evoluído!";
+                if (staffMsg      != null) staffMsg.text      = "Nenhuma evolução restante.";
+                if (evolveBtn     != null) { evolveBtn.interactable = false; var bi = evolveBtn.GetComponent<Image>(); if (bi) bi.color = C_LINE; }
+                if (evolveBtnLabel!= null) evolveBtnLabel.text = "MÁXIMO";
             }
             else
             {
-                bool canEvolve = GameManager.Instance.CanEvolveStaff();
-
-                if (evolveStaffButton != null)
-                {
-                    evolveStaffButton.interactable = canEvolve;
-                    var bImg = evolveStaffButton.GetComponent<Image>();
-                    if (bImg != null)
-                    {
-                        bImg.color = canEvolve ? ColorMaxed : new Color(0.35f, 0.28f, 0.48f, 1f);
-                    }
-                    if (evolveStaffButtonText != null)
-                    {
-                        evolveStaffButtonText.text = canEvolve ? "EVOLUIR CAJADO" : "MATERIAIS INSUFICIENTES";
-                    }
-                }
-
-                if (staffMessageText != null)
-                {
-                    staffMessageText.text = canEvolve
-                        ? "Tudo pronto! Pressione o botão para desbloquear a Magia de Fogo!"
-                        : "Derrote morcegos de fogo e o Golem para coletar os materiais restantes.";
-                }
+                if (nxtStaffBox   != null) nxtStaffBox.SetActive(true);
+                if (evolveBtn     != null) { evolveBtn.interactable = canEvolve; var bi = evolveBtn.GetComponent<Image>(); if (bi) bi.color = canEvolve ? C_GOLD : new Color(0.35f,0.28f,0.48f,1f); }
+                if (evolveBtnLabel!= null) evolveBtnLabel.text = canEvolve ? "EVOLUIR" : "MATERIAIS INSUFICIENTES";
+                if (staffMsg      != null) staffMsg.text       = canEvolve ? "Tudo pronto! Pode evoluir." : "Derrote inimigos para coletar os drops que faltam.";
             }
         }
 
-        private void OnBuyClicked()
+        void UpdateSegs(Transform cont, int have, int req)
         {
-            NodeConfig node = GetNodeConfig(selectedNodeId);
-            if (node == null || GameManager.Instance == null) return;
-
-            int lvl = GameManager.Instance.GetSkillLevel(node.id);
-            int cost = GetCost(node, lvl);
-
-            if (IsNodeReachable(node) && lvl < node.maxLevel && GameManager.Instance.SkillPoints >= cost)
+            if (cont == null) return;
+            for (int i = 0; i < cont.childCount; i++)
             {
-                bool success = GameManager.Instance.UpgradeSkill(node.id, cost);
-                if (success)
-                {
-                    RefreshUI();
-                }
+                var img = cont.GetChild(i).GetComponent<Image>();
+                if (img) img.color = i < have ? (have >= req ? C_GOLD : C_BOUGHT) : C_LOCKED;
             }
         }
 
-        private void OnEvolveStaffClicked()
+        // ═════════════════════════════════════════════════════════════════════
+        // ACTIONS
+        // ═════════════════════════════════════════════════════════════════════
+        void TryBuy(string id)
         {
-            if (GameManager.Instance != null && GameManager.Instance.TryEvolveStaff())
-            {
-                RefreshUI();
-            }
+            if (GameManager.Instance == null) return;
+            NodeData n = GetNode(id);
+            if (n == null) return;
+            int lvl = GameManager.Instance.GetSkillLevel(n.id);
+            if (!IsReachable(n) || lvl >= n.maxLevel || GameManager.Instance.SkillPoints < n.cost) return;
+            if (GameManager.Instance.UpgradeSkill(n.id, n.cost)) RefreshUI();
         }
 
-        private void OnCloseClicked()
+        void OnEvolveClicked()
         {
-            if (GameManager.Instance != null)
-            {
-                GameManager.Instance.CloseEvolutionPanel();
-            }
-            else
-            {
-                gameObject.SetActive(false);
-                Time.timeScale = 1f;
-            }
+            if (GameManager.Instance != null && GameManager.Instance.TryEvolveStaff()) RefreshUI();
         }
 
-        private bool IsNodeReachable(NodeConfig node)
+        void OnClose()
         {
-            if (string.IsNullOrEmpty(node.requirementId)) return true;
-            if (GameManager.Instance == null) return false;
-            return GameManager.Instance.GetSkillLevel(node.requirementId) > 0;
+            if (GameManager.Instance != null) GameManager.Instance.CloseEvolutionPanel();
+            else { gameObject.SetActive(false); Time.timeScale = 1f; }
         }
 
-        private int GetCost(NodeConfig node, int currentLevel)
+        // ═════════════════════════════════════════════════════════════════════
+        // HELPERS
+        // ═════════════════════════════════════════════════════════════════════
+        bool IsReachable(NodeData n)
         {
-            return node.baseCost + currentLevel;
+            if (string.IsNullOrEmpty(n.requirementId)) return true;
+            return GameManager.Instance != null && GameManager.Instance.GetSkillLevel(n.requirementId) > 0;
         }
 
-        private NodeConfig GetNodeConfig(string id)
+        NodeData GetNode(string id)
         {
-            return nodes.Find(n => n.id == id);
+            if (string.IsNullOrEmpty(id)) return null;
+            return NODES.Find(x => x.id == id);
+        }
+
+        // HTML (560×500, Y-down) → Unity canvas (Y-up)
+        Vector2 HtmlToCanvas(Vector2 html)
+        {
+            float x = (html.x / 560f - 0.5f) * 840f;
+            float y = (0.5f - html.y / 500f) * 590f;
+            return new Vector2(x, y);
+        }
+
+        void DrawLine(Transform parent, Vector2 a, Vector2 b)
+        {
+            var go  = new GameObject("Line"); go.transform.SetParent(parent, false);
+            var rt  = go.AddComponent<RectTransform>();
+            var dir = b - a;
+            rt.anchoredPosition = (a + b) * 0.5f;
+            rt.sizeDelta        = new Vector2(dir.magnitude, 5f);
+            rt.localRotation    = Quaternion.Euler(0, 0, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
+            go.AddComponent<Image>().color = C_LINE;
+        }
+
+        void AddTrigger(EventTrigger trig, EventTriggerType type, UnityEngine.Events.UnityAction<BaseEventData> action)
+        {
+            var entry = new EventTrigger.Entry { eventID = type };
+            entry.callback.AddListener(action);
+            trig.triggers.Add(entry);
+        }
+
+        void PulseRing(NodeData n, bool on)
+        {
+            if (n.nodeRing == null) return;
+            var c = n.nodeRing.color;
+            n.nodeRing.color = new Color(c.r, c.g, c.b, on ? 0.9f : 0f);
+        }
+
+        // ── Lightweight builder helpers ────────────────────────────────────────
+        // Returns the GameObject (not RectTransform) so .AddComponent<> works.
+
+        GameObject Rect(string name, Transform parent,
+            Vector2 ancMin, Vector2 ancMax, Vector2 pivot, Vector2 size)
+        {
+            var go = new GameObject(name); go.transform.SetParent(parent, false);
+            var rt = go.AddComponent<RectTransform>();
+            rt.anchorMin = ancMin; rt.anchorMax = ancMax; rt.pivot = pivot; rt.sizeDelta = size;
+            return go;
+        }
+
+        Image Img(GameObject go, Color col)
+        {
+            var img = go.GetComponent<Image>() ?? go.AddComponent<Image>();
+            img.color = col; return img;
+        }
+
+        TextMeshProUGUI Txt(string name, Transform parent,
+            Vector2 ancMin, Vector2 ancMax, Vector2 pivot, Vector2 size,
+            string text, float fs, Color col, FontStyles style)
+        {
+            var go  = Rect(name, parent, ancMin, ancMax, pivot, size);
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.text      = text; tmp.fontSize  = fs;
+            tmp.color     = col;  tmp.fontStyle = style;
+            tmp.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+            return tmp;
+        }
+
+        Image MakeImg(string name, Transform parent,
+            Vector2 ancMin, Vector2 ancMax, Vector2 pivot, Vector2 size)
+        {
+            var go = Rect(name, parent, ancMin, ancMax, pivot, size);
+            return go.AddComponent<Image>();
+        }
+
+        void SetAnchoredPos(GameObject go, Vector2 pos)
+        {
+            var rt = go.GetComponent<RectTransform>();
+            if (rt) rt.anchoredPosition = pos;
+        }
+
+        void SetAnchoredPos(TextMeshProUGUI tmp, Vector2 pos)
+        {
+            if (tmp == null) return;
+            SetAnchoredPos(tmp.gameObject, pos);
         }
     }
 }
