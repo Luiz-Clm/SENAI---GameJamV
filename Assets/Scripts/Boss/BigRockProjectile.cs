@@ -15,6 +15,20 @@ namespace WitchShmup.Boss
         [Header("Damage")]
         [SerializeField] private float damage = 2f;
 
+        private void Awake()
+        {
+            var sr = GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                var bossAttackSpr = Resources.Load<Sprite>("Sprites/ataqueBoss2");
+                if (bossAttackSpr != null)
+                {
+                    sr.sprite = bossAttackSpr;
+                    sr.color = Color.white;
+                }
+            }
+        }
+
         public void Initialize(Vector2 dir, float spd, float dmg = 2f)
         {
             direction = dir.normalized;

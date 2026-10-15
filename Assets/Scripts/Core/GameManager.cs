@@ -35,6 +35,10 @@ namespace WitchShmup.Core
         [SerializeField] private GameObject victoryPanel;
         [SerializeField] private GameObject evolutionPanel;
 
+        [Header("Audio & BGM")]
+        [SerializeField] private WitchShmup.Audio.BGMManager bgmManager;
+        public WitchShmup.Audio.BGMManager BGM => bgmManager;
+
         // Skill Tree Levels
         public int LevelVitality { get; private set; } = 0;     // vit (max 5)
         public int LevelVeloz { get; private set; } = 0;        // vel (max 3)
@@ -119,6 +123,17 @@ namespace WitchShmup.Core
             {
                 var pauseObj = new GameObject("PauseUI_Manager");
                 pauseObj.AddComponent<PauseUI>();
+            }
+
+            // Garante que o BGMManager exista na cena
+            if (bgmManager == null)
+            {
+                bgmManager = FindFirstObjectByType<WitchShmup.Audio.BGMManager>();
+                if (bgmManager == null)
+                {
+                    var bgmObj = new GameObject("BGM_Manager");
+                    bgmManager = bgmObj.AddComponent<WitchShmup.Audio.BGMManager>();
+                }
             }
         }
 

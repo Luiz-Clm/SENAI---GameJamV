@@ -77,6 +77,9 @@ namespace WitchShmup.Boss
         public event Action<float, float> OnHealthChanged;
         public event Action OnBossDefeated;
 
+        public static event Action OnAnyBossFightStarted;
+        public static event Action OnAnyBossFightDefeated;
+
         [Header("Floating Overhead Health Bar")]
         private GameObject worldBarContainer;
         private Transform worldBarFillTransform;
@@ -237,6 +240,7 @@ namespace WitchShmup.Boss
             }
             PlayIdleAnim();
             attackRoutine = StartCoroutine(AttackLoop());
+            OnAnyBossFightStarted?.Invoke();
         }
 
         // --- Helpers de animação ---
@@ -482,6 +486,7 @@ namespace WitchShmup.Boss
             }
 
             OnBossDefeated?.Invoke();
+            OnAnyBossFightDefeated?.Invoke();
 
             if (GameManager.Instance != null)
             {

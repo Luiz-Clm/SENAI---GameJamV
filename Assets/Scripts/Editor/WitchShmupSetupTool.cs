@@ -115,13 +115,25 @@ namespace WitchShmup.Editor
             CreateBatPrefab(batSprite, fireballPrefab);
 
             // 6. Boss Prefabs: Pedra Gigante, Pedra Orbital, Parede de Pedra
-            Sprite bigRockSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/BigRock.png");
+            Sprite bigRockSprite = null;
+            foreach (var obj in AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/ataqueBoss2.png"))
+            {
+                if (obj is Sprite s) { bigRockSprite = s; break; }
+            }
+            if (bigRockSprite == null) bigRockSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/ataqueBoss2.png");
+            if (bigRockSprite == null) bigRockSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/BigRock.png");
             CreateBigRockPrefab(bigRockSprite);
 
             Sprite miniStoneSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/MiniStone.png");
             CreateOrbitingStonePrefab(miniStoneSprite);
 
-            Sprite stoneBlockSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/StoneWall_Block.png");
+            Sprite stoneBlockSprite = null;
+            foreach (var obj in AssetDatabase.LoadAllAssetsAtPath($"{SpritesPath}/ATAQUEboss.png"))
+            {
+                if (obj is Sprite s) { stoneBlockSprite = s; break; }
+            }
+            if (stoneBlockSprite == null) stoneBlockSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/ATAQUEboss.png");
+            if (stoneBlockSprite == null) stoneBlockSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/StoneWall_Block.png");
             CreateStoneWallPrefab(stoneBlockSprite);
 
             AssetDatabase.SaveAssets();
@@ -595,8 +607,10 @@ namespace WitchShmup.Editor
             GameObject icePrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Projectile_Ice.prefab");
             GameObject firePrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Projectile_Fire.prefab");
 
-            // Som de tiro do mago
-            AudioClip shootClip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{SpritesPath}/Tiro.Teste.wav");
+            // Sons de tiro do mago (Gelo e Fogo)
+            AudioClip iceClip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{SpritesPath}/PlayerIce_LancaCongelada.wav");
+            AudioClip fireClip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{SpritesPath}/PlayerFire_DardoChamas.wav");
+            AudioClip fallbackShootClip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{SpritesPath}/Tiro.Teste.wav");
 
             // Animação do Mago: Idle e Ataque
             var visualCtrl = playerObj.AddComponent<PlayerVisualController>();
@@ -634,12 +648,9 @@ namespace WitchShmup.Editor
             so.FindProperty("fireConfig.projectilePrefab").objectReferenceValue = firePrefab;
             so.FindProperty("isFireUnlocked").boolValue = true;
 
-            // Vincula som de tiro a ambos os elementos
-            if (shootClip != null)
-            {
-                so.FindProperty("iceConfig.shootSound").objectReferenceValue = shootClip;
-                so.FindProperty("fireConfig.shootSound").objectReferenceValue = shootClip;
-            }
+            // Vincula sons específicos para cada elemento
+            so.FindProperty("iceConfig.shootSound").objectReferenceValue = (iceClip != null) ? iceClip : fallbackShootClip;
+            so.FindProperty("fireConfig.shootSound").objectReferenceValue = (fireClip != null) ? fireClip : fallbackShootClip;
 
             // Vincula AudioSource
             so.FindProperty("audioSource").objectReferenceValue = audioSrc;

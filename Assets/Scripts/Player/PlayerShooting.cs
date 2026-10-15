@@ -86,7 +86,20 @@ namespace WitchShmup.Player
         {
             if (audioSource == null)
             {
-                audioSource = GetComponent<AudioSource>();
+                audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
+            }
+
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 0f; // 2D Sound
+
+            // Auto-carrega os sons dos tiros caso não estejam assinalados no Inspector
+            if (iceConfig.shootSound == null)
+            {
+                iceConfig.shootSound = Resources.Load<AudioClip>("Audio/PlayerIce_LancaCongelada");
+            }
+            if (fireConfig.shootSound == null)
+            {
+                fireConfig.shootSound = Resources.Load<AudioClip>("Audio/PlayerFire_DardoChamas");
             }
         }
 
@@ -351,20 +364,34 @@ namespace WitchShmup.Player
 
         private void SpawnProjectile(Vector3 position, Vector2 direction, ElementWeaponConfig config, float dmg, int pierce, float speed)
         {
+            GameObject projObj;
             if (config.projectilePrefab != null)
             {
-                GameObject projObj = Instantiate(config.projectilePrefab, position, Quaternion.identity);
-                var proj = projObj.GetComponent<Projectile>();
-                if (proj != null)
+                projObj = Instantiate(config.projectilePrefab, position, Quaternion.identity);
+                var sr = projObj.GetComponent<SpriteRenderer>();
+                if (sr != null)
                 {
-                    proj.Initialize(direction, speed, dmg, config.element, true, pierce);
+                    if (config.element == ElementType.Ice)
+                    {
+                        var iceSpr = Resources.Load<Sprite>("Sprites/ataqueMAgo");
+                        if (iceSpr != null) { sr.sprite = iceSpr; sr.color = Color.white; }
+                    }
+                    else if (config.element == ElementType.Fire)
+                    {
+                        var fireSpr = Resources.Load<Sprite>("Sprites/bola de Fogo");
+                        if (fireSpr != null) { sr.sprite = fireSpr; sr.color = Color.white; }
+                    }
                 }
             }
             else
             {
                 // Runtime fallback projectile if prefab is not yet assigned
-                GameObject runtimeProj = CreateFallbackProjectile(position, config);
-                var proj = runtimeProj.GetComponent<Projectile>();
+                projObj = CreateFallbackProjectile(position, config);
+            }
+
+            var proj = projObj.GetComponent<Projectile>();
+            if (proj != null)
+            {
                 proj.Initialize(direction, speed, dmg, config.element, true, pierce);
             }
         }
@@ -375,18 +402,34 @@ namespace WitchShmup.Player
             obj.transform.position = position;
 
             var sr = obj.AddComponent<SpriteRenderer>();
-            sr.color = config.elementColor;
             sr.sortingOrder = 5;
 
-            // Generate small 16x6 pixel bullet sprite
-            Texture2D tex = new Texture2D(16, 6, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Point;
-            Color[] pixels = new Color[16 * 6];
-            for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.white;
-            tex.SetPixels(pixels);
-            tex.Apply();
+            Sprite customSprite = null;
+            if (config.element == ElementType.Ice)
+            {
+                customSprite = Resources.Load<Sprite>("Sprites/ataqueMAgo");
+            }
+            else if (config.element == ElementType.Fire)
+            {
+                customSprite = Resources.Load<Sprite>("Sprites/bola de Fogo");
+            }
 
-            sr.sprite = Sprite.Create(tex, new Rect(0, 0, 16, 6), new Vector2(0.5f, 0.5f), 16f);
+            if (customSprite != null)
+            {
+                sr.sprite = customSprite;
+                sr.color = Color.white;
+            }
+            else
+            {
+                sr.color = config.elementColor;
+                Texture2D tex = new Texture2D(16, 6, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Point;
+                Color[] pixels = new Color[16 * 6];
+                for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.white;
+                tex.SetPixels(pixels);
+                tex.Apply();
+                sr.sprite = Sprite.Create(tex, new Rect(0, 0, 16, 6), new Vector2(0.5f, 0.5f), 16f);
+            }
 
             var col = obj.AddComponent<BoxCollider2D>();
             col.isTrigger = true;

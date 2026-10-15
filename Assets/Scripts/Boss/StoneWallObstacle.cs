@@ -66,6 +66,12 @@ namespace WitchShmup.Boss
             }
             if (spriteRenderer != null)
             {
+                var wallSpr = Resources.Load<Sprite>("Sprites/ATAQUEboss");
+                if (wallSpr != null)
+                {
+                    spriteRenderer.sprite = wallSpr;
+                    spriteRenderer.color = Color.white;
+                }
                 originalColor = spriteRenderer.color;
             }
         }
