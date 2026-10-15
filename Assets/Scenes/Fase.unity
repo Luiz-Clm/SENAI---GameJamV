@@ -11436,7 +11436,7 @@ MonoBehaviour:
   gameOverPanel: {fileID: 1605575756}
   victoryPanel: {fileID: 265876991}
   evolutionPanel: {fileID: 174841601}
-  bgmManager: {fileID: 0}
+  bgmManager: {fileID: 1857939566}
   currentPhase: 1
   maxUnlockedPhase: 1
 --- !u!4 &1777938156
