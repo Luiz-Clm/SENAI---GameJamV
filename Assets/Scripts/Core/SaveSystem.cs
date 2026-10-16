@@ -76,7 +76,59 @@ namespace WitchShmup.Core
     {
         private const string PREFS_KEY = "WitchShmup_SaveData_v1";
         private const string SELECTED_PHASE_KEY = "WitchShmup_SelectedPhase";
+        private const string BUILD_ID_KEY = "WitchShmup_BuildID";
         private static string SaveFilePath => Path.Combine(Application.persistentDataPath, "witch_save.json");
+
+        /// <summary>
+        /// Deve ser chamado uma vez no início do jogo (ex: primeira cena carregada).
+        /// Detecta se é a primeira execução de uma nova build e limpa dados antigos.
+        /// No Editor, o PlayModeSaveCleaner já cuida disso, então aqui só atua em builds.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void ClearSaveIfNewBuild()
+        {
+#if UNITY_EDITOR
+            // No Editor, o PlayModeSaveCleaner.cs já limpa os dados.
+            // Não fazemos nada aqui para evitar limpar duas vezes.
+            return;
+#else
+            // Em builds: verifica se o ID da build mudou (nova instalação/build)
+            string currentBuildId = Application.buildGUID;
+
+            // Se o buildGUID estiver vazio (versões antigas do Unity), usa version como fallback
+            if (string.IsNullOrEmpty(currentBuildId))
+            {
+                currentBuildId = Application.version;
+            }
+
+            string storedBuildId = PlayerPrefs.GetString(BUILD_ID_KEY, "");
+
+            if (storedBuildId != currentBuildId)
+            {
+                // Primeira execução desta build! Limpa dados antigos.
+                Debug.Log($"[SaveSystem] Nova build detectada (anterior: '{storedBuildId}', atual: '{currentBuildId}'). Limpando dados salvos.");
+                DeleteSave();
+                PlayerPrefs.DeleteKey("WitchShmup_HighScore");
+
+                // Salva o ID da build atual para que na próxima execução os dados persistam
+                PlayerPrefs.SetString(BUILD_ID_KEY, currentBuildId);
+                PlayerPrefs.Save();
+            }
+#endif
+        }
+
+        /// <summary>
+        /// Reseta TODOS os dados salvos do jogo (save, highscore, build ID).
+        /// Chamado pelo botão "Resetar Dados" no menu.
+        /// </summary>
+        public static void ResetAllData()
+        {
+            DeleteSave();
+            PlayerPrefs.DeleteKey("WitchShmup_HighScore");
+            // Mantém o BUILD_ID_KEY para não re-limpar na próxima abertura
+            PlayerPrefs.Save();
+            Debug.Log("[SaveSystem] Todos os dados do jogo foram resetados pelo jogador.");
+        }
 
         public static void SaveGame(SaveData data)
         {

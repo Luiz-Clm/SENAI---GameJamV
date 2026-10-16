@@ -1,63 +1,108 @@
-# Contexto do Projeto - Menu e História (SpellGlide)
+# SpellGlide - Documentação Geral do Projeto & Contexto para IA
 
-Este arquivo serve para sincronizar o contexto do projeto entre computadores e com o Antigravity.
-
----
-
-## 📌 O que foi feito até agora:
-
-1. **Menu Principal (`Assets/Scripts/MainMenuManager.cs`)**:
-   - 3 Botões: `Jogar`, `Opções`, `Sair`.
-   - Fundo com a arte oficial de `Assets/Menu e HQ'S/Menu SpellGlide.png`.
-   - Janela/Painel de Opções:
-     - Controle de volume para Música e Efeitos Sonoros (SFX).
-     - **Painel de Controles do Jogo (Somente Leitura)**:
-       - **Mover:** `SETAS / WASD`
-       - **Atirar:** `M1` (Botão esquerdo do mouse)
-       - **Árvore de Upgrades:** `E`
-       - **Evoluir Cajado:** `T`
-     - Botão de Voltar estilizado.
-   - Botão Sair fecha o jogo (e para o editor da Unity).
-
-2. **Leitor de HQs / História Intro (`Assets/Scripts/ComicIntroManager.cs`)**:
-   - 6 quadrinhos usando as imagens em `Assets/Menu e HQ'S/1.png` até `6.png`.
-   - **Fade In** da imagem do quadrinho ao iniciar.
-   - **Caixa de narração** inferior com **efeito Máquina de Escrever (Typewriter)**.
-   - Suporte a **Fonte personalizada** (campo `Narrator Font Asset` no Inspector ou direto no `StoryText`).
-   - Cada quadrinho tem texto padrão configurável: `"Coloque seu texto aqui"` (editável no Inspector).
-   - **Tempo de 10 segundos** de exibição antes de fazer **Fade Out** e ir para o próximo quadrinho.
-   - Ao terminar o 6º quadrinho, faz transição e carrega a cena do jogo (`Fase.unity`).
-
-3. **Sistema de Pulo ("Aperte qualquer tecla para pular")**:
-   - Texto de aviso no canto inferior direito.
-   - **1º Aperto de tecla/clique**: Pula a animação do texto e completa a frase na hora.
-   - **2º Aperto de tecla/clique** (com texto completo): Pula os 10s e avança imediatamente para o próximo quadrinho.
-   - Toca som de pulo em ambas as ações.
-
-4. **Sistema de Áudio (`Assets/Scripts/AudioManager.cs` e `ProceduralAudioGenerator.cs`)**:
-   - **Áudios de Menu e História:**
-     - Música tema do menu em loop (`MenuMusic.wav`).
-     - Som de clique nos botões (`ButtonClick.wav`).
-     - Som de máquina de escrever (`TypewriterClick.wav`).
-     - Som ao pular/avançar tela (`SkipSound.wav`).
-   - **Efeitos Sonoros de Combate e Gameplay:**
-     - `PlayerFireShot.wav`: Tiro de fogo da jogadora (combustão mágica e projeção quente).
-     - `PlayerIceShot.wav`: Tiro de gelo da jogadora (ressonância cristalina vítrea com estilhaço de gelo).
-     - `BatFireball.wav`: Tiro do morcego de fogo (cuspe/sopro ágil de criatura com tremolo alado).
-     - `BossRockThrow.wav`: Arremesso de rochas do Boss (peso maciço cortando o ar e atrito mineral).
-     - `BossStoneWall.wav`: Parede de pedra do Boss (tremor de terra sísmico com erupção e choque de rochas).
-   - Todos gerados proceduralmente sem dependências externas e prontos para uso em `Assets/Audio/`.
-
-5. **Ferramenta de Criação Automática no Unity (`Assets/Scripts/Editor/MenuSetupHelper.cs`)**:
-   - Menu no topo do Unity: `Tools -> SpellGlide -> 1. Gerar/Atualizar Arquivos de Áudio (WAV)` (Gera ou atualiza todos os 9 arquivos WAV com 1 clique).
-   - Menu no topo do Unity: `Tools -> SpellGlide -> 2. Criar Cena de Menu e HQ Completa` (Recria a cena completa do zero com áudio integrado).
-   - Menu no topo do Unity: `Tools -> SpellGlide -> 3. Atualizar Painel de Opções na Cena Aberta` (Atualiza instantaneamente apenas o painel de opções e controles na cena atual sem precisar recriar tudo).
-   - Menu no topo do Unity: `Tools -> SpellGlide -> 4. Restaurar Fundo Padrão do Narrador na Cena Aberta` (Restaura o fundo padrão escuro da caixa de texto do narrador).
-   - Monta a cena inteira ou atualiza o painel com 1 clique e salva em `Assets/Scenes/Menu.unity`.
+Este documento reúne a visão completa, arquitetura e histórico de desenvolvimento de **SpellGlide**, servindo como guia de contexto para desenvolvedores e IAs continuarem o projeto sem perder histórico ou diretrizes de design.
 
 ---
 
-## 🚀 Como continuar o trabalho em um novo computador:
-1. Abra o projeto clonado do GitHub no Unity.
-2. Abra o chat do Antigravity e mencione este arquivo digitando:
-   `@PROJETO_MENU_SPELLGLIDE.md Vamos continuar de onde paramos!`
+## 🧭 Visão Geral do Jogo
+
+- **Título:** SpellGlide
+- **Gênero:** 2D Side-scrolling Shoot 'em Up (Shmup) com elementos de RPG / Roguelite.
+- **Temática:** Fantasia mágica. O jogador controla uma bruxa que voa montada em uma vassoura mágica através de masmorras sombrias, conjurando magias elementais (fogo e gelo), coletando essências, evoluindo habilidades e enfrentando chefes épicos (como o Golem de Pedra).
+- **Engine:** Unity 6 (6000.0.x) - 2D URP.
+
+---
+
+## 🚩 Marcos de Desenvolvimento: Game Jam vs. Versão Definitiva
+
+> [!IMPORTANT]
+> **Atenção para qualquer IA ou Desenvolvedor lendo este projeto:**
+> - **Fase Game Jam (Concluída):** Tudo o que foi desenvolvido até o momento corresponde ao protótipo criado para a **SENAI GameJamV**. O escopo foi concebido sob restrições de tempo, com foco em entregar um loop de gameplay completo, menu inicial, história em quadrinhos introdutória e mecânicas básicas funcionais.
+> - **Fase Atual (Versão de Polimento & Definitiva):** A partir deste ponto, **todas as alterações, refatorações e novas features solicitadas fazem parte do polimento e evolução para a versão definitiva do jogo** (nível comercial/lançamento). Deve-se priorizar game feel, acabamento visual e sonoro, estabilidade, balanceamento, refinamento de arquitetura e qualidade geral.
+
+---
+
+## 🕹️ O que foi Desenvolvido na Fase da Game Jam
+
+### 1. Menu Principal & Interface (`Assets/Scripts/MainMenuManager.cs`)
+- **Telas e Navegação:**
+  - Botões principais: `Jogar`, `Opções`, `Sair` e botão de `Resetar Dados`.
+  - Painel de Opções com controle deslizante de volume para Música (BGM) e Efeitos Sonoros (SFX).
+  - Tabela explicativa de controles no painel de opções.
+  - Botão de reset de progresso integrado diretamente ao menu com feedback sonoro e limpeza de dados.
+- **Arte de Fundo:** Utiliza arte oficial estilizada (`Assets/Menu e HQ'S/Menu SpellGlide.png`).
+
+### 2. Prólogo / Cutscene em Quadrinhos (`Assets/Scripts/ComicIntroManager.cs`)
+- Sistema narrativo sequencial exibindo 6 painéis de quadrinhos (`Assets/Menu e HQ'S/1.png` a `6.png`).
+- Transições com **Fade In / Fade Out** em CanvasGroup.
+- Caixa de texto com efeito dinâmico de **Máquina de Escrever (Typewriter)** e som a cada caractere.
+- **Sistema de Pulo Inteligente (Skip):**
+  - Primeiro toque: Completa a frase imediatamente.
+  - Segundo toque: Pula o quadrinho atual e avança para o próximo.
+- Carregamento automático da cena de gameplay ao final da história.
+
+### 3. Loop Central de Gameplay & Personagem
+- **Movimentação da Bruxa (`PlayerController.cs`):** Movimentação 2D multidirecional em vassoura mágica (WASD / Setas).
+- **Sistema de Combate (`PlayerShooting.cs`, `Projectile.cs`, `ElementType.cs`):**
+  - Alternância entre magias de Fogo e Gelo.
+  - Bônus de perfuração, cadência de tiro, dano aumentado e multishot.
+- **Vida e Sobrevivência (`PlayerHealth.cs`):**
+  - Sistema de corações / barra de vida, invulnerabilidade temporária pós-dano, redução de dano (Pele de Pedra) e habilidade de Segundo Fôlego (reviver).
+  - Uso de poções de cura estocadas no inventário via tecla `F`.
+
+### 4. Inimigos, Spawn e Chefe
+- **Inimigos Normais:**
+  - `BatEnemy.cs`: Morcegos voadores com ataque de projéteis de fogo.
+  - `RusherEnemy.cs`: Inimigos rápidos com foco em investidas diretas de dano de contato.
+  - `WaveSpawner.cs`: Ondas dinâmicas de inimigos com cadência configurável.
+- **Boss Golem de Pedra (`GolemBoss.cs`):**
+  - Cutscene de introdução dedicada (`BossIntroCutscene.cs`).
+  - Ataque de arremesso de grandes rochas (`BigRockProjectile.cs`).
+  - Barreira de rochas / obstáculo vertical dinâmico (`StoneWallObstacle.cs`).
+  - Pedras orbitais de proteção (`OrbitingStone.cs`).
+
+### 5. Árvore de Talentos & Evolução do Cajado (`EvolutionUI.cs`, `GameManager.cs`)
+- **Tela de Upgrades (Tecla `E`):**
+  - Atributos evolutivos: Vitalidade, Velocidade, Foco Arcano, Despertar, Pele de Pedra, Ímã de Almas, Segundo Fôlego, Tiro Rápido, Tiro Duplo e Tiro Perfurante.
+- **Evolução do Cajado (Tecla `T`):**
+  - Requer Corações de Fogo e Núcleos de Boss para desbloquear poderes amplificados no cajado.
+
+### 6. Sistema de Save & Persistência (`SaveSystem.cs`, `PlayModeSaveCleaner.cs`)
+- Arquivo de save em disco JSON (`witch_save.json`) em `Application.persistentDataPath` com espelho em `PlayerPrefs`.
+- **Comportamento refinado de limpeza:**
+  - **No Unity Editor:** O script editor `PlayModeSaveCleaner.cs` zera o save sempre que o desenvolvedor entra no Play Mode para garantir testes limpos.
+  - **Na Build:** O sistema detecta se é uma nova compilação (`Application.buildGUID`) e zera os dados na primeira execução, preservando o save entre fechamentos e aberturas subsequentes da mesma versão.
+  - **Reset Manual:** Botão "Resetar Dados" no menu principal limpa arquivos e PlayerPrefs imediatamente.
+
+### 7. Sistema de Áudio & Síntese Procedural
+- `AudioManager.cs`: Gerenciador de SFX e canais de áudio no menu.
+- `BGMManager.cs`: Gerenciador de trilhas sonoras em loop para dungeon e chefe.
+- `ProceduralAudioGenerator.cs`: Gerador nativo em C# para síntese de efeitos WAV matematicamente sintetizados (tiros de fogo/gelo, impactos, cliques, tema do menu, ataques de boss).
+- Automação via scripts PowerShell (`gerar_audios.ps1`) para geração e validação de áudios sem dependências externas.
+
+---
+
+## 🎮 Mapeamento Padrão de Controles
+
+| Ação | Tecla / Comando |
+|---|---|
+| **Mover Bruxa** | `W, A, S, D` ou `Setas Direcionais` |
+| **Atirar / Conjurar Magia** | `Mouse 1` (Botão Esquerdo) |
+| **Usar Poção de Vida** | `F` |
+| **Abrir/Fechar Árvore de Habilidades** | `E` |
+| **Evoluir Cajado** | `T` |
+| **Pausar Jogo** | `ESC` |
+| **Pular Quadrinhos / Texto** | Qualquer tecla / Clique |
+
+---
+
+## 🛠️ Diretrizes para a Fase de Polimento (Versão Definitiva)
+
+Ao propor ou executar qualquer modificação a partir de agora:
+
+1. **Foco em Game Feel & Juice:** Efeitos de partículas, screen shake controlado, feedback de impacto nos inimigos, transições suaves de áudio e UI polida.
+2. **Preservação de Compatibilidade:** Manter referências de cenas, componentes de UI e dados do `SaveSystem` intactos, evitando quebrar ligações no Inspector do Unity.
+3. **Consistência Arquitetural:**
+   - Scripts do núcleo de gameplay utilizam o namespace `WitchShmup.Core`, `WitchShmup.Player`, `WitchShmup.UI`, etc.
+   - Scripts de interface e menu utilizam o namespace `SpellGlide`.
+4. **Sem Perda de Contexto:** Não remover mecânicas existentes sem alinhamento explícito com o usuário. Sempre construir sobre a base sólida desenvolvida na Game Jam.

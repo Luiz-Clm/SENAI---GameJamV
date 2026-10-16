@@ -315,6 +315,20 @@ namespace SpellGlide.Editor
             Button optionsBtn = CreateMenuButton(buttonsContainer.transform, "OpcoesButton", "Opções", new Vector2(0, 20));
             Button quitBtn = CreateMenuButton(buttonsContainer.transform, "SairButton", "Sair", new Vector2(0, -60));
 
+            // Botão Resetar Dados (solto no centro da tela, para o dev reposicionar depois)
+            Button resetBtn = CreateMenuButton(menuPanelObj.transform, "ResetDataButton", "Resetar Dados", new Vector2(0, 0));
+            // Estiliza com cor vermelha para indicar ação destrutiva
+            Image resetImg = resetBtn.GetComponent<Image>();
+            resetImg.color = new Color(0.6f, 0.15f, 0.15f, 0.92f);
+            ColorBlock resetCb = resetBtn.colors;
+            resetCb.normalColor = new Color(0.6f, 0.15f, 0.15f, 0.95f);
+            resetCb.highlightedColor = new Color(0.75f, 0.2f, 0.2f, 1f);
+            resetCb.pressedColor = new Color(0.4f, 0.1f, 0.1f, 1f);
+            resetBtn.colors = resetCb;
+            // Texto do botão em branco
+            TextMeshProUGUI resetTMP = resetBtn.GetComponentInChildren<TextMeshProUGUI>();
+            if (resetTMP != null) resetTMP.color = Color.white;
+
             // ----------------------------------------------------
             // 6. PAINEL DE OPÇÕES (Áudio e Controles do Jogo)
             // ----------------------------------------------------
@@ -449,6 +463,7 @@ namespace SpellGlide.Editor
             menuSO.FindProperty("playButton").objectReferenceValue = playBtn;
             menuSO.FindProperty("optionsButton").objectReferenceValue = optionsBtn;
             menuSO.FindProperty("quitButton").objectReferenceValue = quitBtn;
+            menuSO.FindProperty("resetDataButton").objectReferenceValue = resetBtn;
             menuSO.FindProperty("musicVolumeSlider").objectReferenceValue = musicSlider;
             menuSO.FindProperty("sfxVolumeSlider").objectReferenceValue = sfxSlider;
             menuSO.FindProperty("closeOptionsButton").objectReferenceValue = closeOptBtn;

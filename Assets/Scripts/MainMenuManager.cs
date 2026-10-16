@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using WitchShmup.Core;
 
 namespace SpellGlide
 {
@@ -13,6 +14,7 @@ namespace SpellGlide
         [SerializeField] private Button playButton;
         [SerializeField] private Button optionsButton;
         [SerializeField] private Button quitButton;
+        [SerializeField] private Button resetDataButton;
 
         [Header("Opções de Áudio (Painel de Opções)")]
         [SerializeField] private Slider musicVolumeSlider;
@@ -52,6 +54,9 @@ namespace SpellGlide
 
             if (closeOptionsButton != null)
                 closeOptionsButton.onClick.AddListener(OnCloseOptionsClicked);
+
+            if (resetDataButton != null)
+                resetDataButton.onClick.AddListener(OnResetDataClicked);
         }
 
         private void SetupOptionsSliders()
@@ -86,6 +91,12 @@ namespace SpellGlide
             if (menuRootPanel != null)
             {
                 menuRootPanel.SetActive(false);
+            }
+
+            // Oculta o botão de reset (está fora do MenuPanel)
+            if (resetDataButton != null)
+            {
+                resetDataButton.gameObject.SetActive(false);
             }
 
             // Inicia a exibição dos 6 quadrinhos com a história
@@ -155,6 +166,17 @@ namespace SpellGlide
             {
                 audioManager.SetSFXVolume(value);
             }
+        }
+
+        public void OnResetDataClicked()
+        {
+            if (audioManager != null)
+            {
+                audioManager.PlayButtonClick();
+            }
+
+            SaveSystem.ResetAllData();
+            Debug.Log("[MainMenuManager] Dados do jogo resetados pelo jogador.");
         }
     }
 }
