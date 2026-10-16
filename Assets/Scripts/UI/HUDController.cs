@@ -14,6 +14,11 @@ namespace WitchShmup.UI
 
         [Header("Hearts (Health)")]
         [SerializeField] private Image[] heartImages;
+        [Tooltip("Sprite do coração cheio. Se AMBOS (cheio e vazio) estiverem preenchidos, os sprites são usados no lugar das cores.")]
+        [SerializeField] private Sprite fullHeartSprite;
+        [Tooltip("Sprite do coração vazio.")]
+        [SerializeField] private Sprite emptyHeartSprite;
+        [Tooltip("Cores usadas apenas quando NÃO há sprites de coração atribuídos.")]
         [SerializeField] private Color fullHeartColor = new Color(1f, 0.35f, 0.45f, 1f);
         [SerializeField] private Color emptyHeartColor = new Color(0.25f, 0.2f, 0.25f, 0.5f);
 
@@ -23,7 +28,17 @@ namespace WitchShmup.UI
         [SerializeField] private TextMeshProUGUI iceText;
         [SerializeField] private TextMeshProUGUI fireText;
 
-        [Header("Colors for Elements")]
+        [Header("Element Sprites (Equipado / Desequipado)")]
+        [Tooltip("Se AMBOS os sprites do gelo estiverem preenchidos, eles são usados no lugar das cores.")]
+        [SerializeField] private Sprite iceEquippedSprite;
+        [SerializeField] private Sprite iceUnequippedSprite;
+        [Tooltip("Se AMBOS os sprites do fogo estiverem preenchidos, eles são usados no lugar das cores.")]
+        [SerializeField] private Sprite fireEquippedSprite;
+        [SerializeField] private Sprite fireUnequippedSprite;
+        [Tooltip("Esconde os textos '1: GELO' / '2: FOGO' quando o sprite do elemento já traz o nome e a tecla desenhados.")]
+        [SerializeField] private bool hideElementTextWhenUsingSprites = true;
+
+        [Header("Colors for Elements (usadas só quando NÃO há sprites)")]
         [SerializeField] private Color activeIceColor = new Color(0.2f, 0.85f, 1f, 1f);
         [SerializeField] private Color inactiveIceColor = new Color(0.1f, 0.35f, 0.45f, 0.5f);
         [SerializeField] private Color activeFireColor = new Color(1f, 0.5f, 0.1f, 1f);
@@ -49,6 +64,8 @@ namespace WitchShmup.UI
         [Header("Potion Inventory HUD")]
         [SerializeField] private TextMeshProUGUI potionCountText;
         [SerializeField] private GameObject potionIconContainer;
+
+        private static readonly Color InactiveTextColor = new Color(0.7f, 0.7f, 0.7f, 0.6f);
 
         private void Awake()
         {
@@ -188,24 +205,41 @@ namespace WitchShmup.UI
                 heartImages = list.ToArray();
             }
 
+            // Só usa sprites se os dois (cheio e vazio) estiverem atribuídos
+            bool useHeartSprites = fullHeartSprite != null && emptyHeartSprite != null;
+
             for (int i = 0; i < heartImages.Length; i++)
             {
                 if (heartImages[i] == null) continue;
 
                 if (i < currentHealth)
                 {
-                    heartImages[i].color = fullHeartColor;
+                    ApplyHeartVisual(heartImages[i], true, useHeartSprites);
                     heartImages[i].gameObject.SetActive(true);
                 }
                 else if (i < maxHealth)
                 {
-                    heartImages[i].color = emptyHeartColor;
+                    ApplyHeartVisual(heartImages[i], false, useHeartSprites);
                     heartImages[i].gameObject.SetActive(true);
                 }
                 else
                 {
                     heartImages[i].gameObject.SetActive(false);
                 }
+            }
+        }
+
+        private void ApplyHeartVisual(Image heart, bool isFull, bool useSprites)
+        {
+            if (useSprites)
+            {
+                heart.sprite = isFull ? fullHeartSprite : emptyHeartSprite;
+                heart.color = Color.white; // sem tint, para não alterar as cores do sprite
+                heart.preserveAspect = true;
+            }
+            else
+            {
+                heart.color = isFull ? fullHeartColor : emptyHeartColor;
             }
         }
 
@@ -219,31 +253,65 @@ namespace WitchShmup.UI
                 fireBadge.gameObject.SetActive(isFireUnlocked);
             }
 
+            if (fireText != null && isFireUnlocked)
+            {
+                fireText.text = "2: FOGO";
+            }
+
             if (activeElement == ElementType.Ice)
             {
-                if (iceBadge != null) iceBadge.color = activeIceColor;
-                if (iceText != null) iceText.color = Color.white;
+                ApplyElementVisual(iceBadge, iceText, true,
+                    iceEquippedSprite, iceUnequippedSprite, activeIceColor, inactiveIceColor);
 
-                if (fireBadge != null && isFireUnlocked)
+                if (isFireUnlocked)
                 {
-                    fireBadge.color = inactiveFireColor;
-                }
-                if (fireText != null && isFireUnlocked)
-                {
-                    fireText.text = "2: FOGO";
-                    fireText.color = new Color(0.7f, 0.7f, 0.7f, 0.6f);
+                    ApplyElementVisual(fireBadge, fireText, false,
+                        fireEquippedSprite, fireUnequippedSprite, activeFireColor, inactiveFireColor);
                 }
             }
             else if (activeElement == ElementType.Fire && isFireUnlocked)
             {
-                if (iceBadge != null) iceBadge.color = inactiveIceColor;
-                if (iceText != null) iceText.color = new Color(0.7f, 0.7f, 0.7f, 0.6f);
+                ApplyElementVisual(iceBadge, iceText, false,
+                    iceEquippedSprite, iceUnequippedSprite, activeIceColor, inactiveIceColor);
 
-                if (fireBadge != null) fireBadge.color = activeFireColor;
-                if (fireText != null)
+                ApplyElementVisual(fireBadge, fireText, true,
+                    fireEquippedSprite, fireUnequippedSprite, activeFireColor, inactiveFireColor);
+            }
+        }
+
+        /// <summary>
+        /// Aplica o visual de um elemento (equipado ou não). Se os dois sprites do elemento
+        /// estiverem atribuídos, usa os sprites; caso contrário, cai no comportamento antigo por cor.
+        /// </summary>
+        private void ApplyElementVisual(Image badge, TextMeshProUGUI label, bool equipped,
+            Sprite equippedSprite, Sprite unequippedSprite, Color activeColor, Color inactiveColor)
+        {
+            bool useSprites = equippedSprite != null && unequippedSprite != null;
+
+            if (badge != null)
+            {
+                if (useSprites)
                 {
-                    fireText.text = "2: FOGO";
-                    fireText.color = Color.white;
+                    badge.sprite = equipped ? equippedSprite : unequippedSprite;
+                    badge.color = Color.white;
+                    badge.preserveAspect = true;
+                }
+                else
+                {
+                    badge.color = equipped ? activeColor : inactiveColor;
+                }
+            }
+
+            if (label != null)
+            {
+                if (useSprites && hideElementTextWhenUsingSprites)
+                {
+                    label.gameObject.SetActive(false);
+                }
+                else
+                {
+                    label.gameObject.SetActive(true);
+                    label.color = equipped ? Color.white : InactiveTextColor;
                 }
             }
         }

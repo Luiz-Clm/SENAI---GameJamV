@@ -1026,6 +1026,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d46457c72efd554d8591be382052212, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.UI.EvolutionUI
+  customStaffBasicSprite: {fileID: 0}
+  customStaffEvolvedSprite: {fileID: 0}
 --- !u!114 &174841604
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1353,14 +1355,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.18, g: 0.08, b: 0.14, a: 0.95}
+  m_Color: {r: 0.18, g: 0.08, b: 0.14, a: 0.7607843}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 6874214299266167127, guid: 1ab2edf332745d24f9323a487530940e, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1899,14 +1901,14 @@ RectTransform:
   m_GameObject: {fileID: 319795901}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.925012, y: 0.41783214, z: 0.84092}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 236763933}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.01, y: 0.08}
   m_AnchorMax: {x: 0.99, y: 0.92}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 17.4, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &319795903
@@ -1937,7 +1939,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 8482162914195657912, guid: 80ed395396581074aa2e276afba1cb6f, type: 3}
   m_Type: 3
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -3224,7 +3226,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -221, y: -95.114}
+  m_AnchoredPosition: {x: -221, y: -145}
   m_SizeDelta: {x: 280, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &572835388
@@ -4324,7 +4326,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -221, y: 92}
+  m_AnchoredPosition: {x: -216, y: 44}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &862320901
@@ -4413,7 +4415,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: 0, y: -55.247005, z: 0, w: -74.2382}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -4557,12 +4559,19 @@ MonoBehaviour:
   - {fileID: 1569299363}
   - {fileID: 1200453000}
   - {fileID: 1476611896}
+  fullHeartSprite: {fileID: 8018276087501692003, guid: 3775afa50d58d0a449392a7a6a429537, type: 3}
+  emptyHeartSprite: {fileID: -6573279622004300342, guid: 74030289b039ccd48949a86a777777c8, type: 3}
   fullHeartColor: {r: 1, g: 0.35, b: 0.45, a: 1}
   emptyHeartColor: {r: 0.25, g: 0.2, b: 0.25, a: 0.5}
   iceBadge: {fileID: 1725929519}
   fireBadge: {fileID: 490679517}
   iceText: {fileID: 378609683}
   fireText: {fileID: 208325172}
+  iceEquippedSprite: {fileID: -6905190126057552281, guid: b62a672ed690f894da6c3f865803ce8f, type: 3}
+  iceUnequippedSprite: {fileID: -5131072593459363208, guid: bd04761483812794e835a1f7ce501484, type: 3}
+  fireEquippedSprite: {fileID: 8695886996486754537, guid: 5a82750b54c7cfd4a93d30ac16edde94, type: 3}
+  fireUnequippedSprite: {fileID: -5359559934382478574, guid: 8402e1a575ba7b249b2abf2d427dd5fb, type: 3}
+  hideElementTextWhenUsingSprites: 1
   activeIceColor: {r: 0.2, g: 0.85, b: 1, a: 1}
   inactiveIceColor: {r: 0.1, g: 0.35, b: 0.45, a: 0.5}
   activeFireColor: {r: 1, g: 0.5, b: 0.1, a: 1}
@@ -4571,8 +4580,11 @@ MonoBehaviour:
   stageText: {fileID: 954510664}
   hiScoreText: {fileID: 0}
   bossBarContainer: {fileID: 848640751}
+  bossBarBackground: {fileID: 0}
   bossHealthFill: {fileID: 319795904}
   bossNameText: {fileID: 1873181547}
+  customBossBarBackgroundSprite: {fileID: 6874214299266167127, guid: 1ab2edf332745d24f9323a487530940e, type: 3}
+  customBossBarFillSprite: {fileID: 8482162914195657912, guid: 80ed395396581074aa2e276afba1cb6f, type: 3}
   potionCountText: {fileID: 1776301613}
   potionIconContainer: {fileID: 438125690}
 --- !u!114 &867635785
@@ -5361,7 +5373,7 @@ RectTransform:
   m_GameObject: {fileID: 1019149700}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.7589753, y: 1.7589753, z: 1.7589753}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1725929517}
@@ -5370,7 +5382,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -24, y: 0}
+  m_AnchoredPosition: {x: -13, y: -0.0000076293945}
   m_SizeDelta: {x: 340, y: 0}
   m_Pivot: {x: 1, y: 0.5}
 --- !u!114 &1019149702
@@ -6273,6 +6285,8 @@ MonoBehaviour:
   - {fileID: 886762848689684212, guid: 8abfa59933208844395bdc43c95736b6, type: 3}
   - {fileID: 2781301224207347468, guid: 8abfa59933208844395bdc43c95736b6, type: 3}
   bossAnimator: {fileID: 1973130009}
+  overheadBarBackgroundSprite: {fileID: 0}
+  overheadBarFillSprite: {fileID: 0}
 --- !u!4 &1159367623
 Transform:
   m_ObjectHideFlags: 0
@@ -8476,7 +8490,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.000019073, y: 299}
+  m_AnchoredPosition: {x: -0.000019073, y: 362}
   m_SizeDelta: {x: 311.2881, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1468586776
@@ -12479,7 +12493,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 90}
+  m_SizeDelta: {x: 0, y: 133.0458}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &2024142343
 MonoBehaviour:
