@@ -12,20 +12,43 @@ namespace WitchShmup.Boss
         [SerializeField] private Vector2 direction = Vector2.left;
         [SerializeField] private float rotationSpeed = 120f;
 
-        [Header("Damage")]
+        [Header("Damage & Scale")]
         [SerializeField] private float damage = 2f;
+        [Tooltip("Escala visual da rocha para ficar imponente e ameaçadora")]
+        [SerializeField] private float rockScale = 2.5f;
 
         private void Awake()
         {
             var sr = GetComponent<SpriteRenderer>();
-            if (sr != null)
+            if (sr == null) sr = gameObject.AddComponent<SpriteRenderer>();
+
+            // Carrega o sprite principal de pedra (ataqueBoss2_4) da planilha fatiada
+            var all = Resources.LoadAll<Sprite>("Sprites/ataqueBoss2");
+            if (all != null && all.Length > 0)
             {
-                var bossAttackSpr = Resources.Load<Sprite>("Sprites/ataqueBoss2");
-                if (bossAttackSpr != null)
+                Sprite mainRock = null;
+                foreach (var s in all)
                 {
-                    sr.sprite = bossAttackSpr;
-                    sr.color = Color.white;
+                    if (s.name.Equals("ataqueBoss2_4", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        mainRock = s;
+                        break;
+                    }
                 }
+                if (mainRock == null) mainRock = all[0];
+
+                sr.sprite = mainRock;
+                sr.color = Color.white;
+                sr.sortingOrder = 12;
+            }
+
+            // Aumenta o tamanho do projétil conforme pedido
+            transform.localScale = new Vector3(rockScale, rockScale, 1f);
+
+            var circleCol = GetComponent<CircleCollider2D>();
+            if (circleCol != null)
+            {
+                circleCol.radius = 0.55f;
             }
         }
 

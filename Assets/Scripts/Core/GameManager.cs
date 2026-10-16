@@ -140,7 +140,11 @@ namespace WitchShmup.Core
         private void DetectCurrentPhaseFromScene()
         {
             string sceneName = SceneManager.GetActiveScene().name;
-            if (sceneName.StartsWith("Fase", StringComparison.OrdinalIgnoreCase))
+            if (sceneName.Equals("Fase", StringComparison.OrdinalIgnoreCase))
+            {
+                currentPhase = 1;
+            }
+            else if (sceneName.StartsWith("Fase", StringComparison.OrdinalIgnoreCase))
             {
                 string numStr = sceneName.Substring(4);
                 if (int.TryParse(numStr, out int p))
@@ -609,7 +613,8 @@ namespace WitchShmup.Core
                 levelSeg = LevelSegundoFolego,
                 levelRap = LevelRapido,
                 levelDup = LevelDuplo,
-                levelPer = LevelPerfurante
+                levelPer = LevelPerfurante,
+                hasSeenStory = true
             };
 
             if (advancePhase)

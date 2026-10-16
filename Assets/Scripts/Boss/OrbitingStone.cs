@@ -14,6 +14,40 @@ namespace WitchShmup.Boss
         [Header("Damage")]
         [SerializeField] private float contactDamage = 1f;
 
+        private void Awake()
+        {
+            var sr = GetComponent<SpriteRenderer>();
+            if (sr == null) sr = gameObject.AddComponent<SpriteRenderer>();
+
+            // Usa o mesmo sprite da pedra de ataque (ataqueBoss2_4)
+            var all = Resources.LoadAll<Sprite>("Sprites/ataqueBoss2");
+            if (all != null && all.Length > 0)
+            {
+                Sprite rockSpr = null;
+                foreach (var s in all)
+                {
+                    if (s.name.Equals("ataqueBoss2_4", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        rockSpr = s;
+                        break;
+                    }
+                }
+                if (rockSpr == null) rockSpr = all[0];
+
+                sr.sprite = rockSpr;
+                sr.color = Color.white;
+                sr.sortingOrder = 9;
+            }
+
+            transform.localScale = new Vector3(1.15f, 1.15f, 1f);
+
+            var boxCol = GetComponent<BoxCollider2D>();
+            if (boxCol != null)
+            {
+                boxCol.size = new Vector2(0.9f, 0.9f);
+            }
+        }
+
         private void Start()
         {
             if (centerPoint == null && transform.parent != null)

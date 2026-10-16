@@ -102,16 +102,24 @@ namespace SpellGlide
             }
         }
 
-        public void StartStory()
+        private bool isRewatchMode = false;
+
+        public void StartStory(bool isRewatch = false)
         {
             if (isStoryRunning) return;
 
+            isRewatchMode = isRewatch;
             isStoryRunning = true;
             currentPanelIndex = 0;
 
             if (comicRootPanel != null)
             {
                 comicRootPanel.SetActive(true);
+            }
+
+            if (!isRewatch)
+            {
+                WitchShmup.Core.SaveSystem.SetStorySeen(true);
             }
 
             comicSequenceCoroutine = StartCoroutine(ComicStoryRoutine());
@@ -299,6 +307,24 @@ namespace SpellGlide
 
         private void LoadGameplayScene()
         {
+            if (isRewatchMode)
+            {
+                // Modo "Ver História": Volta para o Menu!
+                if (Application.CanStreamedLevelBeLoaded("Menu"))
+                {
+                    SceneManager.LoadScene("Menu");
+                }
+                else
+                {
+                    // Fallback para a cena 0
+                    SceneManager.LoadScene(0);
+                }
+                return;
+            }
+
+            // Marca no sistema de save que a história já foi vista
+            WitchShmup.Core.SaveSystem.SetStorySeen(true);
+
             if (!string.IsNullOrEmpty(nextSceneName))
             {
                 SceneManager.LoadScene(nextSceneName);

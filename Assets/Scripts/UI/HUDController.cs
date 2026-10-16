@@ -36,8 +36,15 @@ namespace WitchShmup.UI
 
         [Header("Boss Bar")]
         [SerializeField] private GameObject bossBarContainer;
+        [SerializeField] private Image bossBarBackground;
         [SerializeField] private Image bossHealthFill;
         [SerializeField] private TextMeshProUGUI bossNameText;
+
+        [Header("Boss Bar Custom Sprites")]
+        [Tooltip("Arraste aqui o Sprite do fundo / moldura da barra de vida do Boss")]
+        [SerializeField] private Sprite customBossBarBackgroundSprite;
+        [Tooltip("Arraste aqui o Sprite de preenchimento (vida) da barra do Boss")]
+        [SerializeField] private Sprite customBossBarFillSprite;
 
         [Header("Potion Inventory HUD")]
         [SerializeField] private TextMeshProUGUI potionCountText;
@@ -76,10 +83,31 @@ namespace WitchShmup.UI
                 }
             }
 
+            if (bossBarBackground == null && bossBarContainer != null)
+            {
+                foreach (var img in bossBarContainer.GetComponentsInChildren<Image>(true))
+                {
+                    if (img != bossHealthFill && (img.name.Contains("Back") || img.name.Contains("Bg") || img.name.Contains("Bar")))
+                    {
+                        bossBarBackground = img;
+                        break;
+                    }
+                }
+                if (bossBarBackground == null)
+                {
+                    foreach (var img in bossBarContainer.GetComponentsInChildren<Image>(true))
+                    {
+                        if (img != bossHealthFill) { bossBarBackground = img; break; }
+                    }
+                }
+            }
+
             if (bossNameText == null && bossBarContainer != null)
             {
                 bossNameText = bossBarContainer.GetComponentInChildren<TextMeshProUGUI>(true);
             }
+
+            ApplyCustomBossBarSprites();
 
             if (potionIconContainer == null)
             {
@@ -292,6 +320,27 @@ namespace WitchShmup.UI
             if (potionIconContainer != null)
             {
                 potionIconContainer.SetActive(count > 0);
+            }
+        }
+
+        /// <summary>
+        /// Aplica os sprites personalizados da barra de vida do Boss (fundo e fill).
+        /// Pode ser chamado via Inspector ou programaticamente.
+        /// </summary>
+        public void ApplyCustomBossBarSprites()
+        {
+            if (customBossBarBackgroundSprite != null && bossBarBackground != null)
+            {
+                bossBarBackground.sprite = customBossBarBackgroundSprite;
+                bossBarBackground.color = Color.white;
+            }
+
+            if (customBossBarFillSprite != null && bossHealthFill != null)
+            {
+                bossHealthFill.sprite = customBossBarFillSprite;
+                bossHealthFill.type = Image.Type.Filled;
+                bossHealthFill.fillMethod = Image.FillMethod.Horizontal;
+                bossHealthFill.color = Color.white;
             }
         }
     }

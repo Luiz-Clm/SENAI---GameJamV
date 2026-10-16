@@ -78,6 +78,25 @@ namespace WitchShmup.UI
             new NodeData { id="per", displayName="Tiro Perfurante",  description="As magias atravessam o primeiro inimigo e acertam o de trás.",    effectText="Tiros atravessam 1 inimigo",    requirementId="dup", maxLevel=1, cost=5, iconText="🔥", htmlPos=new Vector2(505, 60) },
         };
 
+        // ─── Custom Staff Sprites ─────────────────────────────────────────────
+        [Header("Custom Staff Sprites")]
+        [Tooltip("Sprite opcional para o Cajado Básico. Se vazio, usa o padrão em Resources.")]
+        [SerializeField] private Sprite customStaffBasicSprite;
+        [Tooltip("Sprite opcional para o Cajado Evoluído. Se vazio, usa o padrão em Resources.")]
+        [SerializeField] private Sprite customStaffEvolvedSprite;
+
+        private Sprite GetBasicStaffSprite()
+        {
+            if (customStaffBasicSprite != null) return customStaffBasicSprite;
+            return Resources.Load<Sprite>("Sprites/Staff_Basic");
+        }
+
+        private Sprite GetEvolvedStaffSprite()
+        {
+            if (customStaffEvolvedSprite != null) return customStaffEvolvedSprite;
+            return Resources.Load<Sprite>("Sprites/Staff_Evolved");
+        }
+
         // ─── Runtime UI refs ──────────────────────────────────────────────────
         GameObject tabTreeContent, tabStaffContent;
         Button     tabTreeBtn, tabStaffBtn;
@@ -154,6 +173,14 @@ namespace WitchShmup.UI
             SetAnchoredPos(tabStaffContent, new Vector2(0,-44));
             BuildStaffTab(tabStaffContent.transform);
             tabStaffContent.SetActive(false);
+
+            // IMPORTANTE: Coloca o Header como último filho para ficar SEMPRE na frente das abas,
+            // garantindo que os botões de troca de aba recebam cliques sem bloqueio de raycasts.
+            var hdr = frame.transform.Find("Header");
+            if (hdr != null)
+            {
+                hdr.SetAsLastSibling();
+            }
         }
 
         // ─── Header ──────────────────────────────────────────────────────────
@@ -331,7 +358,7 @@ namespace WitchShmup.UI
             curStaffImg = MakeImg("Img", boxCur.transform, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(72,120));
             SetAnchoredPos(curStaffImg.gameObject, new Vector2(0,-36));
             curStaffImg.preserveAspect = true;
-            curStaffImg.sprite = Resources.Load<Sprite>("Sprites/Staff_Basic");
+            curStaffImg.sprite = GetBasicStaffSprite();
 
             curStaffName = Txt("Name", boxCur.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,28),
                 "Cajado de Madeira", 20, Color.white, FontStyles.Bold);
@@ -362,7 +389,7 @@ namespace WitchShmup.UI
             nxtStaffImg = MakeImg("Img", nxtStaffBox.transform, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(72,120));
             SetAnchoredPos(nxtStaffImg.gameObject, new Vector2(0,-36));
             nxtStaffImg.preserveAspect = true;
-            nxtStaffImg.sprite = Resources.Load<Sprite>("Sprites/Staff_Evolved");
+            nxtStaffImg.sprite = GetEvolvedStaffSprite();
 
             nxtStaffName = Txt("Name", nxtStaffBox.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,28),
                 "Cajado Arcano", 20, Color.white, FontStyles.Bold);
@@ -575,7 +602,7 @@ namespace WitchShmup.UI
             {
                 if (curStaffName  != null) curStaffName.text  = "Cajado Arcano";
                 if (curStaffStat  != null) curStaffStat.text  = "Dano 8";
-                if (curStaffImg   != null) curStaffImg.sprite = Resources.Load<Sprite>("Sprites/Staff_Evolved");
+                if (curStaffImg   != null) curStaffImg.sprite = GetEvolvedStaffSprite();
                 if (nxtStaffBox   != null) nxtStaffBox.SetActive(false);
                 if (needSummary   != null) needSummary.text   = "Cajado totalmente evoluído!";
                 if (staffMsg      != null) staffMsg.text      = "Nenhuma evolução restante.";
@@ -700,6 +727,7 @@ namespace WitchShmup.UI
             tmp.text      = text; tmp.fontSize  = fs;
             tmp.color     = col;  tmp.fontStyle = style;
             tmp.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+            tmp.raycastTarget = false; // Garante que rótulos de texto estáticos nunca bloqueiem cliques
             return tmp;
         }
 

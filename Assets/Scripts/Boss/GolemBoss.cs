@@ -81,6 +81,8 @@ namespace WitchShmup.Boss
         public static event Action OnAnyBossFightDefeated;
 
         [Header("Floating Overhead Health Bar")]
+        [SerializeField] private Sprite overheadBarBackgroundSprite;
+        [SerializeField] private Sprite overheadBarFillSprite;
         private GameObject worldBarContainer;
         private Transform worldBarFillTransform;
         private float worldBarFullWidth = 2.4f;
@@ -147,28 +149,44 @@ namespace WitchShmup.Boss
             GameObject bgObj = new GameObject("Background");
             bgObj.transform.SetParent(worldBarContainer.transform, false);
             var bgSr = bgObj.AddComponent<SpriteRenderer>();
-            bgSr.color = new Color(0.08f, 0.05f, 0.12f, 0.95f);
             bgSr.sortingOrder = 20;
 
-            Texture2D bgTex = new Texture2D(1, 1);
-            bgTex.SetPixel(0, 0, Color.white);
-            bgTex.Apply();
-            bgSr.sprite = Sprite.Create(bgTex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
-            bgObj.transform.localScale = new Vector3(worldBarFullWidth + 0.15f, 0.35f, 1f);
+            if (overheadBarBackgroundSprite != null)
+            {
+                bgSr.sprite = overheadBarBackgroundSprite;
+                bgSr.color = Color.white;
+            }
+            else
+            {
+                bgSr.color = new Color(0.08f, 0.05f, 0.12f, 0.95f);
+                Texture2D bgTex = new Texture2D(1, 1);
+                bgTex.SetPixel(0, 0, Color.white);
+                bgTex.Apply();
+                bgSr.sprite = Sprite.Create(bgTex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+                bgObj.transform.localScale = new Vector3(worldBarFullWidth + 0.15f, 0.35f, 1f);
+            }
 
             // Fill vermelho
             GameObject fillObj = new GameObject("Fill");
             fillObj.transform.SetParent(worldBarContainer.transform, false);
             fillObj.transform.localPosition = new Vector3(-worldBarFullWidth * 0.5f, 0f, 0f);
             var fillSr = fillObj.AddComponent<SpriteRenderer>();
-            fillSr.color = new Color(0.98f, 0.25f, 0.32f, 1f);
             fillSr.sortingOrder = 21;
 
-            Texture2D fillTex = new Texture2D(1, 1);
-            fillTex.SetPixel(0, 0, Color.white);
-            fillTex.Apply();
-            fillSr.sprite = Sprite.Create(fillTex, new Rect(0, 0, 1, 1), new Vector2(0f, 0.5f), 1f);
-            fillObj.transform.localScale = new Vector3(worldBarFullWidth, 0.24f, 1f);
+            if (overheadBarFillSprite != null)
+            {
+                fillSr.sprite = overheadBarFillSprite;
+                fillSr.color = Color.white;
+            }
+            else
+            {
+                fillSr.color = new Color(0.98f, 0.25f, 0.32f, 1f);
+                Texture2D fillTex = new Texture2D(1, 1);
+                fillTex.SetPixel(0, 0, Color.white);
+                fillTex.Apply();
+                fillSr.sprite = Sprite.Create(fillTex, new Rect(0, 0, 1, 1), new Vector2(0f, 0.5f), 1f);
+                fillObj.transform.localScale = new Vector3(worldBarFullWidth, 0.24f, 1f);
+            }
 
             worldBarFillTransform = fillObj.transform;
             worldBarContainer.SetActive(false); // Só aparece ao iniciar a luta

@@ -84,7 +84,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 8
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 8851944850716436527, guid: f67430c819e39cd42942c6ba37a10755, type: 3}
+  m_Sprite: {fileID: -6036415863235681603, guid: bf5e7152a81696c4aabd91c0141ada2b, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -173,3 +173,4 @@ MonoBehaviour:
   direction: {x: -1, y: 0}
   rotationSpeed: 120
   damage: 2
+  rockScale: 1

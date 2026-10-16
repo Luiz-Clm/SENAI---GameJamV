@@ -40,6 +40,9 @@ namespace WitchShmup.Spawners
             StartCoroutine(SpawnLoop());
         }
 
+        private string cheatBuffer = "";
+        private const string CHEAT_BOSS = "BOSS";
+
         private void Update()
         {
             if (!isSpawning) return;
@@ -50,11 +53,49 @@ namespace WitchShmup.Spawners
                 TriggerBossSequence();
             }
 
-            // Atalho de debug para Game Jam: Pressionar 'B' chama o Boss imediatamente!
+            // Cheat Code estilo GTA: Digitar 'B' - 'O' - 'S' - 'S' em sequência durante a gameplay
+            if (!bossTriggered && Input.anyKeyDown)
+            {
+                foreach (char c in Input.inputString)
+                {
+                    if (char.IsLetter(c))
+                    {
+                        cheatBuffer += char.ToUpper(c);
+                        if (cheatBuffer.Length > 10)
+                        {
+                            cheatBuffer = cheatBuffer.Substring(cheatBuffer.Length - 10);
+                        }
+
+                        if (cheatBuffer.EndsWith(CHEAT_BOSS))
+                        {
+                            Debug.Log("<color=yellow>★ [CHEAT ATIVADO] Pular diretamente para o Boss! ★</color>");
+                            cheatBuffer = "";
+                            ClearAllActiveEnemies();
+                            TriggerBossSequence();
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Atalho rápido adicional: Pressionar a tecla 'B'
             if (Input.GetKeyDown(KeyCode.B) && !bossTriggered)
             {
-                Debug.Log("[WaveSpawner] Debug Boss Trigger ativado via tecla B!");
+                Debug.Log("[WaveSpawner] Atalho tecla 'B': Invocando Boss imediatamente!");
+                ClearAllActiveEnemies();
                 TriggerBossSequence();
+            }
+        }
+
+        private void ClearAllActiveEnemies()
+        {
+            var enemies = FindObjectsByType<EnemyBase>(FindObjectsSortMode.None);
+            foreach (var enemy in enemies)
+            {
+                if (enemy != null)
+                {
+                    Destroy(enemy.gameObject);
+                }
             }
         }
 

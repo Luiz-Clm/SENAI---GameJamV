@@ -10,6 +10,7 @@ namespace WitchShmup.Core
         [Header("Progresso das Fases")]
         public int currentPhase = 1;
         public int maxUnlockedPhase = 1;
+        public bool hasSeenStory = false;
 
         [Header("Pontuação")]
         public int currentScore = 0;
@@ -254,6 +255,19 @@ namespace WitchShmup.Core
                 data.maxUnlockedPhase = phase;
                 SaveGame(data);
             }
+        }
+
+        public static bool HasSeenStory()
+        {
+            var data = LoadGame();
+            return data != null && (data.hasSeenStory || data.maxUnlockedPhase > 1);
+        }
+
+        public static void SetStorySeen(bool seen = true)
+        {
+            var data = LoadGame();
+            data.hasSeenStory = seen;
+            SaveGame(data);
         }
     }
 }
