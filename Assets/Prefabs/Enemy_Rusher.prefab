@@ -188,8 +188,8 @@ MonoBehaviour:
   spriteRenderer: {fileID: 0}
   damageFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
   deathEffectPrefab: {fileID: 0}
-  fireHeartDropPrefab: {fileID: 4564538101699445348, guid: e84576b1058d72249a30caa2d58c0d42, type: 3}
-  fireHeartDropChance: 0.35
+  fireHeartDropPrefab: {fileID: 0}
+  fireHeartDropChance: 0
   healthPotionDropPrefab: {fileID: 5928424389976600072, guid: ada803e6703f6f1428dc77aa6c3d3022, type: 3}
   healthPotionDropChance: 0.2
   skillPointDropPrefab: {fileID: 8771554972207094783, guid: aa5f32342019cda4bafec4220899e705, type: 3}

@@ -59,6 +59,14 @@ namespace WitchShmup.Editor
             EnsureSpriteImportSettings("MAGOattak.png", 16f);
             EnsureSpriteImportSettings("bola de Fogo.png", 20f);
             EnsureSpriteImportSettings("ataqueMAgo.png", 20f);
+            EnsureSpriteImportSettings("Assets/Resources/Sprites/boss_barra_fundo_decorado_192x36.png", 100f);
+            EnsureSpriteImportSettings("Assets/Resources/Sprites/boss_barra_vida_148x12.png", 100f);
+            EnsureSpriteImportSettings("Assets/Resources/Sprites/coracao_cheio_20x20.png", 100f);
+            EnsureSpriteImportSettings("Assets/Resources/Sprites/coracao_vazio_20x20.png", 100f);
+            EnsureSpriteImportSettings("Assets/Sprites/Itens e Ataques/boss_barra_fundo_decorado_192x36.png", 100f);
+            EnsureSpriteImportSettings("Assets/Sprites/Itens e Ataques/boss_barra_vida_148x12.png", 100f);
+            EnsureSpriteImportSettings("Assets/Sprites/UI/coracao_cheio_20x20.png", 100f);
+            EnsureSpriteImportSettings("Assets/Sprites/UI/coracao_vazio_20x20.png", 100f);
 
             AssetDatabase.Refresh();
 
@@ -213,9 +221,13 @@ namespace WitchShmup.Editor
             if (!AssetDatabase.IsValidFolder(PrefabsPath)) AssetDatabase.CreateFolder("Assets", "Prefabs");
         }
 
-        private static void EnsureSpriteImportSettings(string filename, float pixelsPerUnit, bool repeat = false)
+        private static void EnsureSpriteImportSettings(string filenameOrPath, float pixelsPerUnit, bool repeat = false)
         {
-            string path = $"{SpritesPath}/{filename}";
+            string path = filenameOrPath;
+            if (!File.Exists(path))
+            {
+                path = $"{SpritesPath}/{filenameOrPath}";
+            }
             if (!File.Exists(path)) return;
 
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -312,18 +324,17 @@ namespace WitchShmup.Editor
 
             var rusher = obj.AddComponent<RusherEnemy>();
 
-            // Drops do Rusher
-            GameObject fireHeartPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_FireHeart.prefab");
+            // Drops do Rusher (apenas morcegos dropam Coração de Fogo!)
             GameObject potionPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_HealthPotion.prefab");
             GameObject skillPointPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabsPath}/Pickup_SkillPoint.prefab");
 
             SerializedObject so = new SerializedObject(rusher);
-            so.FindProperty("fireHeartDropPrefab").objectReferenceValue = fireHeartPrefab;
+            so.FindProperty("fireHeartDropPrefab").objectReferenceValue = null;
             so.FindProperty("healthPotionDropPrefab").objectReferenceValue = potionPrefab;
             so.FindProperty("skillPointDropPrefab").objectReferenceValue = skillPointPrefab;
-            so.FindProperty("fireHeartDropChance").floatValue = 0.35f;
-            so.FindProperty("healthPotionDropChance").floatValue = 0.20f;
-            so.FindProperty("skillPointDropChance").floatValue = 0.25f;
+            so.FindProperty("fireHeartDropChance").floatValue = 0f;
+            so.FindProperty("healthPotionDropChance").floatValue = 0.25f;
+            so.FindProperty("skillPointDropChance").floatValue = 0.35f;
             so.ApplyModifiedProperties();
 
             PrefabUtility.SaveAsPrefabAsset(obj, path);
@@ -527,8 +538,9 @@ namespace WitchShmup.Editor
                     sr.sprite = brickSprite;
                     sr.drawMode = SpriteDrawMode.Tiled;
                     sr.size = new Vector2(segmentWidth, segmentHeight);
+                    sr.sortingLayerName = "Background";
                     sr.sortingOrder = -15;
-                    sr.color = new Color(0.24f, 0.20f, 0.35f, 1f); // Fundo escuro e misterioso
+                    sr.color = new Color(0.44f, 0.40f, 0.58f, 1f); // Fundo visível com silhuetas de masmorra
 
                     farSegments[i] = segObj.transform;
                 }
@@ -552,8 +564,9 @@ namespace WitchShmup.Editor
                     sr.sprite = brickSprite;
                     sr.drawMode = SpriteDrawMode.Tiled;
                     sr.size = new Vector2(segmentWidth, segmentHeight);
+                    sr.sortingLayerName = "Background";
                     sr.sortingOrder = -10;
-                    sr.color = new Color(0.55f, 0.55f, 0.72f, 1f);
+                    sr.color = new Color(0.68f, 0.68f, 0.82f, 1f);
 
                     // Tochas distribuídas no segmento! Sendo filhas do segObj, rolam e dão wrap-around perfeitamente!
                     float[] torchOffsets = { -8f, 0f, 8f };
@@ -579,6 +592,7 @@ namespace WitchShmup.Editor
             playerObj.transform.position = new Vector3(-6f, 0f, 0f);
 
             var sr = playerObj.AddComponent<SpriteRenderer>();
+            sr.sortingLayerName = "Player";
             sr.sortingOrder = 10;
 
             var rb = playerObj.AddComponent<Rigidbody2D>();
@@ -678,6 +692,10 @@ namespace WitchShmup.Editor
 
             var hud = canvasObj.AddComponent<HUDController>();
             Sprite heartSprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{SpritesPath}/Heart.png");
+            Sprite fullHeart = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Resources/Sprites/coracao_cheio_20x20.png");
+            Sprite emptyHeart = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Resources/Sprites/coracao_vazio_20x20.png");
+            Sprite bossBg = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Resources/Sprites/boss_barra_fundo_decorado_192x36.png");
+            Sprite bossFill = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Resources/Sprites/boss_barra_vida_148x12.png");
 
             // --- TOP BAR (Score | Título da fase | Barra do Boss) ---
             GameObject topBar = new GameObject("TopBar");
@@ -731,44 +749,63 @@ namespace WitchShmup.Editor
             bossWrapRect.anchorMax = new Vector2(1f, 1f);
             bossWrapRect.pivot = new Vector2(1f, 0.5f);
             bossWrapRect.anchoredPosition = new Vector2(-24f, 0f);
-            bossWrapRect.sizeDelta = new Vector2(400f, 0f);
+            bossWrapRect.sizeDelta = new Vector2(320f, 0f);
 
             // Nome do Boss (label acima da barra)
             GameObject bossNameObj = new GameObject("BossNameText");
             bossNameObj.transform.SetParent(bossBarWrapper.transform, false);
             var bossNameRect = bossNameObj.AddComponent<RectTransform>();
-            bossNameRect.anchorMin = new Vector2(0f, 0.55f);
-            bossNameRect.anchorMax = new Vector2(1f, 1f);
-            bossNameRect.sizeDelta = Vector2.zero;
-            bossNameRect.anchoredPosition = Vector2.zero;
+            bossNameRect.anchorMin = new Vector2(0.5f, 1f);
+            bossNameRect.anchorMax = new Vector2(0.5f, 1f);
+            bossNameRect.pivot = new Vector2(0.5f, 1f);
+            bossNameRect.sizeDelta = new Vector2(300f, 20f);
+            bossNameRect.anchoredPosition = new Vector2(0f, 0f);
             var bossNameTmp = bossNameObj.AddComponent<TextMeshProUGUI>();
             bossNameTmp.text = "GOLEM DE PEDRA";
-            bossNameTmp.fontSize = 20;
+            bossNameTmp.fontSize = 18;
             bossNameTmp.fontStyle = FontStyles.Bold;
             bossNameTmp.color = new Color(1f, 0.85f, 0.85f, 1f);
-            bossNameTmp.alignment = TextAlignmentOptions.MidlineRight;
+            bossNameTmp.alignment = TextAlignmentOptions.Center;
 
-            // Container da barra de HP
+            // Container da barra de HP (proporção exata 192x36 a 1.5x = 288x54)
             GameObject bossBarObj = new GameObject("BossHealthBar");
             bossBarObj.transform.SetParent(bossBarWrapper.transform, false);
             var bossBarRect = bossBarObj.AddComponent<RectTransform>();
-            bossBarRect.anchorMin = new Vector2(0f, 0f);
-            bossBarRect.anchorMax = new Vector2(1f, 0.5f);
-            bossBarRect.sizeDelta = Vector2.zero;
-            bossBarRect.anchoredPosition = Vector2.zero;
+            bossBarRect.anchorMin = new Vector2(0.5f, 0.5f);
+            bossBarRect.anchorMax = new Vector2(0.5f, 0.5f);
+            bossBarRect.pivot = new Vector2(0.5f, 0.5f);
+            bossBarRect.sizeDelta = new Vector2(288f, 54f);
+            bossBarRect.anchoredPosition = new Vector2(0f, -6f);
             var bossBgImg = bossBarObj.AddComponent<Image>();
-            bossBgImg.color = new Color(0.18f, 0.08f, 0.14f, 0.95f);
+            bossBgImg.preserveAspect = true;
+            if (bossBg != null)
+            {
+                bossBgImg.sprite = bossBg;
+                bossBgImg.color = Color.white;
+            }
+            else
+            {
+                bossBgImg.color = new Color(0.18f, 0.08f, 0.14f, 0.95f);
+            }
 
             // Fill vermelho da barra
             GameObject fillObj = new GameObject("Fill");
             fillObj.transform.SetParent(bossBarObj.transform, false);
             var fillRect = fillObj.AddComponent<RectTransform>();
-            fillRect.anchorMin = new Vector2(0.01f, 0.08f);
-            fillRect.anchorMax = new Vector2(0.99f, 0.92f);
+            fillRect.anchorMin = new Vector2(22f / 192f, 12f / 36f);
+            fillRect.anchorMax = new Vector2(170f / 192f, 24f / 36f);
             fillRect.sizeDelta = Vector2.zero;
             fillRect.anchoredPosition = Vector2.zero;
             var fillImg = fillObj.AddComponent<Image>();
-            fillImg.color = new Color(0.97f, 0.3f, 0.35f, 1f);
+            if (bossFill != null)
+            {
+                fillImg.sprite = bossFill;
+                fillImg.color = Color.white;
+            }
+            else
+            {
+                fillImg.color = new Color(0.97f, 0.3f, 0.35f, 1f);
+            }
             fillImg.type = Image.Type.Filled;
             fillImg.fillMethod = Image.FillMethod.Horizontal;
             fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -807,10 +844,10 @@ namespace WitchShmup.Editor
                 GameObject hObj = new GameObject($"Heart_{i}");
                 hObj.transform.SetParent(heartsContainer.transform, false);
                 var hRect = hObj.AddComponent<RectTransform>();
-                hRect.sizeDelta = new Vector2(52f, 52f);
+                hRect.sizeDelta = new Vector2(40f, 40f);
                 var img = hObj.AddComponent<Image>();
-                img.sprite = heartSprite;
-                img.color = new Color(1f, 0.35f, 0.45f, 1f);
+                img.sprite = fullHeart != null ? fullHeart : heartSprite;
+                img.color = Color.white;
                 img.preserveAspect = true;
                 heartImgs[i] = img;
             }
@@ -926,8 +963,13 @@ namespace WitchShmup.Editor
             hudSo.FindProperty("scoreText").objectReferenceValue = scoreTmp;
             hudSo.FindProperty("stageText").objectReferenceValue = stageTmp;
             hudSo.FindProperty("bossBarContainer").objectReferenceValue = bossBarWrapper;
+            hudSo.FindProperty("bossBarBackground").objectReferenceValue = bossBgImg;
             hudSo.FindProperty("bossHealthFill").objectReferenceValue = fillImg;
             hudSo.FindProperty("bossNameText").objectReferenceValue = bossNameTmp;
+            hudSo.FindProperty("fullHeartSprite").objectReferenceValue = fullHeart;
+            hudSo.FindProperty("emptyHeartSprite").objectReferenceValue = emptyHeart;
+            hudSo.FindProperty("customBossBarBackgroundSprite").objectReferenceValue = bossBg;
+            hudSo.FindProperty("customBossBarFillSprite").objectReferenceValue = bossFill;
             hudSo.FindProperty("potionCountText").objectReferenceValue = potionTmp;
             hudSo.FindProperty("potionIconContainer").objectReferenceValue = potionContainer;
             hudSo.ApplyModifiedProperties();

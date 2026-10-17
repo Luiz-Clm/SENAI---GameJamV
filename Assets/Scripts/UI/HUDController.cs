@@ -16,6 +16,11 @@ namespace WitchShmup.UI
         [SerializeField] private Image[] heartImages;
         [SerializeField] private Color fullHeartColor = new Color(1f, 0.35f, 0.45f, 1f);
         [SerializeField] private Color emptyHeartColor = new Color(0.25f, 0.2f, 0.25f, 0.5f);
+        [Header("Heart Custom Sprites")]
+        [Tooltip("Sprite do coração cheio (UI/coracao_cheio_20x20)")]
+        [SerializeField] private Sprite fullHeartSprite;
+        [Tooltip("Sprite do coração vazio (UI/coracao_vazio_20x20)")]
+        [SerializeField] private Sprite emptyHeartSprite;
 
         [Header("Element Indicator (HUD Buttons)")]
         [SerializeField] private Image iceBadge;
@@ -107,6 +112,23 @@ namespace WitchShmup.UI
                 bossNameText = bossBarContainer.GetComponentInChildren<TextMeshProUGUI>(true);
             }
 
+            if (customBossBarBackgroundSprite == null)
+            {
+                customBossBarBackgroundSprite = LoadSpriteResourceOrAsset("boss_barra_fundo_decorado_192x36");
+            }
+            if (customBossBarFillSprite == null)
+            {
+                customBossBarFillSprite = LoadSpriteResourceOrAsset("boss_barra_vida_148x12");
+            }
+            if (fullHeartSprite == null)
+            {
+                fullHeartSprite = LoadSpriteResourceOrAsset("coracao_cheio_20x20");
+            }
+            if (emptyHeartSprite == null)
+            {
+                emptyHeartSprite = LoadSpriteResourceOrAsset("coracao_vazio_20x20");
+            }
+
             ApplyCustomBossBarSprites();
 
             if (potionIconContainer == null)
@@ -119,6 +141,31 @@ namespace WitchShmup.UI
             {
                 potionCountText = potionIconContainer.GetComponentInChildren<TextMeshProUGUI>(true);
             }
+        }
+
+        private Sprite LoadSpriteResourceOrAsset(string spriteName)
+        {
+            Sprite s = Resources.Load<Sprite>("Sprites/" + spriteName);
+            if (s != null) return s;
+
+            Sprite[] all = Resources.LoadAll<Sprite>("Sprites/" + spriteName);
+            if (all != null && all.Length > 0) return all[0];
+
+#if UNITY_EDITOR
+            string[] guids = UnityEditor.AssetDatabase.FindAssets(spriteName + " t:Sprite");
+            if (guids != null && guids.Length > 0)
+            {
+                string p = UnityEditor.AssetDatabase.GUIDToAssetPath(guids[0]);
+                var assets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(p);
+                foreach (var obj in assets)
+                {
+                    if (obj is Sprite sp) return sp;
+                }
+                s = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
+                if (s != null) return s;
+            }
+#endif
+            return null;
         }
 
         private void Start()
@@ -194,12 +241,30 @@ namespace WitchShmup.UI
 
                 if (i < currentHealth)
                 {
-                    heartImages[i].color = fullHeartColor;
+                    if (fullHeartSprite != null)
+                    {
+                        heartImages[i].sprite = fullHeartSprite;
+                        heartImages[i].color = Color.white;
+                    }
+                    else
+                    {
+                        heartImages[i].color = fullHeartColor;
+                    }
+                    heartImages[i].preserveAspect = true;
                     heartImages[i].gameObject.SetActive(true);
                 }
                 else if (i < maxHealth)
                 {
-                    heartImages[i].color = emptyHeartColor;
+                    if (emptyHeartSprite != null)
+                    {
+                        heartImages[i].sprite = emptyHeartSprite;
+                        heartImages[i].color = Color.white;
+                    }
+                    else
+                    {
+                        heartImages[i].color = emptyHeartColor;
+                    }
+                    heartImages[i].preserveAspect = true;
                     heartImages[i].gameObject.SetActive(true);
                 }
                 else
@@ -329,10 +394,42 @@ namespace WitchShmup.UI
         /// </summary>
         public void ApplyCustomBossBarSprites()
         {
+            if (customBossBarBackgroundSprite == null)
+                customBossBarBackgroundSprite = LoadSpriteResourceOrAsset("boss_barra_fundo_decorado_192x36");
+            if (customBossBarFillSprite == null)
+                customBossBarFillSprite = LoadSpriteResourceOrAsset("boss_barra_vida_148x12");
+
             if (customBossBarBackgroundSprite != null && bossBarBackground != null)
             {
                 bossBarBackground.sprite = customBossBarBackgroundSprite;
                 bossBarBackground.color = Color.white;
+                bossBarBackground.preserveAspect = true;
+
+                // Ajusta proporção exata para pixel art 192x36 (escala de 1.5x = 288x54) evitando qualquer esticamento
+                var bgRt = bossBarBackground.rectTransform;
+                if (bgRt != null)
+                {
+                    bgRt.anchorMin = new Vector2(0.5f, 0.5f);
+                    bgRt.anchorMax = new Vector2(0.5f, 0.5f);
+                    bgRt.pivot = new Vector2(0.5f, 0.5f);
+                    bgRt.sizeDelta = new Vector2(288f, 54f);
+                    bgRt.anchoredPosition = new Vector2(0f, -6f);
+                }
+            }
+
+            if (bossNameText != null)
+            {
+                var nameRt = bossNameText.rectTransform;
+                if (nameRt != null)
+                {
+                    nameRt.anchorMin = new Vector2(0.5f, 1f);
+                    nameRt.anchorMax = new Vector2(0.5f, 1f);
+                    nameRt.pivot = new Vector2(0.5f, 1f);
+                    nameRt.anchoredPosition = new Vector2(0f, 0f);
+                    nameRt.sizeDelta = new Vector2(300f, 20f);
+                    bossNameText.alignment = TextAlignmentOptions.Center;
+                    bossNameText.fontSize = 18f;
+                }
             }
 
             if (customBossBarFillSprite != null && bossHealthFill != null)
@@ -340,7 +437,18 @@ namespace WitchShmup.UI
                 bossHealthFill.sprite = customBossBarFillSprite;
                 bossHealthFill.type = Image.Type.Filled;
                 bossHealthFill.fillMethod = Image.FillMethod.Horizontal;
+                bossHealthFill.fillOrigin = (int)Image.OriginHorizontal.Left;
                 bossHealthFill.color = Color.white;
+
+                // Encaixe milimétrico do miolo de vida dentro da moldura decorada (192x36 com área útil 148x12)
+                var fillRt = bossHealthFill.rectTransform;
+                if (fillRt != null)
+                {
+                    fillRt.anchorMin = new Vector2(22f / 192f, 12f / 36f);
+                    fillRt.anchorMax = new Vector2((192f - 22f) / 192f, (36f - 12f) / 36f);
+                    fillRt.offsetMin = Vector2.zero;
+                    fillRt.offsetMax = Vector2.zero;
+                }
             }
         }
     }

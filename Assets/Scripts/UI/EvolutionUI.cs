@@ -44,6 +44,7 @@ namespace WitchShmup.UI
             [NonSerialized] public GameObject      nodeGo;
             [NonSerialized] public Image           nodeBg;
             [NonSerialized] public Image           nodeRing;
+            [NonSerialized] public Image           nodeIcon;
             [NonSerialized] public TextMeshProUGUI levelLabel;
         }
 
@@ -64,18 +65,18 @@ namespace WitchShmup.UI
         readonly List<NodeData> NODES = new List<NodeData>
         {
             // Coluna central
-            new NodeData { id="vit", displayName="Vitalidade",      description="Seu corpo de mago aguenta mais pancada na masmorra.",           effectText="Mais 10 de vida",              requirementId=null,  maxLevel=1, cost=2, iconText="♥", htmlPos=new Vector2(280,440) },
-            new NodeData { id="vel", displayName="Vassoura Veloz",   description="A vassoura corta o ar mais rápido e fica fácil desviar dos tiros.", effectText="Mais 8% de velocidade",   requirementId="vit", maxLevel=1, cost=2, iconText="⚡", htmlPos=new Vector2(280,370) },
-            new NodeData { id="foc", displayName="Foco Arcano",      description="O cristal do cajado brilha mais forte e seus tiros machucam mais.", effectText="Mais 1 de dano",          requirementId="vel", maxLevel=1, cost=2, iconText="⚔", htmlPos=new Vector2(280,300) },
-            new NodeData { id="des", displayName="Despertar Arcano", description="Libera os dois caminhos: proteção e ofensiva.",                    effectText="Mais 5 de vida e 1 de dano", requirementId="foc", maxLevel=1, cost=2, iconText="★", htmlPos=new Vector2(280,230) },
+            new NodeData { id="vit", displayName="Vitalidade",      description="Seu corpo de mago aguenta mais pancada na masmorra.",           effectText="+1 Coração de Vida",           requirementId=null,  maxLevel=3, cost=1, iconText="♥", htmlPos=new Vector2(280,440) },
+            new NodeData { id="vel", displayName="Vassoura Veloz",   description="A vassoura corta o ar mais rápido e fica fácil desviar dos tiros.", effectText="Mais 8% de velocidade",        requirementId="vit", maxLevel=1, cost=2, iconText="⚡", htmlPos=new Vector2(280,370) },
+            new NodeData { id="foc", displayName="Foco Arcano",      description="O cristal do cajado brilha mais forte e seus tiros machucam mais.", effectText="Mais 1 de dano",               requirementId="vel", maxLevel=1, cost=2, iconText="⚔", htmlPos=new Vector2(280,300) },
+            new NodeData { id="des", displayName="Despertar Arcano", description="Libera os dois caminhos: proteção e ofensiva.",                    effectText="+1 de dano arcano",            requirementId="foc", maxLevel=1, cost=2, iconText="★", htmlPos=new Vector2(280,230) },
             // Ramo Esquerdo (Defesa)
             new NodeData { id="pel", displayName="Pele de Pedra",    description="Você aprendeu um truque com o golem: pancadas doem menos.",       effectText="8% menos dano recebido",       requirementId="des", maxLevel=1, cost=2, iconText="🛡", htmlPos=new Vector2(175,160) },
             new NodeData { id="ima", displayName="Ímã de Almas",     description="Os skill points dropados voam até você de mais longe.",            effectText="Mais 30% de alcance dos drops", requirementId="pel", maxLevel=1, cost=2, iconText="🧲", htmlPos=new Vector2(115,100) },
-            new NodeData { id="seg", displayName="Segundo Fôlego",   description="Quando a vida zera, você volta uma vez com um pouco de vida.",     effectText="Revive 1x com 30% de vida",    requirementId="ima", maxLevel=1, cost=5, iconText="☠", htmlPos=new Vector2( 55, 60) },
+            new NodeData { id="seg", displayName="Segundo Fôlego",   description="Quando a vida zera, você volta uma vez com um pouco de vida.",     effectText="Revive 1x com 35% de vida",    requirementId="ima", maxLevel=1, cost=5, iconText="☠", htmlPos=new Vector2( 55, 60) },
             // Ramo Direito (Ofensiva)
-            new NodeData { id="rap", displayName="Tiro Rápido",      description="O cajado dispara com mais frequência.",                            effectText="Mais 10% de cadência",          requirementId="des", maxLevel=1, cost=2, iconText="🏹", htmlPos=new Vector2(385,160) },
-            new NodeData { id="dup", displayName="Tiro Duplo",       description="Cada disparo solta uma magia a mais.",                             effectText="Mais 1 projétil por disparo",   requirementId="rap", maxLevel=1, cost=4, iconText="✦", htmlPos=new Vector2(445,100) },
-            new NodeData { id="per", displayName="Tiro Perfurante",  description="As magias atravessam o primeiro inimigo e acertam o de trás.",    effectText="Tiros atravessam 1 inimigo",    requirementId="dup", maxLevel=1, cost=5, iconText="🔥", htmlPos=new Vector2(505, 60) },
+            new NodeData { id="rap", displayName="Tiro Rápido",      description="O cajado dispara com mais frequência.",                            effectText="Mais 10% de cadência",          requirementId="des", maxLevel=1, cost=2, iconText=">>", htmlPos=new Vector2(385,160) },
+            new NodeData { id="per", displayName="Tiro Perfurante",  description="As magias atravessam o primeiro inimigo e acertam o de trás.",    effectText="Tiros atravessam 1 inimigo",    requirementId="rap", maxLevel=1, cost=3, iconText="->", htmlPos=new Vector2(445,100) },
+            new NodeData { id="dup", displayName="Fileiras de Tiro", description="Dispara projéteis em fileiras verticais como nos jogos de nave.",    effectText="2 fileiras de tiro verticais",  requirementId="per", maxLevel=2, cost=3, iconText="::", htmlPos=new Vector2(505, 60) },
         };
 
         // ─── Custom Staff Sprites ─────────────────────────────────────────────
@@ -106,6 +107,9 @@ namespace WitchShmup.UI
 
         // Card detalhes (Tab 1)
         TextMeshProUGUI cardName, cardCost, cardDesc, cardEffect, cardStatus;
+        Image           cardIconImg;
+        GameObject      cardIconBox;
+        Transform       cardPipsContainer;
         Button          buyBtn;
         TextMeshProUGUI buyBtnLabel;
 
@@ -261,14 +265,16 @@ namespace WitchShmup.UI
                 n.nodeRing = Img(ringGo, new Color(C_AVAIL.r,C_AVAIL.g,C_AVAIL.b,0f));
                 ringGo.transform.SetAsFirstSibling();
 
-                // Icon
-                var icon = Txt("Icon", nodeGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), new Vector2(0,-6),
-                    n.iconText, 26, Color.white, FontStyles.Bold);
-                icon.alignment = TextAlignmentOptions.Center;
+                // Icon (Image renderizada com SkillIconProvider)
+                var iconGo = Rect("Icon", nodeGo.transform, new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(40,40));
+                n.nodeIcon = iconGo.AddComponent<Image>();
+                n.nodeIcon.sprite = SkillIconProvider.GetIcon(n.id);
+                n.nodeIcon.preserveAspect = true;
+                n.nodeIcon.raycastTarget = false;
 
                 // Level label (below node)
                 n.levelLabel = Txt("Lv", nodeGo.transform, new Vector2(0,0), new Vector2(0,0), new Vector2(0.5f,0), new Vector2(68,22),
-                    "0/1", 13, C_MUT, FontStyles.Normal);
+                    "", 13, C_MUT, FontStyles.Normal);
                 n.levelLabel.alignment = TextAlignmentOptions.Center;
                 SetAnchoredPos(n.levelLabel.gameObject, new Vector2(0,-42));
 
@@ -278,6 +284,13 @@ namespace WitchShmup.UI
                 AddTrigger(trig, EventTriggerType.PointerExit,  _ =>                      PulseRing(n, false) );
                 AddTrigger(trig, EventTriggerType.PointerClick, _ => { SelectNode(n.id); TryBuy(n.id);        });
             }
+
+            // Bottom Legend & Cheats
+            var leg = Txt("Legend", treeBox.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(-20,24),
+                "Cinza = bloqueado  •  Ciano = pode comprar  •  Rosa = comprado  •  Dourado = nível máximo",
+                14, C_MUT, FontStyles.Normal);
+            SetAnchoredPos(leg.gameObject, new Vector2(0, 10));
+            leg.alignment = TextAlignmentOptions.Center;
         }
 
         void BuildDetailCard(Transform parent)
@@ -285,31 +298,53 @@ namespace WitchShmup.UI
             // Node name
             cardName = Txt("Name", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-16,40),
                 "Vitalidade", 26, C_DARK2, FontStyles.Bold);
-            SetAnchoredPos(cardName.gameObject, new Vector2(12,-12));
+            SetAnchoredPos(cardName.gameObject, new Vector2(16,-12));
 
             // Cost badge
-            var costBx = Rect("CostBox", parent, new Vector2(1,1), new Vector2(1,1), new Vector2(1,1), new Vector2(110,34));
-            SetAnchoredPos(costBx, new Vector2(-12,-12));
+            var costBx = Rect("CostBox", parent, new Vector2(1,1), new Vector2(1,1), new Vector2(1,1), new Vector2(120,34));
+            SetAnchoredPos(costBx, new Vector2(-16,-12));
             Img(costBx, new Color(0.04f,0.03f,0.06f,1f));
             cardCost = Txt("CostTxt", costBx.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), Vector2.zero,
-                "CUSTO 2", 16, C_GOLD, FontStyles.Bold);
+                "CUSTO 1 SP", 16, C_GOLD, FontStyles.Bold);
             cardCost.alignment = TextAlignmentOptions.Center;
 
             // "Descrição:"
             var lblDesc = Txt("LblDesc", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-16,22),
                 "Descrição:", 16, C_MUT, FontStyles.Italic);
-            SetAnchoredPos(lblDesc.gameObject, new Vector2(12,-56));
+            SetAnchoredPos(lblDesc.gameObject, new Vector2(16,-52));
 
             // Description text
-            cardDesc = Txt("Desc", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-24,90),
-                "", 20, C_DARK2, FontStyles.Normal);
-            SetAnchoredPos(cardDesc.gameObject, new Vector2(12,-80));
+            cardDesc = Txt("Desc", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-32,60),
+                "", 18, C_DARK2, FontStyles.Normal);
+            SetAnchoredPos(cardDesc.gameObject, new Vector2(16,-74));
             cardDesc.textWrappingMode = TMPro.TextWrappingModes.Normal;
 
+            // ── Visual Icon Showcase Box ──
+            cardIconBox = Rect("IconBox", parent, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(300,120));
+            SetAnchoredPos(cardIconBox, new Vector2(0,-140));
+            Img(cardIconBox, new Color(0.08f, 0.05f, 0.15f, 1f));
+
+            // Glowing Icon inside showcase box
+            var iconPre = Rect("IconPreview", cardIconBox.transform, new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(64,64));
+            SetAnchoredPos(iconPre, new Vector2(0,12));
+            cardIconImg = iconPre.AddComponent<Image>();
+            cardIconImg.preserveAspect = true;
+            cardIconImg.raycastTarget = false;
+
+            // Level Pips container below the icon
+            var pipsGo = Rect("Pips", cardIconBox.transform, new Vector2(0.5f,0), new Vector2(0.5f,0), new Vector2(0.5f,0), new Vector2(160,20));
+            SetAnchoredPos(pipsGo, new Vector2(0,10));
+            var hlg = pipsGo.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 8;
+            hlg.childAlignment = TextAnchor.MiddleCenter;
+            hlg.childForceExpandWidth = false;
+            hlg.childForceExpandHeight = false;
+            cardPipsContainer = pipsGo.transform;
+
             // Effect (rosa em negrito)
-            cardEffect = Txt("Effect", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-24,30),
+            cardEffect = Txt("Effect", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-24,32),
                 "", 22, C_BOUGHT, FontStyles.Bold);
-            SetAnchoredPos(cardEffect.gameObject, new Vector2(12,-178));
+            SetAnchoredPos(cardEffect.gameObject, new Vector2(0,-272));
             cardEffect.alignment = TextAlignmentOptions.Center;
 
             // Status message (above button)
@@ -403,7 +438,7 @@ namespace WitchShmup.UI
 
             // Need summary
             needSummary = Txt("Need", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-40,36),
-                "Requer <color=#ffc83a>5</color> drops do morcego e <color=#ffc83a>1</color> drop do boss",
+                "Requer <color=#ffc83a>7</color> Corações de Fogo e <color=#ffc83a>1</color> Núcleo do Boss",
                 22, Color.white, FontStyles.Normal);
             SetAnchoredPos(needSummary.gameObject, new Vector2(0, rowTop - 270f));
             needSummary.alignment = TextAlignmentOptions.Center;
@@ -411,7 +446,7 @@ namespace WitchShmup.UI
 
             // Mat rows
             float matY = rowTop - 315f;
-            BuildMatRow(parent, new Vector2(0, matY),       "🦇  Presa de Morcego", 5, out batSegCont,  out batCountTxt);
+            BuildMatRow(parent, new Vector2(0, matY),       "🦇  Coração de Fogo", 7, out batSegCont,  out batCountTxt);
             BuildMatRow(parent, new Vector2(0, matY - 72f), "💠  Núcleo do Boss",   1, out coreSegCont, out coreCountTxt);
 
             // Evolve button
@@ -519,6 +554,14 @@ namespace WitchShmup.UI
                     n.nodeRing.color = new Color(rc.r, rc.g, rc.b, a);
                 }
 
+                // Node icon tint
+                if (n.nodeIcon != null)
+                {
+                    if (maxed) n.nodeIcon.color = new Color(1f, 0.95f, 0.8f, 1f);
+                    else if (lvl > 0 || canBuy) n.nodeIcon.color = Color.white;
+                    else n.nodeIcon.color = new Color(0.6f, 0.55f, 0.7f, 0.40f);
+                }
+
                 if (n.levelLabel != null)
                     n.levelLabel.text = reached ? $"{lvl}/{n.maxLevel}" : "";
             }
@@ -539,7 +582,54 @@ namespace WitchShmup.UI
             if (cardName   != null) cardName.text   = n.displayName;
             if (cardCost   != null) cardCost.text   = maxed ? "CUSTO -" : $"CUSTO {n.cost} SP";
             if (cardDesc   != null) cardDesc.text   = n.description;
-            if (cardEffect != null) cardEffect.text = n.effectText;
+
+            // Ícone do Card
+            if (cardIconImg != null)
+            {
+                cardIconImg.sprite = SkillIconProvider.GetIcon(n.id);
+                cardIconImg.color = Color.white;
+            }
+
+            // Pips de nível abaixo do ícone no Card
+            if (cardPipsContainer != null)
+            {
+                for (int i = cardPipsContainer.childCount - 1; i >= 0; i--)
+                {
+                    Destroy(cardPipsContainer.GetChild(i).gameObject);
+                }
+
+                for (int i = 0; i < n.maxLevel; i++)
+                {
+                    var pip = new GameObject($"Pip_{i}");
+                    pip.transform.SetParent(cardPipsContainer, false);
+                    var prt = pip.AddComponent<RectTransform>();
+                    prt.sizeDelta = new Vector2(16, 12);
+                    var pImg = pip.AddComponent<Image>();
+                    pImg.color = (i < lvl) ? (maxed ? C_GOLD : C_BOUGHT) : C_LOCKED;
+                }
+            }
+
+            // Efeito textual dinâmico
+            if (cardEffect != null)
+            {
+                if (n.id == "vit")
+                {
+                    if (lvl == 0) cardEffect.text = "+1 Coração de Vida (Total: 5)";
+                    else if (lvl == 1) cardEffect.text = "+1 Coração de Vida (Total: 6)";
+                    else if (lvl == 2) cardEffect.text = "+1 Coração de Vida (Total: 7 - MÁXIMO)";
+                    else cardEffect.text = "Vida Máxima Atingida (7 Corações)";
+                }
+                else if (n.id == "dup")
+                {
+                    if (lvl == 0) cardEffect.text = "2 Fileiras de Tiro Verticais";
+                    else if (lvl == 1) cardEffect.text = "3 Fileiras de Tiro Verticais (MÁXIMO)";
+                    else cardEffect.text = "3 Fileiras Verticais Ativas (Nível Máximo)";
+                }
+                else
+                {
+                    cardEffect.text = n.effectText;
+                }
+            }
 
             string statusMsg = "";
             bool   btnActive = false;
@@ -621,6 +711,18 @@ namespace WitchShmup.UI
         void UpdateSegs(Transform cont, int have, int req)
         {
             if (cont == null) return;
+
+            while (cont.childCount < req)
+            {
+                var s = new GameObject($"Seg_{cont.childCount}");
+                s.transform.SetParent(cont, false);
+                s.AddComponent<Image>().color = C_LOCKED;
+            }
+            while (cont.childCount > req)
+            {
+                Destroy(cont.GetChild(cont.childCount - 1).gameObject);
+            }
+
             for (int i = 0; i < cont.childCount; i++)
             {
                 var img = cont.GetChild(i).GetComponent<Image>();

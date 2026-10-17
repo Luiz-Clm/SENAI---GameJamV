@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -64,6 +65,18 @@ namespace WitchShmup.Player
         [Header("Audio (Optional)")]
         [SerializeField] private AudioSource audioSource;
 
+        [Header("Natural Wizard/Staff Light (Ajuste Manual no Inspector)")]
+        [Tooltip("Luz natural emanada pelo cajado do mago")]
+        [SerializeField] private Light2D staffLight;
+        [Tooltip("Intensidade do brilho do cajado")]
+        [SerializeField] private float staffLightIntensity = 1.25f;
+        [Tooltip("Raio de alcance da luz do mago")]
+        [SerializeField] private float staffLightRadius = 5.0f;
+        [Tooltip("Cor da aura de Gelo")]
+        [SerializeField] private Color iceAuraColor = new Color(0.35f, 0.85f, 1f, 1f);
+        [Tooltip("Cor da aura de Fogo")]
+        [SerializeField] private Color fireAuraColor = new Color(1f, 0.58f, 0.22f, 1f);
+
         private float nextFireTime = 0f;
         private bool isFiring = false;
 
@@ -107,7 +120,57 @@ namespace WitchShmup.Player
         {
             // O jogador sempre começa com Gelo
             currentElement = ElementType.Ice;
+            SetupStaffLight();
             OnElementChanged?.Invoke(currentElement);
+        }
+
+        private void SetupStaffLight()
+        {
+            if (staffLight == null)
+            {
+                var lightChild = transform.Find("Staff_NaturalLight");
+                if (lightChild != null)
+                {
+                    staffLight = lightChild.GetComponent<Light2D>();
+                }
+                else
+                {
+                    GameObject lObj = new GameObject("Staff_NaturalLight");
+                    lObj.transform.SetParent(transform, false);
+                    lObj.transform.localPosition = new Vector3(0.5f, 0.1f, 0f);
+                    staffLight = lObj.AddComponent<Light2D>();
+                    staffLight.lightType = Light2D.LightType.Point;
+                    staffLight.pointLightOuterRadius = 4.5f;
+                    staffLight.pointLightInnerRadius = 0.4f;
+                    staffLight.falloffIntensity = 0.55f;
+                    staffLight.intensity = 1.05f;
+                    staffLight.shadowsEnabled = false;
+                }
+            }
+
+            if (staffLight != null)
+            {
+                int pLayer = SortingLayer.NameToID("Player");
+                int defLayer = SortingLayer.NameToID("Default");
+                if (pLayer != 0)
+                {
+                    staffLight.targetSortingLayers = new int[] { pLayer, defLayer };
+                }
+            }
+            UpdateStaffLightColor();
+        }
+
+        public void UpdateStaffLightColor()
+        {
+            if (staffLight != null)
+            {
+                // A luz natural muda de acordo com o elemento do cajado
+                Color targetCol = (currentElement == ElementType.Fire) ? fireAuraColor : iceAuraColor;
+                staffLight.color = targetCol;
+                staffLight.intensity = staffLightIntensity;
+                staffLight.pointLightOuterRadius = staffLightRadius;
+                staffLight.pointLightInnerRadius = staffLightRadius * 0.1f;
+            }
         }
 
         private void Update()
@@ -247,6 +310,7 @@ namespace WitchShmup.Player
             if (currentElement == newElement) return;
 
             currentElement = newElement;
+            UpdateStaffLightColor();
             OnElementChanged?.Invoke(currentElement);
         }
 
@@ -334,23 +398,27 @@ namespace WitchShmup.Player
 
             if (multiShotLevel >= 2)
             {
-                // Disparo Triplo: Centro + Superior + Inferior com leve abertura
-                SpawnProjectile(basePos, Vector2.right, config, effectiveDamage, effectivePierce, effectiveSpeed);
-                SpawnProjectile(new Vector3(basePos.x, basePos.y + 0.32f, basePos.z), new Vector2(1f, 0.12f).normalized, config, effectiveDamage, effectivePierce, effectiveSpeed);
-                SpawnProjectile(new Vector3(basePos.x, basePos.y - 0.32f, basePos.z), new Vector2(1f, -0.12f).normalized, config, effectiveDamage, effectivePierce, effectiveSpeed);
+                // Disparo Triplo: 3 fileiras paralelas na vertical (superior, centro, inferior)
+                Vector3 topPos = new Vector3(basePos.x, basePos.y + 0.28f, basePos.z);
+                Vector3 midPos = basePos;
+                Vector3 botPos = new Vector3(basePos.x, basePos.y - 0.28f, basePos.z);
+
+                SpawnProjectile(topPos, Vector2.right, config, effectiveDamage, effectivePierce, effectiveSpeed);
+                SpawnProjectile(midPos, Vector2.right, config, effectiveDamage, effectivePierce, effectiveSpeed);
+                SpawnProjectile(botPos, Vector2.right, config, effectiveDamage, effectivePierce, effectiveSpeed);
             }
             else if (multiShotLevel == 1)
             {
-                // Disparo Duplo: 2 magias paralelas
-                Vector3 topPos = new Vector3(basePos.x, basePos.y + 0.22f, basePos.z);
-                Vector3 botPos = new Vector3(basePos.x, basePos.y - 0.22f, basePos.z);
+                // Disparo Duplo: 2 fileiras paralelas na vertical
+                Vector3 topPos = new Vector3(basePos.x, basePos.y + 0.20f, basePos.z);
+                Vector3 botPos = new Vector3(basePos.x, basePos.y - 0.20f, basePos.z);
 
                 SpawnProjectile(topPos, Vector2.right, config, effectiveDamage, effectivePierce, effectiveSpeed);
                 SpawnProjectile(botPos, Vector2.right, config, effectiveDamage, effectivePierce, effectiveSpeed);
             }
             else
             {
-                // Disparo inicial: 1 projétil central único
+                // Disparo inicial: 1 fileira central única
                 SpawnProjectile(basePos, Vector2.right, config, effectiveDamage, effectivePierce, effectiveSpeed);
             }
 

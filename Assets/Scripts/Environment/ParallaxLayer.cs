@@ -67,6 +67,22 @@ namespace WitchShmup.Environment
                         segmentWidth = sr.bounds.size.x;
                     }
                 }
+
+                // Garante que todos os segmentos estejam na layer Background e com cor visível
+                for (int i = 0; i < segments.Length; i++)
+                {
+                    if (segments[i] == null) continue;
+                    var segSr = segments[i].GetComponent<SpriteRenderer>();
+                    if (segSr != null)
+                    {
+                        segSr.sortingLayerName = "Background";
+                        // Se a cor do segmento estiver escura demais, clareia para a textura de tijolos da masmorra aparecer
+                        if (segSr.color.r < 0.35f && segSr.color.g < 0.35f)
+                        {
+                            segSr.color = new Color(0.55f, 0.52f, 0.68f, 1f);
+                        }
+                    }
+                }
             }
         }
 
