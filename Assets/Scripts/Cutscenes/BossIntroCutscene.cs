@@ -127,7 +127,7 @@ namespace WitchShmup.Cutscenes
             Vector3 wizardBasePos = (playerTransform != null) ? playerTransform.position : Vector3.zero;
             if (scaredEmotePrefab != null && playerTransform != null)
             {
-                spawnedEmote = Instantiate(scaredEmotePrefab, playerTransform.position + new Vector3(0f, 1.2f, 0f), Quaternion.identity, playerTransform);
+                spawnedEmote = Instantiate(scaredEmotePrefab, playerTransform.position + new Vector3(1.2f, 1.7f, 0f), Quaternion.identity, playerTransform);
             }
             else if (playerTransform != null)
             {
@@ -217,7 +217,7 @@ namespace WitchShmup.Cutscenes
         {
             GameObject emote = new GameObject("Scared_Emote");
             emote.transform.SetParent(parent);
-            emote.transform.localPosition = new Vector3(0.4f, 1.2f, 0f);
+            emote.transform.localPosition = new Vector3(1.2f, 1.7f, 0f);
 
             var sr = emote.AddComponent<SpriteRenderer>();
             sr.color = new Color(1f, 0.9f, 0.2f, 1f); // Amarelo brilhante
