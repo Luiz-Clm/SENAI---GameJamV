@@ -14,8 +14,25 @@ namespace WitchShmup.Spawners
         [Header("Duração da Fase")]
         [Tooltip("Tempo em segundos de ondas antes de chamar o Boss")]
         [SerializeField] private float stageDuration = 150f;
-        [SerializeField] private float spawnIntervalMin = 0.9f;
-        [SerializeField] private float spawnIntervalMax = 2.0f;
+
+        [Header("Balanceamento de Spawn (Ajuste no Inspector)")]
+        [Tooltip("Intervalo mínimo inicial entre spawns")]
+        [SerializeField] private float spawnIntervalMin = 0.65f;
+        [Tooltip("Intervalo máximo inicial entre spawns")]
+        [SerializeField] private float spawnIntervalMax = 1.35f;
+        [Tooltip("Intervalo mínimo no final da fase (mais frenético)")]
+        [SerializeField] private float endSpawnIntervalMin = 0.35f;
+        [Tooltip("Intervalo máximo no final da fase (mais frenético)")]
+        [SerializeField] private float endSpawnIntervalMax = 0.75f;
+
+        [Header("Quantidade de Inimigos e Formações")]
+        [Tooltip("Mínimo de inimigos por grupo")]
+        [SerializeField] private int minEnemiesPerWave = 1;
+        [Tooltip("Máximo de inimigos por grupo conforme o tempo passa (escala com a fase)")]
+        [SerializeField] private int maxEnemiesPerWave = 4;
+        [Tooltip("Chance (0 a 1) de gerar inimigos em enxame/formação alinhada")]
+        [Range(0f, 1f)]
+        [SerializeField] private float swarmChance = 0.40f;
 
         [Header("Spawn Position Bounds")]
         [SerializeField] private float spawnX = 11.5f;
@@ -101,16 +118,43 @@ namespace WitchShmup.Spawners
 
         private IEnumerator SpawnLoop()
         {
-            yield return new WaitForSeconds(1.2f);
+            yield return new WaitForSeconds(1.0f);
 
             while (isSpawning)
             {
-                SpawnRandomEnemy();
-
-                // Frequência de spawn acelera ligeiramente conforme o tempo passa
                 float progress = Mathf.Clamp01(stageTimer / stageDuration);
-                float curMin = Mathf.Lerp(spawnIntervalMin * 1.3f, spawnIntervalMin * 0.85f, progress);
-                float curMax = Mathf.Lerp(spawnIntervalMax * 1.2f, spawnIntervalMax * 0.85f, progress);
+
+                // Conforme o tempo avança e o jogador acumula upgrades, aparecem mais inimigos
+                int currentMaxEnemies = Mathf.RoundToInt(Mathf.Lerp(minEnemiesPerWave, maxEnemiesPerWave, progress));
+                int enemiesToSpawn = Random.Range(minEnemiesPerWave, currentMaxEnemies + 1);
+
+                bool isSwarm = (Random.value < swarmChance && progress > 0.20f && enemiesToSpawn > 1);
+
+                if (isSwarm)
+                {
+                    // Spawn em formação alinhada verticalmente
+                    float stepY = (maxY - minY) / (enemiesToSpawn + 1);
+                    for (int i = 0; i < enemiesToSpawn; i++)
+                    {
+                        float y = Mathf.Clamp(minY + stepY * (i + 1) + Random.Range(-0.3f, 0.3f), minY, maxY);
+                        SpawnEnemyAt(new Vector3(spawnX + (i * 0.5f), y, 0f));
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < enemiesToSpawn; i++)
+                    {
+                        SpawnRandomEnemy();
+                        if (enemiesToSpawn > 1)
+                        {
+                            yield return new WaitForSeconds(0.14f);
+                        }
+                    }
+                }
+
+                // Frequência de spawn acelera dinamicamente conforme a fase avança
+                float curMin = Mathf.Lerp(spawnIntervalMin, endSpawnIntervalMin, progress);
+                float curMax = Mathf.Lerp(spawnIntervalMax, endSpawnIntervalMax, progress);
 
                 float interval = Random.Range(curMin, curMax);
                 yield return new WaitForSeconds(interval);
@@ -120,10 +164,13 @@ namespace WitchShmup.Spawners
         private void SpawnRandomEnemy()
         {
             float randomY = Random.Range(minY, maxY);
-            Vector3 spawnPos = new Vector3(spawnX, randomY, 0f);
+            SpawnEnemyAt(new Vector3(spawnX, randomY, 0f));
+        }
 
+        private void SpawnEnemyAt(Vector3 spawnPos)
+        {
             // Progressão: início mais Rushers simples, depois mais Morcegos e formações mistas
-            float batChance = (stageTimer < 25f) ? 0.30f : (stageTimer < 50f) ? 0.50f : 0.65f;
+            float batChance = (stageTimer < 25f) ? 0.35f : (stageTimer < 60f) ? 0.55f : 0.70f;
             bool spawnRusher = (Random.value > batChance);
 
             if (spawnRusher)

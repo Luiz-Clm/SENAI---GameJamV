@@ -28,6 +28,16 @@ namespace WitchShmup.UI
         [SerializeField] private TextMeshProUGUI iceText;
         [SerializeField] private TextMeshProUGUI fireText;
 
+        [Header("Element Slot Custom Sprites (Sprites dos Slots de Magia)")]
+        [Tooltip("Sprite do slot de gelo ativo (UI/slot_gelo_ativo_nativo)")]
+        [SerializeField] private Sprite slotIceActiveSprite;
+        [Tooltip("Sprite do slot de gelo apagado (UI/slot_gelo_apagado_nativo)")]
+        [SerializeField] private Sprite slotIceInactiveSprite;
+        [Tooltip("Sprite do slot de fogo ativo (UI/slot_fogo_ativo_nativo)")]
+        [SerializeField] private Sprite slotFireActiveSprite;
+        [Tooltip("Sprite do slot de fogo apagado (UI/slot_fogo_apagado_nativo)")]
+        [SerializeField] private Sprite slotFireInactiveSprite;
+
         [Header("Colors for Elements")]
         [SerializeField] private Color activeIceColor = new Color(0.2f, 0.85f, 1f, 1f);
         [SerializeField] private Color inactiveIceColor = new Color(0.1f, 0.35f, 0.45f, 0.5f);
@@ -127,6 +137,23 @@ namespace WitchShmup.UI
             if (emptyHeartSprite == null)
             {
                 emptyHeartSprite = LoadSpriteResourceOrAsset("coracao_vazio_20x20");
+            }
+
+            if (slotIceActiveSprite == null)
+            {
+                slotIceActiveSprite = LoadSpriteResourceOrAsset("slot_gelo_ativo_nativo");
+            }
+            if (slotIceInactiveSprite == null)
+            {
+                slotIceInactiveSprite = LoadSpriteResourceOrAsset("slot_gelo_apagado_nativo");
+            }
+            if (slotFireActiveSprite == null)
+            {
+                slotFireActiveSprite = LoadSpriteResourceOrAsset("slot_fogo_ativo_nativo");
+            }
+            if (slotFireInactiveSprite == null)
+            {
+                slotFireInactiveSprite = LoadSpriteResourceOrAsset("slot_fogo_apagado_nativo");
             }
 
             ApplyCustomBossBarSprites();
@@ -286,12 +313,33 @@ namespace WitchShmup.UI
 
             if (activeElement == ElementType.Ice)
             {
-                if (iceBadge != null) iceBadge.color = activeIceColor;
+                if (iceBadge != null)
+                {
+                    if (slotIceActiveSprite != null)
+                    {
+                        iceBadge.sprite = slotIceActiveSprite;
+                        iceBadge.color = Color.white;
+                    }
+                    else
+                    {
+                        iceBadge.color = activeIceColor;
+                    }
+                    iceBadge.preserveAspect = true;
+                }
                 if (iceText != null) iceText.color = Color.white;
 
                 if (fireBadge != null && isFireUnlocked)
                 {
-                    fireBadge.color = inactiveFireColor;
+                    if (slotFireInactiveSprite != null)
+                    {
+                        fireBadge.sprite = slotFireInactiveSprite;
+                        fireBadge.color = Color.white;
+                    }
+                    else
+                    {
+                        fireBadge.color = inactiveFireColor;
+                    }
+                    fireBadge.preserveAspect = true;
                 }
                 if (fireText != null && isFireUnlocked)
                 {
@@ -301,10 +349,34 @@ namespace WitchShmup.UI
             }
             else if (activeElement == ElementType.Fire && isFireUnlocked)
             {
-                if (iceBadge != null) iceBadge.color = inactiveIceColor;
+                if (iceBadge != null)
+                {
+                    if (slotIceInactiveSprite != null)
+                    {
+                        iceBadge.sprite = slotIceInactiveSprite;
+                        iceBadge.color = Color.white;
+                    }
+                    else
+                    {
+                        iceBadge.color = inactiveIceColor;
+                    }
+                    iceBadge.preserveAspect = true;
+                }
                 if (iceText != null) iceText.color = new Color(0.7f, 0.7f, 0.7f, 0.6f);
 
-                if (fireBadge != null) fireBadge.color = activeFireColor;
+                if (fireBadge != null)
+                {
+                    if (slotFireActiveSprite != null)
+                    {
+                        fireBadge.sprite = slotFireActiveSprite;
+                        fireBadge.color = Color.white;
+                    }
+                    else
+                    {
+                        fireBadge.color = activeFireColor;
+                    }
+                    fireBadge.preserveAspect = true;
+                }
                 if (fireText != null)
                 {
                     fireText.text = "2: FOGO";

@@ -15,9 +15,13 @@ namespace WitchShmup.Player
         {
             public ElementType element;
             public GameObject projectilePrefab;
-            public float fireRate = 0.15f;      // Seconds between shots
+            [Tooltip("Tempo em segundos entre cada disparo (cadência). Quanto menor, mais rápido atira.")]
+            public float fireRate = 0.16f;
+            [Tooltip("Dano base de cada projétil.")]
             public float damage = 1f;
-            public float projectileSpeed = 16f;
+            [Tooltip("Velocidade com que o projétil se move pela tela.")]
+            public float projectileSpeed = 18f;
+            [Tooltip("Quantos inimigos o projétil pode atravessar.")]
             public int pierceCount = 1;
             public Color elementColor = Color.white;
             public AudioClip shootSound;

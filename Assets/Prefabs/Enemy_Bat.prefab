@@ -209,8 +209,8 @@ MonoBehaviour:
   chargeSpeed: 7
   chargeCooldown: 3.5
   fireballPrefab: {fileID: 4185825162384548282, guid: 0773c1cffeb0f204eac5b96306a99168, type: 3}
-  fireRate: 2.2
-  projectileSpeed: 8
+  fireRate: 1.8
+  projectileSpeed: 12
   fireOffset: {x: -0.5, y: 0}
   detectionRadius: 3.5
   dodgeSpeed: 9

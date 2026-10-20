@@ -80,22 +80,65 @@ namespace WitchShmup.UI
         };
 
         // ─── Custom Staff Sprites ─────────────────────────────────────────────
-        [Header("Custom Staff Sprites")]
-        [Tooltip("Sprite opcional para o Cajado Básico. Se vazio, usa o padrão em Resources.")]
-        [SerializeField] private Sprite customStaffBasicSprite;
-        [Tooltip("Sprite opcional para o Cajado Evoluído. Se vazio, usa o padrão em Resources.")]
-        [SerializeField] private Sprite customStaffEvolvedSprite;
+        [Header("Personalização de Sprites (Arraste aqui no Inspector!)")]
+        [Tooltip("Sprite do Cajado Inicial (Madeira / Gelo). Arraste seu PNG aqui ou deixe vazio para usar o padrão.")]
+        [SerializeField] public Sprite customStaffBasicSprite;
+        [Tooltip("Sprite do Cajado Evoluído (Arcano / Fogo). Arraste seu PNG aqui ou deixe vazio para usar o padrão.")]
+        [SerializeField] public Sprite customStaffEvolvedSprite;
+        [Tooltip("Sprite do Coração de Fogo. Arraste seu PNG aqui ou deixe vazio para usar o padrão.")]
+        [SerializeField] public Sprite customFireHeartSprite;
+        [Tooltip("Sprite do Núcleo do Boss. Arraste seu PNG aqui ou deixe vazio para usar o padrão.")]
+        [SerializeField] public Sprite customBossCoreSprite;
+
+        private Sprite LoadSpriteResourceOrAsset(string spriteName)
+        {
+            Sprite s = Resources.Load<Sprite>("Sprites/" + spriteName);
+            if (s != null) return s;
+
+            Sprite[] all = Resources.LoadAll<Sprite>("Sprites/" + spriteName);
+            if (all != null && all.Length > 0) return all[0];
+
+#if UNITY_EDITOR
+            string[] guids = UnityEditor.AssetDatabase.FindAssets(spriteName + " t:Sprite");
+            if (guids != null && guids.Length > 0)
+            {
+                string p = UnityEditor.AssetDatabase.GUIDToAssetPath(guids[0]);
+                var assets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(p);
+                foreach (var obj in assets)
+                {
+                    if (obj is Sprite sp) return sp;
+                }
+                s = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(p);
+                if (s != null) return s;
+            }
+#endif
+            return null;
+        }
 
         private Sprite GetBasicStaffSprite()
         {
             if (customStaffBasicSprite != null) return customStaffBasicSprite;
-            return Resources.Load<Sprite>("Sprites/Staff_Basic");
+            return LoadSpriteResourceOrAsset("Staff_Basic");
         }
 
         private Sprite GetEvolvedStaffSprite()
         {
             if (customStaffEvolvedSprite != null) return customStaffEvolvedSprite;
-            return Resources.Load<Sprite>("Sprites/Staff_Evolved");
+            return LoadSpriteResourceOrAsset("Staff_Evolved");
+        }
+
+        private Sprite GetFireHeartSprite()
+        {
+            if (customFireHeartSprite != null) return customFireHeartSprite;
+            return LoadSpriteResourceOrAsset("FireHeart");
+        }
+
+        private Sprite GetBossCoreSprite()
+        {
+            if (customBossCoreSprite != null) return customBossCoreSprite;
+            var s = LoadSpriteResourceOrAsset("BossCore");
+            if (s != null) return s;
+            return LoadSpriteResourceOrAsset("cristal_mana_lateral_80x80");
         }
 
         // ─── Runtime UI refs ──────────────────────────────────────────────────
@@ -390,9 +433,10 @@ namespace WitchShmup.UI
             SetAnchoredPos(curTag.gameObject, new Vector2(0,-8));
             curTag.alignment = TextAlignmentOptions.Center;
 
-            curStaffImg = MakeImg("Img", boxCur.transform, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(72,120));
-            SetAnchoredPos(curStaffImg.gameObject, new Vector2(0,-36));
+            curStaffImg = MakeImg("Img", boxCur.transform, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(85,135));
+            SetAnchoredPos(curStaffImg.gameObject, new Vector2(0,-32));
             curStaffImg.preserveAspect = true;
+            curStaffImg.color = Color.white;
             curStaffImg.sprite = GetBasicStaffSprite();
 
             curStaffName = Txt("Name", boxCur.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,28),
@@ -407,7 +451,7 @@ namespace WitchShmup.UI
 
             // Arrow centre
             var arw = Txt("Arrow", parent, new Vector2(0.42f,1), new Vector2(0.58f,1), new Vector2(0.5f,1), new Vector2(0,80),
-                "➔", 44, C_BOUGHT, FontStyles.Bold);
+                "->", 36, C_BOUGHT, FontStyles.Bold);
             SetAnchoredPos(arw.gameObject, new Vector2(0, rowTop - 80f));
             arw.alignment = TextAlignmentOptions.Center;
 
@@ -421,9 +465,10 @@ namespace WitchShmup.UI
             SetAnchoredPos(nxtTag.gameObject, new Vector2(0,-8));
             nxtTag.alignment = TextAlignmentOptions.Center;
 
-            nxtStaffImg = MakeImg("Img", nxtStaffBox.transform, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(72,120));
-            SetAnchoredPos(nxtStaffImg.gameObject, new Vector2(0,-36));
+            nxtStaffImg = MakeImg("Img", nxtStaffBox.transform, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(85,135));
+            SetAnchoredPos(nxtStaffImg.gameObject, new Vector2(0,-32));
             nxtStaffImg.preserveAspect = true;
+            nxtStaffImg.color = Color.white;
             nxtStaffImg.sprite = GetEvolvedStaffSprite();
 
             nxtStaffName = Txt("Name", nxtStaffBox.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,28),
@@ -446,8 +491,8 @@ namespace WitchShmup.UI
 
             // Mat rows
             float matY = rowTop - 315f;
-            BuildMatRow(parent, new Vector2(0, matY),       "🦇  Coração de Fogo", 7, out batSegCont,  out batCountTxt);
-            BuildMatRow(parent, new Vector2(0, matY - 72f), "💠  Núcleo do Boss",   1, out coreSegCont, out coreCountTxt);
+            BuildMatRow(parent, new Vector2(0, matY),       "Coração de Fogo", GetFireHeartSprite(), 7, out batSegCont,  out batCountTxt);
+            BuildMatRow(parent, new Vector2(0, matY - 72f), "Núcleo do Boss",   GetBossCoreSprite(),  1, out coreSegCont, out coreCountTxt);
 
             // Evolve button
             var evGo = Rect("Btn_Evolve", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-40,54));
@@ -465,21 +510,33 @@ namespace WitchShmup.UI
             staffMsg.alignment = TextAlignmentOptions.Center;
         }
 
-        void BuildMatRow(Transform parent, Vector2 anchoredPos, string label, int total,
+        void BuildMatRow(Transform parent, Vector2 anchoredPos, string label, Sprite iconSprite, int total,
                          out Transform segContainer, out TextMeshProUGUI countTxt)
         {
-            var box = Rect("Mat_"+label, parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-60,58));
+            var box = Rect("Mat_" + label, parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-60,58));
             SetAnchoredPos(box, anchoredPos);
             Img(box, C_DARK);
 
-            // Icon + label
-            var lbl = Txt("Lbl", box.transform, new Vector2(0,0.5f), new Vector2(0.6f,0.5f), new Vector2(0,0.5f), new Vector2(0,28),
-                label, 18, Color.white, FontStyles.Normal);
-            SetAnchoredPos(lbl.gameObject, new Vector2(12,0));
+            // Icon Sprite
+            if (iconSprite != null)
+            {
+                var iconGo = Rect("Icon", box.transform, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(36, 36));
+                SetAnchoredPos(iconGo, new Vector2(24, 0));
+                var iconImg = iconGo.AddComponent<Image>();
+                iconImg.sprite = iconSprite;
+                iconImg.color = Color.white;
+                iconImg.preserveAspect = true;
+                iconImg.raycastTarget = false;
+            }
+
+            // Label
+            var lbl = Txt("Lbl", box.transform, new Vector2(0, 0.5f), new Vector2(0.6f, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 24),
+                label, 18, Color.white, FontStyles.Bold);
+            SetAnchoredPos(lbl.gameObject, new Vector2(56, 10));
 
             // Segments
-            var segsGo = Rect("Segs", box.transform, new Vector2(0,0.5f), new Vector2(0.6f,0.5f), new Vector2(0,0.5f), new Vector2(0,10));
-            SetAnchoredPos(segsGo, new Vector2(14,-16));
+            var segsGo = Rect("Segs", box.transform, new Vector2(0, 0.5f), new Vector2(0.6f, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 10));
+            SetAnchoredPos(segsGo, new Vector2(56, -14));
             var hlg = segsGo.AddComponent<HorizontalLayoutGroup>();
             hlg.spacing = 5; hlg.childForceExpandWidth = true; hlg.childForceExpandHeight = true;
             segContainer = segsGo.transform;
@@ -490,9 +547,9 @@ namespace WitchShmup.UI
             }
 
             // Count (right side)
-            countTxt = Txt("Count", box.transform, new Vector2(1,0.5f), new Vector2(1,0.5f), new Vector2(1,0.5f), new Vector2(80,28),
+            countTxt = Txt("Count", box.transform, new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(80, 28),
                 $"0/{total}", 18, Color.white, FontStyles.Bold);
-            SetAnchoredPos(countTxt.gameObject, new Vector2(-14,0));
+            SetAnchoredPos(countTxt.gameObject, new Vector2(-16, 0));
             countTxt.alignment = TextAlignmentOptions.MidlineRight;
         }
 
@@ -692,7 +749,7 @@ namespace WitchShmup.UI
             {
                 if (curStaffName  != null) curStaffName.text  = "Cajado Arcano";
                 if (curStaffStat  != null) curStaffStat.text  = "Dano 8";
-                if (curStaffImg   != null) curStaffImg.sprite = GetEvolvedStaffSprite();
+                if (curStaffImg   != null) { curStaffImg.sprite = GetEvolvedStaffSprite(); curStaffImg.color = Color.white; }
                 if (nxtStaffBox   != null) nxtStaffBox.SetActive(false);
                 if (needSummary   != null) needSummary.text   = "Cajado totalmente evoluído!";
                 if (staffMsg      != null) staffMsg.text      = "Nenhuma evolução restante.";
@@ -701,6 +758,8 @@ namespace WitchShmup.UI
             }
             else
             {
+                if (curStaffImg   != null) { curStaffImg.sprite = GetBasicStaffSprite(); curStaffImg.color = Color.white; }
+                if (nxtStaffImg   != null) { nxtStaffImg.sprite = GetEvolvedStaffSprite(); nxtStaffImg.color = Color.white; }
                 if (nxtStaffBox   != null) nxtStaffBox.SetActive(true);
                 if (evolveBtn     != null) { evolveBtn.interactable = canEvolve; var bi = evolveBtn.GetComponent<Image>(); if (bi) bi.color = canEvolve ? C_GOLD : new Color(0.35f,0.28f,0.48f,1f); }
                 if (evolveBtnLabel!= null) evolveBtnLabel.text = canEvolve ? "EVOLUIR" : "MATERIAIS INSUFICIENTES";
@@ -851,5 +910,28 @@ namespace WitchShmup.UI
             if (tmp == null) return;
             SetAnchoredPos(tmp.gameObject, pos);
         }
+
+#if UNITY_EDITOR
+        [ContextMenu("★ Gerar UI no Canvas (Preview no Editor) ★")]
+        public void EditorBuildUI()
+        {
+            Build();
+            RefreshUI();
+            UnityEditor.EditorUtility.SetDirty(gameObject);
+            Debug.Log("<color=green>[EvolutionUI] Interface gerada no Canvas com sucesso! Agora você pode visualizar e selecionar cada elemento na Scene View.</color>");
+        }
+
+        [ContextMenu("★ Limpar Preview do Canvas ★")]
+        public void EditorClearUI()
+        {
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                DestroyImmediate(transform.GetChild(i).gameObject);
+            }
+            built = false;
+            UnityEditor.EditorUtility.SetDirty(gameObject);
+            Debug.Log("[EvolutionUI] Preview limpo do Canvas.");
+        }
+#endif
     }
 }

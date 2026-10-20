@@ -19,10 +19,12 @@ namespace WitchShmup.Enemies
         private float chargeCountdown = 0f;
         private Vector2 chargeDirection = Vector2.left;
 
-        [Header("Shooting")]
+        [Header("Shooting (Tiro do Morcego)")]
         [SerializeField] private GameObject fireballPrefab;
-        [SerializeField] private float fireRate = 2.2f;
-        [SerializeField] private float projectileSpeed = 8f;
+        [Tooltip("Tempo em segundos entre cada tiro do morcego. Padrão: 1.8s.")]
+        [SerializeField] private float fireRate = 1.8f;
+        [Tooltip("Velocidade do tiro do morcego. Aumentado de 8 para 12 para maior desafio!")]
+        [SerializeField] private float projectileSpeed = 12f;
         [SerializeField] private Vector2 fireOffset = new Vector2(-0.5f, 0f);
 
         [Header("Dodge AI")]
