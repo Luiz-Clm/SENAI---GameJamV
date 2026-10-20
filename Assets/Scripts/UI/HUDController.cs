@@ -320,7 +320,7 @@ namespace WitchShmup.UI
         {
             if (scoreText != null)
             {
-                scoreText.text = $"SCORE {score:D7}";
+                scoreText.text = $"SCORE {score:D1}";
             }
         }
 
