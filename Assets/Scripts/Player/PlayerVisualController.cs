@@ -32,11 +32,6 @@ namespace WitchShmup.Player
         private void Awake()
         {
             if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
-            if (spriteRenderer != null)
-            {
-                spriteRenderer.sortingLayerName = "Player";
-                spriteRenderer.sortingOrder = 10;
-            }
             if (shooting == null) shooting = GetComponent<PlayerShooting>();
 
             AutoLoadFramesIfEmpty();

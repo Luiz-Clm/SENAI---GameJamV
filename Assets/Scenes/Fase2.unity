@@ -11430,7 +11430,7 @@ MonoBehaviour:
   skillPoints: 0
   isStaffEvolved: 0
   healthPotionsInInventory: 0
-  fireHeartsRequired: 7
+  fireHeartsRequired: 2
   bossCoresRequired: 1
   hudController: {fileID: 867635784}
   gameOverPanel: {fileID: 1605575756}

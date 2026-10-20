@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 using WitchShmup.Player;
 using WitchShmup.UI;
@@ -27,7 +26,7 @@ namespace WitchShmup.Core
         [SerializeField] private int healthPotionsInInventory = 0;
 
         [Header("Staff Evolution Requirements")]
-        [SerializeField] private int fireHeartsRequired = 7;
+        [SerializeField] private int fireHeartsRequired = 5;
         [SerializeField] private int bossCoresRequired = 1;
 
         [Header("UI References")]
@@ -194,8 +193,6 @@ namespace WitchShmup.Core
         {
             Time.timeScale = 1f;
 
-            EnsureDungeonLighting();
-
             if (hudController == null)
             {
                 hudController = FindFirstObjectByType<HUDController>();
@@ -247,8 +244,10 @@ namespace WitchShmup.Core
 
             if (pHealth != null)
             {
-                // Bônus de Vitalidade (+1 coração por nível, máx 3)
-                if (LevelVitality > 0) pHealth.IncreaseMaxHealth(LevelVitality);
+                // Bônus de Vitalidade (+5 por nível)
+                if (LevelVitality > 0) pHealth.IncreaseMaxHealth(LevelVitality * 5);
+                // Bônus de Despertar (+3 de vida)
+                if (LevelDespertar > 0) pHealth.IncreaseMaxHealth(LevelDespertar * 3);
                 // Pele de pedra
                 if (LevelPele > 0) pHealth.SetDamageReduction(0.08f * LevelPele);
                 // Segundo fôlego
@@ -426,8 +425,8 @@ namespace WitchShmup.Core
             {
                 case "vit":
                     LevelVitality++;
-                    // +1 coração de vida (máximo 3 vezes)
-                    if (pHealth != null) pHealth.IncreaseMaxHealth(1);
+                    // +10 de vida (5 corações de 2 HP cada, baseado em maxHealth=4)
+                    if (pHealth != null) pHealth.IncreaseMaxHealth(5);
                     break;
 
                 case "vel":
@@ -447,7 +446,8 @@ namespace WitchShmup.Core
 
                 case "des":
                     LevelDespertar++;
-                    // +1 de dano arcano
+                    // +5 de vida e +1 de dano
+                    if (pHealth   != null) pHealth.IncreaseMaxHealth(3);
                     if (pShooting != null) pShooting.AddBonusDamage(1f);
                     break;
 
@@ -673,36 +673,6 @@ namespace WitchShmup.Core
             {
                 Debug.LogWarning("[GameManager] Cena 'Menu' ainda não existe no projeto. O usuário criará o menu manualmente. Recarregando a fase atual.");
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-            }
-        }
-
-        /// <summary>
-        /// Equilibra a iluminação da masmorra para deixar o clima sombrio mas o parallax perfeitamente visível.
-        /// </summary>
-        private void EnsureDungeonLighting()
-        {
-            var lights = FindObjectsByType<Light2D>(FindObjectsSortMode.None);
-            foreach (var l in lights)
-            {
-                if (l != null && l.lightType == Light2D.LightType.Global)
-                {
-                    l.color = new Color(0.48f, 0.44f, 0.62f, 1f);
-                    l.intensity = 0.65f;
-
-                    int bgId = SortingLayer.NameToID("Background");
-                    int defId = SortingLayer.NameToID("Default");
-                    int pId = SortingLayer.NameToID("Player");
-                    int fgId = SortingLayer.NameToID("Foreground");
-
-                    var list = new List<int>();
-                    if (bgId != 0) list.Add(bgId);
-                    list.Add(defId);
-                    if (pId != 0) list.Add(pId);
-                    if (fgId != 0) list.Add(fgId);
-
-                    l.targetSortingLayers = list.ToArray();
-                    break;
-                }
             }
         }
     }

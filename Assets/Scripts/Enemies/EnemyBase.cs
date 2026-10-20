@@ -200,12 +200,11 @@ namespace WitchShmup.Enemies
         {
             // Monta a lista de drops possíveis com seus pesos
             // Apenas adiciona um drop se o prefab estiver atribuído
-            // Apenas morcegos (BatEnemy) dropam Coração de Fogo!
-            bool canDropFireHeart = (this is BatEnemy) && (fireHeartDropPrefab != null);
-            float fhWeight = canDropFireHeart ? fireHeartDropChance : 0f;
+            float totalWeight = 0f;
+            float fhWeight = (fireHeartDropPrefab != null) ? fireHeartDropChance : 0f;
             float hpWeight = (healthPotionDropPrefab != null) ? healthPotionDropChance : 0f;
             float spWeight = (skillPointDropPrefab != null) ? skillPointDropChance : 0f;
-            float totalWeight = fhWeight + hpWeight + spWeight;
+            totalWeight = fhWeight + hpWeight + spWeight;
 
             // Sem nenhum drop possível
             if (totalWeight <= 0f) return;

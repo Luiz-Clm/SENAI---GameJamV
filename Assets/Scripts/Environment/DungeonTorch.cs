@@ -14,20 +14,11 @@ namespace WitchShmup.Environment
         [SerializeField] private SpriteRenderer flameRenderer;
         [SerializeField] private Light2D torchLight;
 
-        [Header("Light Settings (Ajuste Manual no Inspector)")]
-        [Tooltip("Intensidade base da luz da tocha")]
-        [SerializeField] private float baseLightIntensity = 1.8f;
-        [Tooltip("Raio de alcance da luz na parede/fundo")]
-        [SerializeField] private float lightOuterRadius = 7.5f;
-        [Tooltip("Raio interno de luz máxima")]
-        [SerializeField] private float lightInnerRadius = 0.5f;
-        [Tooltip("Cor da chama da tocha")]
-        [SerializeField] private Color torchLightColor = new Color(1f, 0.62f, 0.22f, 1f);
-
         [Header("Flame Flicker (Muito Sutil)")]
         [SerializeField] private float flickerSpeed = 2.5f;
         [SerializeField] [Range(0f, 0.1f)] private float flickerIntensity = 0.04f;
-        [SerializeField] [Range(0f, 0.25f)] private float lightFlickerIntensity = 0.12f;
+        [SerializeField] private float baseLightIntensity = 1.2f;
+        [SerializeField] [Range(0f, 0.15f)] private float lightFlickerIntensity = 0.06f;
 
         private float randomSeed;
         private Vector3 flameBaseScale;
@@ -39,28 +30,6 @@ namespace WitchShmup.Environment
             if (flameRenderer != null)
             {
                 flameBaseScale = flameRenderer.transform.localScale;
-            }
-
-            if (torchLight == null)
-            {
-                torchLight = GetComponentInChildren<Light2D>();
-            }
-
-            // Garante que a tocha ilumina o Background (parallax e paredes) sem afetar o Player
-            if (torchLight != null)
-            {
-                torchLight.color = torchLightColor;
-                torchLight.pointLightOuterRadius = lightOuterRadius;
-                torchLight.pointLightInnerRadius = lightInnerRadius;
-                torchLight.intensity = baseLightIntensity;
-
-                int bgLayerId = SortingLayer.NameToID("Background");
-                int defLayerId = SortingLayer.NameToID("Default");
-
-                var layers = new System.Collections.Generic.List<int>();
-                if (bgLayerId != 0) layers.Add(bgLayerId);
-                layers.Add(defLayerId); // Ilumina tanto Background quanto Default (paredes de pedra)
-                torchLight.targetSortingLayers = layers.ToArray();
             }
         }
 
@@ -102,7 +71,6 @@ namespace WitchShmup.Environment
             mountObj.transform.SetParent(torchObj.transform, false);
             var mountSr = mountObj.AddComponent<SpriteRenderer>();
             mountSr.color = Color.white;
-            mountSr.sortingLayerName = "Background";
             mountSr.sortingOrder = -4;
 
             Texture2D mountTex = new Texture2D(6, 14, TextureFormat.RGBA32, false);
@@ -127,7 +95,6 @@ namespace WitchShmup.Environment
             flameObj.transform.SetParent(torchObj.transform, false);
             flameObj.transform.localPosition = new Vector3(0f, 0.45f, 0f);
             var flameSr = flameObj.AddComponent<SpriteRenderer>();
-            flameSr.sortingLayerName = "Background";
             flameSr.sortingOrder = -3;
 
             Texture2D flameTex = new Texture2D(10, 14, TextureFormat.RGBA32, false);
@@ -153,26 +120,21 @@ namespace WitchShmup.Environment
             flameSr.sprite = Sprite.Create(flameTex, new Rect(0, 0, 10, 14), new Vector2(0.5f, 0.1f), 16f);
             torch.flameRenderer = flameSr;
 
-            // --- 3. Point Light2D nativo do URP 2D (iluminação natural de dungeon) ---
+            // --- 3. Point Light2D nativo do URP 2D (iluminação natural) ---
             GameObject lightObj = new GameObject("Torch_Light2D");
             lightObj.transform.SetParent(torchObj.transform, false);
             lightObj.transform.localPosition = new Vector3(0f, 0.35f, 0f);
 
             var light2d = lightObj.AddComponent<Light2D>();
             light2d.lightType = Light2D.LightType.Point;
-            light2d.color     = new Color(1f, 0.60f, 0.22f, 1f); // chama quente alaranjada
-            light2d.intensity = 1.35f;
-            light2d.pointLightOuterRadius = 6.2f;
-            light2d.pointLightInnerRadius = 0.5f;
-            light2d.falloffIntensity      = 0.55f;
+            light2d.color     = new Color(1f, 0.62f, 0.22f, 1f); // laranja quente
+            light2d.intensity = 1.2f;
+            light2d.pointLightOuterRadius = 4.5f;
+            light2d.pointLightInnerRadius = 0.4f;
+            light2d.falloffIntensity      = 0.6f;
             light2d.shadowsEnabled        = false; // sem sombras para performance
-            int bgLayerId = SortingLayer.NameToID("Background");
-            if (bgLayerId != 0)
-            {
-                light2d.targetSortingLayers = new int[] { bgLayerId };
-            }
             torch.torchLight        = light2d;
-            torch.baseLightIntensity = 1.35f;
+            torch.baseLightIntensity = 1.2f;
 
             return torchObj;
         }
