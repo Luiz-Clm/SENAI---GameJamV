@@ -16,6 +16,10 @@ namespace WitchShmup.Combat
         [SerializeField] private int pierceCount = 1;
         [SerializeField] private float lifetime = 3.5f;
 
+        public float Damage => damage;
+        public ElementType Element => element;
+        public bool IsPlayerProjectile => isPlayerProjectile;
+
         [Header("Effects")]
         [SerializeField] private GameObject hitEffectPrefab;
 

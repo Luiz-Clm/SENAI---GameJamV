@@ -22,6 +22,7 @@ namespace WitchShmup.UI
     /// Hover → anel colorido + card de detalhes à direita.
     /// Click → seleciona + tenta comprar.
     /// </summary>
+    [ExecuteAlways]
     [RequireComponent(typeof(Canvas))]
     [RequireComponent(typeof(UnityEngine.UI.GraphicRaycaster))]
     public class EvolutionUI : MonoBehaviour
@@ -180,11 +181,20 @@ namespace WitchShmup.UI
         // ═════════════════════════════════════════════════════════════════════
         // BUILD
         // ═════════════════════════════════════════════════════════════════════
+        private static void SafeDestroy(GameObject go)
+        {
+            if (go == null) return;
+            if (Application.isPlaying)
+                Destroy(go);
+            else
+                DestroyImmediate(go);
+        }
+
         void Build()
         {
             // Destroy old children
             for (int i = transform.childCount - 1; i >= 0; i--)
-                Destroy(transform.GetChild(i).gameObject);
+                SafeDestroy(transform.GetChild(i).gameObject);
 
             // ── Configure the Canvas that [RequireComponent] guarantees exists ──
             // overrideSorting breaks free from parent HUD_Canvas that has scale=(0,0,0).
@@ -424,61 +434,61 @@ namespace WitchShmup.UI
             // ── Row: ATUAL | → | PRÓXIMO ──
             float rowTop = -96f;
 
-            // Box Atual (left third)
-            var boxCur = Rect("Box_Cur", parent, new Vector2(0,1), new Vector2(0.42f,1), new Vector2(0,1), new Vector2(0,-260));
-            SetAnchoredPos(boxCur, new Vector2(24, rowTop));
+            // Box Atual (Cajado de Gelo)
+            var boxCur = Rect("Box_Cur", parent, new Vector2(0.06f,1), new Vector2(0.44f,1), new Vector2(0.5f,1), new Vector2(0,240));
+            SetAnchoredPos(boxCur, new Vector2(0, rowTop));
             Img(boxCur, C_DARK);
             var curTag = Txt("Tag", boxCur.transform, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(0,24),
-                "ATUAL", 13, C_MUT, FontStyles.Normal);
+                "ATUAL", 14, C_MUT, FontStyles.Normal);
             SetAnchoredPos(curTag.gameObject, new Vector2(0,-8));
             curTag.alignment = TextAlignmentOptions.Center;
 
-            curStaffImg = MakeImg("Img", boxCur.transform, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(85,135));
-            SetAnchoredPos(curStaffImg.gameObject, new Vector2(0,-32));
+            curStaffImg = MakeImg("Img", boxCur.transform, new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(100,150));
+            SetAnchoredPos(curStaffImg.gameObject, new Vector2(0,12));
             curStaffImg.preserveAspect = true;
             curStaffImg.color = Color.white;
             curStaffImg.sprite = GetBasicStaffSprite();
 
             curStaffName = Txt("Name", boxCur.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,28),
-                "Cajado de Madeira", 20, Color.white, FontStyles.Bold);
-            SetAnchoredPos(curStaffName.gameObject, new Vector2(0,44));
+                "Cajado de Gelo", 20, Color.white, FontStyles.Bold);
+            SetAnchoredPos(curStaffName.gameObject, new Vector2(0,36));
             curStaffName.alignment = TextAlignmentOptions.Center;
 
             curStaffStat = Txt("Stat", boxCur.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,24),
-                "Dano 5", 18, C_GOLD, FontStyles.Normal);
-            SetAnchoredPos(curStaffStat.gameObject, new Vector2(0,16));
+                "Dano: 1.0 (Base Gelo)", 15, C_MUT, FontStyles.Normal);
+            SetAnchoredPos(curStaffStat.gameObject, new Vector2(0,12));
             curStaffStat.alignment = TextAlignmentOptions.Center;
 
             // Arrow centre
-            var arw = Txt("Arrow", parent, new Vector2(0.42f,1), new Vector2(0.58f,1), new Vector2(0.5f,1), new Vector2(0,80),
+            var arw = Txt("Arrow", parent, new Vector2(0.44f,1), new Vector2(0.56f,1), new Vector2(0.5f,1), new Vector2(0,80),
                 "->", 36, C_BOUGHT, FontStyles.Bold);
-            SetAnchoredPos(arw.gameObject, new Vector2(0, rowTop - 80f));
+            SetAnchoredPos(arw.gameObject, new Vector2(0, rowTop - 90f));
             arw.alignment = TextAlignmentOptions.Center;
 
-            // Box Próximo (right third)
-            nxtStaffBox = Rect("Box_Nxt", parent, new Vector2(0.58f,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-24,-260));
+            // Box Próximo (Cajado de Fogo)
+            nxtStaffBox = Rect("Box_Nxt", parent, new Vector2(0.56f,1), new Vector2(0.94f,1), new Vector2(0.5f,1), new Vector2(0,240));
             SetAnchoredPos(nxtStaffBox, new Vector2(0, rowTop));
             Img(nxtStaffBox, C_DARK);
 
             var nxtTag = Txt("Tag", nxtStaffBox.transform, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(0,24),
-                "PRÓXIMO", 13, C_GOLD, FontStyles.Normal);
+                "PRÓXIMO", 14, C_GOLD, FontStyles.Normal);
             SetAnchoredPos(nxtTag.gameObject, new Vector2(0,-8));
             nxtTag.alignment = TextAlignmentOptions.Center;
 
-            nxtStaffImg = MakeImg("Img", nxtStaffBox.transform, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(85,135));
-            SetAnchoredPos(nxtStaffImg.gameObject, new Vector2(0,-32));
+            nxtStaffImg = MakeImg("Img", nxtStaffBox.transform, new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(100,150));
+            SetAnchoredPos(nxtStaffImg.gameObject, new Vector2(0,12));
             nxtStaffImg.preserveAspect = true;
             nxtStaffImg.color = Color.white;
             nxtStaffImg.sprite = GetEvolvedStaffSprite();
 
             nxtStaffName = Txt("Name", nxtStaffBox.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,28),
-                "Cajado Arcano", 20, Color.white, FontStyles.Bold);
-            SetAnchoredPos(nxtStaffName.gameObject, new Vector2(0,44));
+                "Cajado de Fogo", 20, Color.white, FontStyles.Bold);
+            SetAnchoredPos(nxtStaffName.gameObject, new Vector2(0,36));
             nxtStaffName.alignment = TextAlignmentOptions.Center;
 
             nxtStaffStat = Txt("Stat", nxtStaffBox.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,24),
-                "+3 de dano", 18, C_GOLD, FontStyles.Normal);
-            SetAnchoredPos(nxtStaffStat.gameObject, new Vector2(0,16));
+                "+60% de Dano (1.6 Dano / Tiro)", 15, C_GOLD, FontStyles.Bold);
+            SetAnchoredPos(nxtStaffStat.gameObject, new Vector2(0,12));
             nxtStaffStat.alignment = TextAlignmentOptions.Center;
 
             // Need summary
@@ -652,7 +662,7 @@ namespace WitchShmup.UI
             {
                 for (int i = cardPipsContainer.childCount - 1; i >= 0; i--)
                 {
-                    Destroy(cardPipsContainer.GetChild(i).gameObject);
+                    SafeDestroy(cardPipsContainer.GetChild(i).gameObject);
                 }
 
                 for (int i = 0; i < n.maxLevel; i++)
@@ -747,8 +757,8 @@ namespace WitchShmup.UI
 
             if (evolved)
             {
-                if (curStaffName  != null) curStaffName.text  = "Cajado Arcano";
-                if (curStaffStat  != null) curStaffStat.text  = "Dano 8";
+                if (curStaffName  != null) curStaffName.text  = "Cajado de Fogo";
+                if (curStaffStat  != null) curStaffStat.text  = "+60% de Dano (1.6 Dano / Tiro)";
                 if (curStaffImg   != null) { curStaffImg.sprite = GetEvolvedStaffSprite(); curStaffImg.color = Color.white; }
                 if (nxtStaffBox   != null) nxtStaffBox.SetActive(false);
                 if (needSummary   != null) needSummary.text   = "Cajado totalmente evoluído!";
@@ -758,7 +768,11 @@ namespace WitchShmup.UI
             }
             else
             {
+                if (curStaffName  != null) curStaffName.text  = "Cajado de Gelo";
+                if (curStaffStat  != null) curStaffStat.text  = "Dano: 1.0 (Base Gelo)";
                 if (curStaffImg   != null) { curStaffImg.sprite = GetBasicStaffSprite(); curStaffImg.color = Color.white; }
+                if (nxtStaffName  != null) nxtStaffName.text  = "Cajado de Fogo";
+                if (nxtStaffStat  != null) nxtStaffStat.text  = "+60% de Dano (1.6 Dano / Tiro)";
                 if (nxtStaffImg   != null) { nxtStaffImg.sprite = GetEvolvedStaffSprite(); nxtStaffImg.color = Color.white; }
                 if (nxtStaffBox   != null) nxtStaffBox.SetActive(true);
                 if (evolveBtn     != null) { evolveBtn.interactable = canEvolve; var bi = evolveBtn.GetComponent<Image>(); if (bi) bi.color = canEvolve ? C_GOLD : new Color(0.35f,0.28f,0.48f,1f); }
@@ -779,7 +793,7 @@ namespace WitchShmup.UI
             }
             while (cont.childCount > req)
             {
-                Destroy(cont.GetChild(cont.childCount - 1).gameObject);
+                SafeDestroy(cont.GetChild(cont.childCount - 1).gameObject);
             }
 
             for (int i = 0; i < cont.childCount; i++)
@@ -912,6 +926,20 @@ namespace WitchShmup.UI
         }
 
 #if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (curStaffImg != null)
+            {
+                curStaffImg.sprite = GetBasicStaffSprite();
+                curStaffImg.color = Color.white;
+            }
+            if (nxtStaffImg != null)
+            {
+                nxtStaffImg.sprite = GetEvolvedStaffSprite();
+                nxtStaffImg.color = Color.white;
+            }
+        }
+
         [ContextMenu("★ Gerar UI no Canvas (Preview no Editor) ★")]
         public void EditorBuildUI()
         {

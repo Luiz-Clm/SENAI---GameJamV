@@ -51,6 +51,28 @@ namespace WitchShmup.Enemies
         public event Action<float, float> OnHealthChanged;
         public event Action OnDeath;
 
+        [Header("Escalonamento de Dificuldade")]
+        [Tooltip("Multiplicador aplicado à vida máxima desta instância")]
+        [SerializeField] protected float difficultyHealthMultiplier = 1f;
+
+        public virtual void ApplyDifficultyMultipliers(float healthMult, float speedMult, float contactDmgMult, float fireRateMult, float projSpeedMult)
+        {
+            if (healthMult > 0f)
+            {
+                difficultyHealthMultiplier = healthMult;
+                maxHealth = Mathf.Round(maxHealth * healthMult * 10f) / 10f;
+                currentHealth = maxHealth;
+            }
+            if (contactDmgMult > 0f)
+            {
+                contactDamage = Mathf.Round(contactDamage * contactDmgMult * 10f) / 10f;
+            }
+            if (speedMult > 0f)
+            {
+                speedMultiplier *= speedMult;
+            }
+        }
+
         protected virtual void Awake()
         {
             currentHealth = maxHealth;

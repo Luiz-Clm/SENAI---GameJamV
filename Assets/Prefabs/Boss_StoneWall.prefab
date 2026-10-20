@@ -211,4 +211,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eacbe3957b486624ca4b6959af7803ba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Boss.StoneWallObstacle
-  advanceSpeed: 2.5
+  advanceSpeed: 3

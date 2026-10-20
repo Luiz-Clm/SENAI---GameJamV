@@ -11,8 +11,9 @@ namespace WitchShmup.Player
         [SerializeField] private int maxHealth = 4;
         [SerializeField] private int currentHealth = 4;
 
-        [Header("Invincibility Frames")]
-        [SerializeField] private float invincibilityDuration = 1.5f;
+        [Header("Invincibility Frames (Tempo de Invulnerabilidade ao Tomar Dano)")]
+        [Tooltip("Tempo em segundos que o mago fica invulnerável após tomar dano. Diminua para o jogo ficar mais punitivo! Padrão recomendado: 0.5s a 0.7s")]
+        [SerializeField] private float invincibilityDuration = 0.65f;
         [SerializeField] private float flashInterval = 0.1f;
         [SerializeField] private SpriteRenderer spriteRenderer;
 

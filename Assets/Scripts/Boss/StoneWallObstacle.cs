@@ -34,7 +34,7 @@ namespace WitchShmup.Boss
         [Header("Stats")]
         [SerializeField] private float maxHealth = 6f;
         [SerializeField] private float currentHealth;
-        [SerializeField] private float contactDamage = 1f;
+        [SerializeField] private float contactDamage = 2f;
 
         [Header("Push & Crush Settings")]
         [SerializeField] private float crushInterval = 0.65f;
@@ -237,6 +237,28 @@ namespace WitchShmup.Boss
                 {
                     damageable.TakeDamage(contactDamage, ElementType.Enemy);
                 }
+            }
+            else
+            {
+                var proj = other.GetComponent<Projectile>();
+                if (proj != null && proj.IsPlayerProjectile)
+                {
+                    TakeDamage(proj.Damage, proj.Element);
+                    Destroy(proj.gameObject); // Bloqueia e absorve o tiro, impedindo de acertar o boss!
+                }
+            }
+        }
+
+        private void OnTriggerStay2D(Collider2D other)
+        {
+            if (other.CompareTag("Player"))
+            {
+                float speed = 2.5f;
+                var parentWall = GetComponentInParent<StoneWallObstacle>();
+                if (parentWall != null) speed = parentWall.AdvanceSpeed;
+
+                // Empurra o jogador suavemente para tras
+                other.transform.position += Vector3.left * (speed * Time.deltaTime);
             }
         }
     }

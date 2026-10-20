@@ -9078,7 +9078,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Player.PlayerHealth
   maxHealth: 4
   currentHealth: 4
-  invincibilityDuration: 1.5
+  invincibilityDuration: 0.65
   flashInterval: 0.1
   spriteRenderer: {fileID: 0}
   deathEffectPrefab: {fileID: 0}

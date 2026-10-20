@@ -11,6 +11,23 @@ namespace WitchShmup.UI
         [Header("Player References")]
         [SerializeField] private PlayerHealth playerHealth;
         [SerializeField] private PlayerShooting playerShooting;
+        [SerializeField] private PlayerMana playerMana;
+
+        [Header("Mana Bar (Barra de Mana)")]
+        [Tooltip("Container pai da barra de mana")]
+        [SerializeField] private GameObject manaBarContainer;
+        [Tooltip("Imagem do preenchimento da barra de mana")]
+        [SerializeField] private Image manaBarFill;
+        [Tooltip("Imagem do fundo da barra de mana")]
+        [SerializeField] private Image manaBarBackground;
+        [Tooltip("Texto com status da barra de mana (exibe 'MANA' ou 'CANSADO')")]
+        [SerializeField] private TextMeshProUGUI manaText;
+        [Tooltip("Cor da barra em estado normal (Azul Arcano)")]
+        [SerializeField] private Color normalManaColor = new Color(0.2f, 0.65f, 1f, 1f);
+        [Tooltip("Cor da barra quando o mago fica cansado (Alerta)")]
+        [SerializeField] private Color exhaustedManaColor = new Color(0.95f, 0.3f, 0.25f, 1f);
+        [Tooltip("Cor do texto quando exausto")]
+        [SerializeField] private Color exhaustedTextColor = new Color(1f, 0.45f, 0.45f, 1f);
 
         [Header("Hearts (Health)")]
         [SerializeField] private Image[] heartImages;
@@ -221,6 +238,23 @@ namespace WitchShmup.UI
                 UpdateElementUI(playerShooting.CurrentElement);
             }
 
+            if (playerMana == null)
+            {
+                if (playerShooting != null) playerMana = playerShooting.Mana;
+                if (playerMana == null) playerMana = FindFirstObjectByType<PlayerMana>();
+            }
+
+            EnsureManaBarSetup();
+
+            if (playerMana != null)
+            {
+                playerMana.OnManaChanged += UpdateManaUI;
+                playerMana.OnExhaustionChanged += HandleExhaustionUI;
+                playerMana.OnShootAttemptFailed += FlashManaBarAttempt;
+                UpdateManaUI(playerMana.CurrentMana, playerMana.MaxMana);
+                HandleExhaustionUI(playerMana.IsExhausted);
+            }
+
             // Garante que a barra do boss começa escondida
             if (bossBarContainer != null)
             {
@@ -241,6 +275,13 @@ namespace WitchShmup.UI
             if (playerShooting != null)
             {
                 playerShooting.OnElementChanged -= UpdateElementUI;
+            }
+
+            if (playerMana != null)
+            {
+                playerMana.OnManaChanged -= UpdateManaUI;
+                playerMana.OnExhaustionChanged -= HandleExhaustionUI;
+                playerMana.OnShootAttemptFailed -= FlashManaBarAttempt;
             }
         }
 
@@ -459,6 +500,162 @@ namespace WitchShmup.UI
                 potionIconContainer.SetActive(count > 0);
             }
         }
+
+        public void EnsureManaBarSetup()
+        {
+            if (manaBarContainer != null && manaBarFill != null) return;
+
+            var existing = transform.Find("TopBar/ManaBar_Container");
+            if (existing == null) existing = transform.Find("ManaBar_Container");
+            if (existing != null)
+            {
+                manaBarContainer = existing.gameObject;
+                var fillT = existing.Find("Fill");
+                if (fillT != null) manaBarFill = fillT.GetComponent<Image>();
+                var bgT = existing.Find("Background");
+                if (bgT != null) manaBarBackground = bgT.GetComponent<Image>();
+                var txtT = existing.Find("ManaText");
+                if (txtT != null) manaText = txtT.GetComponent<TextMeshProUGUI>();
+                if (manaBarContainer != null && manaBarFill != null) return;
+            }
+
+            Transform parent = transform.Find("TopBar");
+            if (parent == null) parent = transform;
+
+            GameObject root = new GameObject("ManaBar_Container", typeof(RectTransform));
+            root.transform.SetParent(parent, false);
+            manaBarContainer = root;
+
+            RectTransform rootRt = root.GetComponent<RectTransform>();
+            rootRt.anchorMin = new Vector2(0f, 1f);
+            rootRt.anchorMax = new Vector2(0f, 1f);
+            rootRt.pivot = new Vector2(0f, 1f);
+            rootRt.anchoredPosition = new Vector2(24f, -48f);
+            rootRt.sizeDelta = new Vector2(170f, 14f);
+
+            GameObject borderGo = new GameObject("Border", typeof(RectTransform), typeof(Image));
+            borderGo.transform.SetParent(root.transform, false);
+            RectTransform borderRt = borderGo.GetComponent<RectTransform>();
+            borderRt.anchorMin = Vector2.zero;
+            borderRt.anchorMax = Vector2.one;
+            borderRt.sizeDelta = new Vector2(4f, 4f);
+            borderRt.anchoredPosition = Vector2.zero;
+            Image borderImg = borderGo.GetComponent<Image>();
+            borderImg.color = new Color(0.05f, 0.03f, 0.10f, 0.95f);
+            borderImg.raycastTarget = false;
+
+            GameObject bgGo = new GameObject("Background", typeof(RectTransform), typeof(Image));
+            bgGo.transform.SetParent(root.transform, false);
+            RectTransform bgRt = bgGo.GetComponent<RectTransform>();
+            bgRt.anchorMin = Vector2.zero;
+            bgRt.anchorMax = Vector2.one;
+            bgRt.sizeDelta = Vector2.zero;
+            bgRt.anchoredPosition = Vector2.zero;
+            manaBarBackground = bgGo.GetComponent<Image>();
+            manaBarBackground.color = new Color(0.12f, 0.08f, 0.20f, 0.88f);
+            manaBarBackground.raycastTarget = false;
+
+            GameObject fillGo = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            fillGo.transform.SetParent(root.transform, false);
+            RectTransform fillRt = fillGo.GetComponent<RectTransform>();
+            fillRt.anchorMin = Vector2.zero;
+            fillRt.anchorMax = Vector2.one;
+            fillRt.sizeDelta = Vector2.zero;
+            fillRt.anchoredPosition = Vector2.zero;
+            manaBarFill = fillGo.GetComponent<Image>();
+            manaBarFill.type = Image.Type.Filled;
+            manaBarFill.fillMethod = Image.FillMethod.Horizontal;
+            manaBarFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            manaBarFill.color = normalManaColor;
+            manaBarFill.raycastTarget = false;
+
+            GameObject txtGo = new GameObject("ManaText", typeof(RectTransform), typeof(TextMeshProUGUI));
+            txtGo.transform.SetParent(root.transform, false);
+            RectTransform txtRt = txtGo.GetComponent<RectTransform>();
+            txtRt.anchorMin = Vector2.zero;
+            txtRt.anchorMax = Vector2.one;
+            txtRt.sizeDelta = Vector2.zero;
+            txtRt.anchoredPosition = new Vector2(0f, 0.5f);
+            manaText = txtGo.GetComponent<TextMeshProUGUI>();
+            manaText.text = "MANA";
+            manaText.fontSize = 9.5f;
+            manaText.fontStyle = FontStyles.Bold;
+            manaText.alignment = TextAlignmentOptions.Center;
+            manaText.color = Color.white;
+            manaText.raycastTarget = false;
+        }
+
+        public void UpdateManaUI(float current, float max)
+        {
+            if (manaBarFill == null) return;
+            float norm = max > 0f ? Mathf.Clamp01(current / max) : 0f;
+            manaBarFill.fillAmount = norm;
+
+            if (manaText != null && (playerMana == null || !playerMana.IsExhausted))
+            {
+                manaText.text = $"MANA {Mathf.CeilToInt(current)}/{Mathf.CeilToInt(max)}";
+            }
+        }
+
+        public void HandleExhaustionUI(bool isExhausted)
+        {
+            if (isExhausted)
+            {
+                if (manaBarFill != null) manaBarFill.color = exhaustedManaColor;
+                if (manaText != null)
+                {
+                    manaText.text = "CANSADO!";
+                    manaText.color = exhaustedTextColor;
+                }
+            }
+            else
+            {
+                if (manaBarFill != null) manaBarFill.color = normalManaColor;
+                if (manaText != null)
+                {
+                    manaText.color = Color.white;
+                    if (playerMana != null)
+                    {
+                        manaText.text = $"MANA {Mathf.CeilToInt(playerMana.CurrentMana)}/{Mathf.CeilToInt(playerMana.MaxMana)}";
+                    }
+                    else
+                    {
+                        manaText.text = "MANA";
+                    }
+                }
+            }
+        }
+
+        public void FlashManaBarAttempt()
+        {
+            if (manaBarFill != null && gameObject.activeInHierarchy)
+            {
+                StopCoroutine(nameof(FlashManaRoutine));
+                StartCoroutine(nameof(FlashManaRoutine));
+            }
+        }
+
+        private System.Collections.IEnumerator FlashManaRoutine()
+        {
+            if (manaBarFill == null) yield break;
+            Color currentCol = manaBarFill.color;
+            manaBarFill.color = Color.white;
+            yield return new WaitForSeconds(0.08f);
+            if (manaBarFill != null)
+            {
+                manaBarFill.color = (playerMana != null && playerMana.IsExhausted) ? exhaustedManaColor : normalManaColor;
+            }
+        }
+
+#if UNITY_EDITOR
+        [ContextMenu("★ Gerar Barra de Mana no Canvas ★")]
+        public void EditorCreateManaBar()
+        {
+            EnsureManaBarSetup();
+            UnityEditor.EditorUtility.SetDirty(gameObject);
+            Debug.Log("<color=cyan>[HUDController] Barra de Mana gerada no Canvas com sucesso!</color>");
+        }
+#endif
 
         /// <summary>
         /// Aplica os sprites personalizados da barra de vida do Boss (fundo e fill).

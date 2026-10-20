@@ -8,8 +8,34 @@ using WitchShmup.Combat;
 
 namespace WitchShmup.Player
 {
+    [RequireComponent(typeof(PlayerMana))]
+    [RequireComponent(typeof(PlayerHealth))]
     public class PlayerShooting : MonoBehaviour
     {
+        private void OnValidate()
+        {
+            if (playerMana == null)
+            {
+                playerMana = GetComponent<PlayerMana>();
+#if UNITY_EDITOR
+                if (playerMana == null && !Application.isPlaying)
+                {
+                    UnityEditor.EditorApplication.delayCall += () =>
+                    {
+                        if (this != null && playerMana == null && gameObject != null)
+                        {
+                            playerMana = GetComponent<PlayerMana>();
+                            if (playerMana == null)
+                            {
+                                playerMana = UnityEditor.Undo.AddComponent<PlayerMana>(gameObject);
+                                UnityEditor.EditorUtility.SetDirty(gameObject);
+                            }
+                        }
+                    };
+                }
+#endif
+            }
+        }
         [System.Serializable]
         public class ElementWeaponConfig
         {
@@ -25,7 +51,13 @@ namespace WitchShmup.Player
             public int pierceCount = 1;
             public Color elementColor = Color.white;
             public AudioClip shootSound;
+            [Tooltip("Custo de mana específico deste elemento (0 = usa o padrão de PlayerMana)")]
+            public float manaCost = 0f;
         }
+
+        [Header("Mana Reference")]
+        [Tooltip("Componente de Mana do mago (gerenciado automaticamente se vazio)")]
+        [SerializeField] private PlayerMana playerMana;
 
         [Header("Active Element")]
         [SerializeField] private ElementType currentElement = ElementType.Ice;
@@ -93,6 +125,7 @@ namespace WitchShmup.Player
         public float BonusDamage => bonusDamage;
         public float FireRateBonusPercent => fireRateBonusPercent;
 
+        public PlayerMana Mana => playerMana;
         public ElementType CurrentElement => currentElement;
         public ElementWeaponConfig CurrentConfig => (currentElement == ElementType.Ice) ? iceConfig : fireConfig;
 
@@ -101,6 +134,10 @@ namespace WitchShmup.Player
 
         private void Awake()
         {
+            if (playerMana == null)
+            {
+                playerMana = GetComponent<PlayerMana>() ?? gameObject.AddComponent<PlayerMana>();
+            }
             if (audioSource == null)
             {
                 audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
@@ -280,7 +317,25 @@ namespace WitchShmup.Player
 
             if (isFiring && Time.time >= nextFireTime)
             {
-                Shoot();
+                float cost = (CurrentConfig != null && CurrentConfig.manaCost > 0f) ? CurrentConfig.manaCost : -1f;
+                if (playerMana != null)
+                {
+                    if (playerMana.CanShoot(cost))
+                    {
+                        if (playerMana.TryConsumeMana(cost))
+                        {
+                            Shoot();
+                        }
+                    }
+                    else
+                    {
+                        playerMana.NotifyShootAttemptFailed();
+                    }
+                }
+                else
+                {
+                    Shoot();
+                }
             }
         }
 

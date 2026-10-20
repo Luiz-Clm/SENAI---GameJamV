@@ -30,6 +30,16 @@ namespace WitchShmup.Enemies
         private Vector2 chargeDirection = Vector2.left;
         private Vector3 baseTelegraphPos;
 
+        public override void ApplyDifficultyMultipliers(float healthMult, float speedMult, float contactDmgMult, float fireRateMult, float projSpeedMult)
+        {
+            base.ApplyDifficultyMultipliers(healthMult, speedMult, contactDmgMult, fireRateMult, projSpeedMult);
+            if (speedMult > 0f)
+            {
+                approachSpeed *= speedMult;
+                chargeSpeed *= speedMult;
+            }
+        }
+
         protected override void Awake()
         {
             base.Awake();

@@ -85,7 +85,7 @@ namespace WitchShmup.Boss
         [SerializeField] private Sprite overheadBarFillSprite;
         private GameObject worldBarContainer;
         private Transform worldBarFillTransform;
-        private float worldBarFullWidth = 2.4f;
+        private float worldBarFullWidth = 0.55f;
 
         private void Awake()
         {
@@ -102,6 +102,16 @@ namespace WitchShmup.Boss
             if (mainBodyRenderer == null)
             {
                 mainBodyRenderer = GetComponentInChildren<SpriteRenderer>();
+            }
+
+            // Carrega os sprites oficiais da barra do Golem
+            if (overheadBarBackgroundSprite == null)
+            {
+                overheadBarBackgroundSprite = Resources.Load<Sprite>("Sprites/boss_barra_fundo_decorado_192x36");
+            }
+            if (overheadBarFillSprite == null)
+            {
+                overheadBarFillSprite = Resources.Load<Sprite>("Sprites/boss_barra_vida_148x12");
             }
 
             // Fallback: carrega os sprites de idle e ataque do Golem caso não estejam serializados
@@ -145,51 +155,39 @@ namespace WitchShmup.Boss
             worldBarContainer.transform.SetParent(transform, false);
             worldBarContainer.transform.localPosition = new Vector3(0f, 2.5f, 0f);
 
-            // Borda / Fundo escuro
+            // Moldura decorada oficial do Golem (192x36)
             GameObject bgObj = new GameObject("Background");
             bgObj.transform.SetParent(worldBarContainer.transform, false);
             var bgSr = bgObj.AddComponent<SpriteRenderer>();
             bgSr.sortingOrder = 20;
 
-            if (overheadBarBackgroundSprite != null)
+            if (overheadBarBackgroundSprite == null)
             {
-                bgSr.sprite = overheadBarBackgroundSprite;
-                bgSr.color = Color.white;
+                overheadBarBackgroundSprite = Resources.Load<Sprite>("Sprites/boss_barra_fundo_decorado_192x36");
             }
-            else
+            if (overheadBarFillSprite == null)
             {
-                bgSr.color = new Color(0.08f, 0.05f, 0.12f, 0.95f);
-                Texture2D bgTex = new Texture2D(1, 1);
-                bgTex.SetPixel(0, 0, Color.white);
-                bgTex.Apply();
-                bgSr.sprite = Sprite.Create(bgTex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
-                bgObj.transform.localScale = new Vector3(worldBarFullWidth + 0.15f, 0.35f, 1f);
+                overheadBarFillSprite = Resources.Load<Sprite>("Sprites/boss_barra_vida_148x12");
             }
 
-            // Fill vermelho
+            bgSr.sprite = overheadBarBackgroundSprite;
+            bgSr.color = Color.white;
+            bgObj.transform.localScale = new Vector3(0.55f, 0.55f, 1f);
+
+            // Fill oficial de vida (148x12)
             GameObject fillObj = new GameObject("Fill");
             fillObj.transform.SetParent(worldBarContainer.transform, false);
-            fillObj.transform.localPosition = new Vector3(-worldBarFullWidth * 0.5f, 0f, 0f);
+            // Área útil centralizada
+            fillObj.transform.localPosition = new Vector3(-2.31f, 0f, 0f);
             var fillSr = fillObj.AddComponent<SpriteRenderer>();
             fillSr.sortingOrder = 21;
 
-            if (overheadBarFillSprite != null)
-            {
-                fillSr.sprite = overheadBarFillSprite;
-                fillSr.color = Color.white;
-            }
-            else
-            {
-                fillSr.color = new Color(0.98f, 0.25f, 0.32f, 1f);
-                Texture2D fillTex = new Texture2D(1, 1);
-                fillTex.SetPixel(0, 0, Color.white);
-                fillTex.Apply();
-                fillSr.sprite = Sprite.Create(fillTex, new Rect(0, 0, 1, 1), new Vector2(0f, 0.5f), 1f);
-                fillObj.transform.localScale = new Vector3(worldBarFullWidth, 0.24f, 1f);
-            }
+            fillSr.sprite = overheadBarFillSprite;
+            fillSr.color = Color.white;
+            fillObj.transform.localScale = new Vector3(worldBarFullWidth, 0.55f, 1f);
 
             worldBarFillTransform = fillObj.transform;
-            worldBarContainer.SetActive(false); // Só aparece ao iniciar a luta
+            worldBarContainer.SetActive(false);
         }
 
         private void UpdateOverheadBar(float normalizedHealth)
@@ -197,7 +195,7 @@ namespace WitchShmup.Boss
             if (worldBarFillTransform != null)
             {
                 normalizedHealth = Mathf.Clamp01(normalizedHealth);
-                worldBarFillTransform.localScale = new Vector3(worldBarFullWidth * normalizedHealth, 0.24f, 1f);
+                worldBarFillTransform.localScale = new Vector3(worldBarFullWidth * normalizedHealth, 0.55f, 1f);
             }
         }
 

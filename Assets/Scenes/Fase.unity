@@ -175,6 +175,81 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &41823814
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 41823815}
+  - component: {fileID: 41823817}
+  - component: {fileID: 41823816}
+  m_Layer: 0
+  m_Name: Border
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &41823815
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 41823814}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 490391714}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 4, y: 4}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &41823816
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 41823814}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.05, g: 0.03, b: 0.1, a: 0.95}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &41823817
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 41823814}
+  m_CullTransparentMesh: 1
 --- !u!213 &50920436
 Sprite:
   m_ObjectHideFlags: 0
@@ -385,6 +460,143 @@ Sprite:
   m_Bones: []
   m_ScriptableObjects: []
   m_SpriteID: 
+--- !u!1 &57902341
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 57902342}
+  - component: {fileID: 57902343}
+  - component: {fileID: 57902344}
+  m_Layer: 0
+  m_Name: ManaText
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &57902342
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 57902341}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 490391714}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0.5}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &57902343
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 57902341}
+  m_CullTransparentMesh: 1
+--- !u!114 &57902344
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 57902341}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_text: MANA
+  m_isRightToLeft: 0
+  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontSharedMaterials: []
+  m_fontMaterial: {fileID: 0}
+  m_fontMaterials: []
+  m_fontColor32:
+    serializedVersion: 2
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_enableVertexGradient: 0
+  m_colorMode: 3
+  m_fontColorGradient:
+    topLeft: {r: 1, g: 1, b: 1, a: 1}
+    topRight: {r: 1, g: 1, b: 1, a: 1}
+    bottomLeft: {r: 1, g: 1, b: 1, a: 1}
+    bottomRight: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColorGradientPreset: {fileID: 0}
+  m_spriteAsset: {fileID: 0}
+  m_tintAllSprites: 0
+  m_StyleSheet: {fileID: 0}
+  m_TextStyleHashCode: -1183493901
+  m_overrideHtmlColors: 0
+  m_faceColor:
+    serializedVersion: 2
+    rgba: 4294967295
+  m_fontSize: 9.5
+  m_fontSizeBase: 9.5
+  m_fontWeight: 400
+  m_enableAutoSizing: 0
+  m_fontSizeMin: 18
+  m_fontSizeMax: 72
+  m_fontStyle: 1
+  m_HorizontalAlignment: 2
+  m_VerticalAlignment: 512
+  m_textAlignment: 65535
+  m_characterSpacing: 0
+  m_characterHorizontalScale: 1
+  m_wordSpacing: 0
+  m_lineSpacing: 0
+  m_lineSpacingMax: 0
+  m_paragraphSpacing: 0
+  m_charWidthMaxAdj: 0
+  m_TextWrappingMode: 1
+  m_wordWrappingRatios: 0.4
+  m_overflowMode: 0
+  m_linkedTextComponent: {fileID: 0}
+  parentLinkedComponent: {fileID: 0}
+  m_enableKerning: 0
+  m_ActiveFontFeatures: 6e72656b
+  m_enableExtraPadding: 0
+  checkPaddingRequired: 0
+  m_isRichText: 1
+  m_EmojiFallbackSupport: 1
+  m_parseCtrlCharacters: 1
+  m_isOrthographic: 1
+  m_isCullingEnabled: 0
+  m_horizontalMapping: 0
+  m_verticalMapping: 0
+  m_uvLineOffset: 0
+  m_geometrySortingOrder: 0
+  m_IsTextObjectScaleStatic: 0
+  m_VertexBufferAutoSizeReduction: 0
+  m_useMaxVisibleDescender: 1
+  m_pageToDisplay: 1
+  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_isUsingLegacyAnimationComponent: 0
+  m_isVolumetricText: 0
+  m_hasFontAssetChanged: 0
+  m_baseMaterial: {fileID: 0}
+  m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
 --- !u!1 &66639108
 GameObject:
   m_ObjectHideFlags: 0
@@ -435,12 +647,9 @@ MonoBehaviour:
   torchRenderer: {fileID: 1796524481}
   flameRenderer: {fileID: 736320797}
   torchLight: {fileID: 897661904}
-  baseLightIntensity: 2
-  lightOuterRadius: 7.5
-  lightInnerRadius: 0.5
-  torchLightColor: {r: 1, g: 0.62, b: 0.22, a: 1}
   flickerSpeed: 2.5
   flickerIntensity: 0.04
+  baseLightIntensity: 2
   lightFlickerIntensity: 0.08
 --- !u!213 &92244785
 Sprite:
@@ -775,8 +984,20 @@ MonoBehaviour:
   rusherPrefab: {fileID: 4988725476289440318, guid: d823b2f7f1536eb40b3eb9e5d96c9668, type: 3}
   batPrefab: {fileID: 3838460074559408029, guid: 354e1b3b57888cf44ae879216b279ea9, type: 3}
   stageDuration: 150
+  phaseOverride: 0
+  autoScaleByPhase: 1
+  enemyHealthMultiplier: 1
+  enemySpeedMultiplier: 1
+  enemyFireRateMultiplier: 1
+  enemyProjectileSpeedMultiplier: 1
+  enemyContactDamageMultiplier: 1
   spawnIntervalMin: 0.9
   spawnIntervalMax: 2
+  endSpawnIntervalMin: 0.35
+  endSpawnIntervalMax: 0.75
+  minEnemiesPerWave: 1
+  maxEnemiesPerWave: 4
+  swarmChance: 0.4
   spawnX: 11.5
   minY: -3.5
   maxY: 3.5
@@ -1031,6 +1252,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.UI.EvolutionUI
   customStaffBasicSprite: {fileID: 0}
   customStaffEvolvedSprite: {fileID: 0}
+  customFireHeartSprite: {fileID: 0}
+  customBossCoreSprite: {fileID: 0}
 --- !u!114 &174841604
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1873,12 +2096,9 @@ MonoBehaviour:
   torchRenderer: {fileID: 1983513797}
   flameRenderer: {fileID: 101627668}
   torchLight: {fileID: 1134634929}
-  baseLightIntensity: 1.2
-  lightOuterRadius: 7.5
-  lightInnerRadius: 0.5
-  torchLightColor: {r: 1, g: 0.62, b: 0.22, a: 1}
   flickerSpeed: 2.5
   flickerIntensity: 0.04
+  baseLightIntensity: 1.2
   lightFlickerIntensity: 0.06
 --- !u!1 &319795901
 GameObject:
@@ -2261,12 +2481,9 @@ MonoBehaviour:
   torchRenderer: {fileID: 2024518746}
   flameRenderer: {fileID: 1850244880}
   torchLight: {fileID: 237986792}
-  baseLightIntensity: 1.2
-  lightOuterRadius: 7.5
-  lightInnerRadius: 0.5
-  torchLightColor: {r: 1, g: 0.62, b: 0.22, a: 1}
   flickerSpeed: 2.5
   flickerIntensity: 0.04
+  baseLightIntensity: 1.2
   lightFlickerIntensity: 0.06
 --- !u!1 &342461492
 GameObject:
@@ -2501,7 +2718,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 8018276087501692003, guid: cab4e426a6591fb4eb9ad019885f4a30, type: 3}
+  m_Sprite: {fileID: 8018276087501692003, guid: 3775afa50d58d0a449392a7a6a429537, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -3123,6 +3340,45 @@ Sprite:
   m_Bones: []
   m_ScriptableObjects: []
   m_SpriteID: 
+--- !u!1 &490391713
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 490391714}
+  m_Layer: 0
+  m_Name: ManaBar_Container
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &490391714
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 490391713}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 2.8135426, y: 2.8135426, z: 2.8135426}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 41823815}
+  - {fileID: 1152711497}
+  - {fileID: 2014254018}
+  - {fileID: 57902342}
+  m_Father: {fileID: 867635788}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 921, y: -1015}
+  m_SizeDelta: {x: 170, y: 14}
+  m_Pivot: {x: 0, y: 1}
 --- !u!1 &490679514
 GameObject:
   m_ObjectHideFlags: 0
@@ -3461,12 +3717,9 @@ MonoBehaviour:
   torchRenderer: {fileID: 129185371}
   flameRenderer: {fileID: 782049285}
   torchLight: {fileID: 1758132244}
-  baseLightIntensity: 1.2
-  lightOuterRadius: 7.5
-  lightInnerRadius: 0.5
-  torchLightColor: {r: 1, g: 0.62, b: 0.22, a: 1}
   flickerSpeed: 2.5
   flickerIntensity: 0.04
+  baseLightIntensity: 1.2
   lightFlickerIntensity: 0.06
 --- !u!1 &659997894
 GameObject:
@@ -4566,6 +4819,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.UI.HUDController
   playerHealth: {fileID: 0}
   playerShooting: {fileID: 0}
+  playerMana: {fileID: 0}
+  manaBarContainer: {fileID: 490391713}
+  manaBarFill: {fileID: 2014254020}
+  manaBarBackground: {fileID: 1152711499}
+  manaText: {fileID: 57902344}
+  normalManaColor: {r: 0.2, g: 0.65, b: 1, a: 1}
+  exhaustedManaColor: {r: 0.95, g: 0.3, b: 0.25, a: 1}
+  exhaustedTextColor: {r: 1, g: 0.45, b: 0.45, a: 1}
   heartImages:
   - {fileID: 378543947}
   - {fileID: 1569299363}
@@ -4579,6 +4840,10 @@ MonoBehaviour:
   fireBadge: {fileID: 490679517}
   iceText: {fileID: 378609683}
   fireText: {fileID: 208325172}
+  slotIceActiveSprite: {fileID: 0}
+  slotIceInactiveSprite: {fileID: 0}
+  slotFireActiveSprite: {fileID: 0}
+  slotFireInactiveSprite: {fileID: 0}
   activeIceColor: {r: 0.2, g: 0.85, b: 1, a: 1}
   inactiveIceColor: {r: 0.1, g: 0.35, b: 0.45, a: 0.5}
   activeFireColor: {r: 1, g: 0.5, b: 0.1, a: 1}
@@ -4671,6 +4936,7 @@ RectTransform:
   m_Children:
   - {fileID: 1336868106}
   - {fileID: 2024142342}
+  - {fileID: 490391714}
   - {fileID: 1605575757}
   - {fileID: 265876992}
   - {fileID: 174841602}
@@ -5377,12 +5643,9 @@ MonoBehaviour:
   torchRenderer: {fileID: 2034130617}
   flameRenderer: {fileID: 462445846}
   torchLight: {fileID: 1422793338}
-  baseLightIntensity: 1.2
-  lightOuterRadius: 7.5
-  lightInnerRadius: 0.5
-  torchLightColor: {r: 1, g: 0.62, b: 0.22, a: 1}
   flickerSpeed: 2.5
   flickerIntensity: 0.04
+  baseLightIntensity: 1.2
   lightFlickerIntensity: 0.06
 --- !u!213 &1080660884
 Sprite:
@@ -5956,12 +6219,9 @@ MonoBehaviour:
   torchRenderer: {fileID: 862969618}
   flameRenderer: {fileID: 924495932}
   torchLight: {fileID: 1004757475}
-  baseLightIntensity: 1.2
-  lightOuterRadius: 7.5
-  lightInnerRadius: 0.5
-  torchLightColor: {r: 1, g: 0.62, b: 0.22, a: 1}
   flickerSpeed: 2.5
   flickerIntensity: 0.04
+  baseLightIntensity: 1.2
   lightFlickerIntensity: 0.06
 --- !u!1 &1134634927
 GameObject:
@@ -6097,13 +6357,85 @@ MonoBehaviour:
   torchRenderer: {fileID: 1103641547}
   flameRenderer: {fileID: 1997887358}
   torchLight: {fileID: 1089842221}
-  baseLightIntensity: 1.2
-  lightOuterRadius: 7.5
-  lightInnerRadius: 0.5
-  torchLightColor: {r: 1, g: 0.62, b: 0.22, a: 1}
   flickerSpeed: 2.5
   flickerIntensity: 0.04
+  baseLightIntensity: 1.2
   lightFlickerIntensity: 0.06
+--- !u!1 &1152711496
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1152711497}
+  - component: {fileID: 1152711498}
+  - component: {fileID: 1152711499}
+  m_Layer: 0
+  m_Name: Background
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1152711497
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1152711496}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 490391714}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &1152711498
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1152711496}
+  m_CullTransparentMesh: 1
+--- !u!114 &1152711499
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1152711496}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.12, g: 0.08, b: 0.2, a: 0.88}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
 --- !u!1 &1159367621
 GameObject:
   m_ObjectHideFlags: 0
@@ -6579,7 +6911,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 8018276087501692003, guid: cab4e426a6591fb4eb9ad019885f4a30, type: 3}
+  m_Sprite: {fileID: 8018276087501692003, guid: 3775afa50d58d0a449392a7a6a429537, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -7504,12 +7836,9 @@ MonoBehaviour:
   torchRenderer: {fileID: 659997896}
   flameRenderer: {fileID: 449938479}
   torchLight: {fileID: 821805248}
-  baseLightIntensity: 1.2
-  lightOuterRadius: 7.5
-  lightInnerRadius: 0.5
-  torchLightColor: {r: 1, g: 0.62, b: 0.22, a: 1}
   flickerSpeed: 2.5
   flickerIntensity: 0.04
+  baseLightIntensity: 1.2
   lightFlickerIntensity: 0.06
 --- !u!213 &1368797735
 Sprite:
@@ -8539,7 +8868,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 8018276087501692003, guid: cab4e426a6591fb4eb9ad019885f4a30, type: 3}
+  m_Sprite: {fileID: 8018276087501692003, guid: 3775afa50d58d0a449392a7a6a429537, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -8775,6 +9104,7 @@ GameObject:
   - component: {fileID: 1537354907}
   - component: {fileID: 1537354904}
   - component: {fileID: 1537354905}
+  - component: {fileID: 1537354911}
   m_Layer: 0
   m_Name: Player_Wizard
   m_TagString: Player
@@ -8810,6 +9140,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d28bc3d9f40460a4bb5697a16be0dbf8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Player.PlayerShooting
+  playerMana: {fileID: 1537354911}
   currentElement: 1
   iceConfig:
     element: 1
@@ -8820,6 +9151,7 @@ MonoBehaviour:
     pierceCount: 1
     elementColor: {r: 0.35, g: 0.85, b: 1, a: 1}
     shootSound: {fileID: 8300000, guid: 46bbc10ee761e2043a81db95a9122f54, type: 3}
+    manaCost: 0
   fireConfig:
     element: 2
     projectilePrefab: {fileID: 5554910056323382650, guid: 6c708304c09e3f1438a5a1a9505c2f9a, type: 3}
@@ -8829,6 +9161,7 @@ MonoBehaviour:
     pierceCount: 1
     elementColor: {r: 1, g: 0.55, b: 0.15, a: 1}
     shootSound: {fileID: 8300000, guid: 46bbc10ee761e2043a81db95a9122f54, type: 3}
+    manaCost: 0
   firePoints:
   - {fileID: 374080252}
   defaultMuzzleOffset: {x: 0.6, y: 0}
@@ -8978,7 +9311,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Player.PlayerHealth
   maxHealth: 4
   currentHealth: 4
-  invincibilityDuration: 1.5
+  invincibilityDuration: 0.3
   flashInterval: 0.1
   spriteRenderer: {fileID: 0}
   deathEffectPrefab: {fileID: 0}
@@ -9114,6 +9447,29 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!114 &1537354911
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1537354902}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20e7b076c0824fccba9fb0494533c635, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Player.PlayerMana
+  maxMana: 100
+  currentMana: 100
+  manaCostPerShot: 10
+  manaRechargeRate: 22
+  rechargeDelayAfterShot: 0.45
+  fatigueRecoveryThreshold: 0.3
+  isExhausted: 0
+  spriteRenderer: {fileID: 0}
+  exhaustedAttemptTint: {r: 0.65, g: 0.75, b: 1, a: 0.7}
+  dryFireSound: {fileID: 0}
+  audioSource: {fileID: 0}
 --- !u!1 &1549332119
 GameObject:
   m_ObjectHideFlags: 0
@@ -9572,7 +9928,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 8018276087501692003, guid: cab4e426a6591fb4eb9ad019885f4a30, type: 3}
+  m_Sprite: {fileID: 8018276087501692003, guid: 3775afa50d58d0a449392a7a6a429537, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -11541,12 +11897,9 @@ MonoBehaviour:
   torchRenderer: {fileID: 625427513}
   flameRenderer: {fileID: 1723337259}
   torchLight: {fileID: 1324133879}
-  baseLightIntensity: 1.2
-  lightOuterRadius: 7.5
-  lightInnerRadius: 0.5
-  torchLightColor: {r: 1, g: 0.62, b: 0.22, a: 1}
   flickerSpeed: 2.5
   flickerIntensity: 0.04
+  baseLightIntensity: 1.2
   lightFlickerIntensity: 0.06
 --- !u!1 &1850244878
 GameObject:
@@ -12253,6 +12606,81 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1 &2014254017
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2014254018}
+  - component: {fileID: 2014254019}
+  - component: {fileID: 2014254020}
+  m_Layer: 0
+  m_Name: Fill
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &2014254018
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2014254017}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 490391714}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!222 &2014254019
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2014254017}
+  m_CullTransparentMesh: 1
+--- !u!114 &2014254020
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2014254017}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.2, g: 0.65, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 3
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 0
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
 --- !u!1 &2023958579
 GameObject:
   m_ObjectHideFlags: 0
