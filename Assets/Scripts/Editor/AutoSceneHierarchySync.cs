@@ -6,14 +6,8 @@ using WitchShmup.UI;
 
 namespace WitchShmup.Editor
 {
-    [InitializeOnLoad]
     public static class AutoSceneHierarchySync
     {
-        static AutoSceneHierarchySync()
-        {
-            EditorApplication.delayCall += SyncCurrentScene;
-        }
-
         [MenuItem("Tools/Witch Shmup/★ Sincronizar Mana e Painel de Evolução na Hierarchy ★")]
         public static void SyncCurrentScene()
         {

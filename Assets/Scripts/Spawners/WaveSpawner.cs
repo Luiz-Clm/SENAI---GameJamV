@@ -564,31 +564,31 @@ namespace WitchShmup.Spawners
             {
                 if (phase == 2)
                 {
-                    if (enemyHealthMultiplier <= 1f) enemyHealthMultiplier = 1.4f;
-                    if (enemySpeedMultiplier <= 1f) enemySpeedMultiplier = 1.2f;
-                    if (enemyFireRateMultiplier <= 1f) enemyFireRateMultiplier = 1.25f;
-                    if (enemyProjectileSpeedMultiplier <= 1f) enemyProjectileSpeedMultiplier = 1.2f;
+                    if (enemyHealthMultiplier <= 1f) enemyHealthMultiplier = 1.15f;
+                    if (enemySpeedMultiplier <= 1f) enemySpeedMultiplier = 1.08f;
+                    if (enemyFireRateMultiplier <= 1f) enemyFireRateMultiplier = 1.10f;
+                    if (enemyProjectileSpeedMultiplier <= 1f) enemyProjectileSpeedMultiplier = 1.08f;
                     if (enemyContactDamageMultiplier <= 1f) enemyContactDamageMultiplier = 1.0f;
 
-                    spawnIntervalMin = Mathf.Min(spawnIntervalMin, 0.5f);
-                    spawnIntervalMax = Mathf.Min(spawnIntervalMax, 1.1f);
-                    minEnemiesPerWave = Mathf.Max(minEnemiesPerWave, 2);
-                    maxEnemiesPerWave = Mathf.Max(maxEnemiesPerWave, 5);
-                    swarmChance = Mathf.Max(swarmChance, 0.50f);
+                    endSpawnIntervalMin = Mathf.Max(endSpawnIntervalMin, 0.55f);
+                    endSpawnIntervalMax = Mathf.Max(endSpawnIntervalMax, 1.0f);
+                    minEnemiesPerWave = Mathf.Min(minEnemiesPerWave, 1);
+                    maxEnemiesPerWave = Mathf.Min(maxEnemiesPerWave, 4);
+                    swarmChance = Mathf.Min(swarmChance, 0.30f);
                 }
                 else if (phase >= 3)
                 {
-                    if (enemyHealthMultiplier <= 1f) enemyHealthMultiplier = 1.9f;
-                    if (enemySpeedMultiplier <= 1f) enemySpeedMultiplier = 1.35f;
-                    if (enemyFireRateMultiplier <= 1f) enemyFireRateMultiplier = 1.5f;
-                    if (enemyProjectileSpeedMultiplier <= 1f) enemyProjectileSpeedMultiplier = 1.4f;
-                    if (enemyContactDamageMultiplier <= 1f) enemyContactDamageMultiplier = 1.5f;
+                    if (enemyHealthMultiplier <= 1f) enemyHealthMultiplier = 1.30f;
+                    if (enemySpeedMultiplier <= 1f) enemySpeedMultiplier = 1.15f;
+                    if (enemyFireRateMultiplier <= 1f) enemyFireRateMultiplier = 1.20f;
+                    if (enemyProjectileSpeedMultiplier <= 1f) enemyProjectileSpeedMultiplier = 1.12f;
+                    if (enemyContactDamageMultiplier <= 1f) enemyContactDamageMultiplier = 1.15f;
 
-                    spawnIntervalMin = Mathf.Min(spawnIntervalMin, 0.35f);
-                    spawnIntervalMax = Mathf.Min(spawnIntervalMax, 0.85f);
-                    minEnemiesPerWave = Mathf.Max(minEnemiesPerWave, 2);
-                    maxEnemiesPerWave = Mathf.Max(maxEnemiesPerWave, 6);
-                    swarmChance = Mathf.Max(swarmChance, 0.65f);
+                    endSpawnIntervalMin = Mathf.Max(endSpawnIntervalMin, 0.45f);
+                    endSpawnIntervalMax = Mathf.Max(endSpawnIntervalMax, 0.90f);
+                    minEnemiesPerWave = Mathf.Min(minEnemiesPerWave, 1);
+                    maxEnemiesPerWave = Mathf.Min(maxEnemiesPerWave, 5);
+                    swarmChance = Mathf.Min(swarmChance, 0.40f);
                 }
             }
         }

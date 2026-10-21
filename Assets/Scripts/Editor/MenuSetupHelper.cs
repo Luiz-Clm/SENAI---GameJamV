@@ -388,7 +388,7 @@ namespace SpellGlide.Editor
             storyTMP.fontSize = 28;
             storyTMP.color = Color.white;
             storyTMP.alignment = TextAlignmentOptions.MidlineLeft;
-            storyTMP.enableWordWrapping = true;
+            storyTMP.textWrappingMode = TextWrappingModes.Normal;
             storyTMP.text = "Coloque seu texto aqui";
 
             // Texto "Aperte qualquer tecla para pular" no canto inferior

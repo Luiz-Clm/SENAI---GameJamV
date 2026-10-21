@@ -81,11 +81,15 @@ namespace WitchShmup.Boss
         public static event Action OnAnyBossFightDefeated;
 
         [Header("Floating Overhead Health Bar")]
+        [SerializeField] private GameObject overheadHealthBarPrefab;
+        [SerializeField] private Vector3 overheadBarLocalOffset = new Vector3(0f, 2.5f, 0f);
         [SerializeField] private Sprite overheadBarBackgroundSprite;
         [SerializeField] private Sprite overheadBarFillSprite;
         private GameObject worldBarContainer;
         private Transform worldBarFillTransform;
-        private float worldBarFullWidth = 0.55f;
+        private SpriteRenderer worldBarFillRenderer;
+        private Vector3 worldBarFillBasePosition;
+        [SerializeField] private float worldBarFullWidth = 2f;
 
         private void Awake()
         {
@@ -136,57 +140,38 @@ namespace WitchShmup.Boss
             if (bossAnimator == null)
             {
                 bossAnimator = GetComponentInChildren<SimpleSpriteAnimator>();
-                if (bossAnimator == null && mainBodyRenderer != null)
-                {
-                    bossAnimator = mainBodyRenderer.gameObject.AddComponent<SimpleSpriteAnimator>();
-                }
             }
 
-            // Cria barra de vida flutuante em cima da cabeça do Boss
             CreateWorldHealthBar();
-
-            // Inicia com animação idle
             PlayIdleAnim();
         }
 
         private void CreateWorldHealthBar()
         {
-            worldBarContainer = new GameObject("OverheadHealthBar");
-            worldBarContainer.transform.SetParent(transform, false);
-            worldBarContainer.transform.localPosition = new Vector3(0f, 2.5f, 0f);
-
-            // Moldura decorada oficial do Golem (192x36)
-            GameObject bgObj = new GameObject("Background");
-            bgObj.transform.SetParent(worldBarContainer.transform, false);
-            var bgSr = bgObj.AddComponent<SpriteRenderer>();
-            bgSr.sortingOrder = 20;
-
-            if (overheadBarBackgroundSprite == null)
+            if (overheadHealthBarPrefab == null)
+                overheadHealthBarPrefab = Resources.Load<GameObject>("Prefabs/BossOverheadHealthBar");
+            if (overheadHealthBarPrefab == null)
             {
-                overheadBarBackgroundSprite = Resources.Load<Sprite>("Sprites/boss_barra_fundo_decorado_192x36");
-            }
-            if (overheadBarFillSprite == null)
-            {
-                overheadBarFillSprite = Resources.Load<Sprite>("Sprites/boss_barra_vida_148x12");
+                Debug.LogWarning("GolemBoss: prefab da barra sobre a cabeça não encontrado em Resources/Prefabs.", this);
+                return;
             }
 
-            bgSr.sprite = overheadBarBackgroundSprite;
-            bgSr.color = Color.white;
-            bgObj.transform.localScale = new Vector3(0.55f, 0.55f, 1f);
+            worldBarContainer = Instantiate(overheadHealthBarPrefab, transform);
+            worldBarContainer.name = "OverheadHealthBar";
+            worldBarContainer.transform.localPosition = overheadBarLocalOffset;
+            Transform background = worldBarContainer.transform.Find("Background");
+            Transform fill = worldBarContainer.transform.Find("Fill");
+            SpriteRenderer backgroundRenderer = background != null ? background.GetComponent<SpriteRenderer>() : null;
+            worldBarFillRenderer = fill != null ? fill.GetComponent<SpriteRenderer>() : null;
 
-            // Fill oficial de vida (148x12)
-            GameObject fillObj = new GameObject("Fill");
-            fillObj.transform.SetParent(worldBarContainer.transform, false);
-            // Área útil centralizada
-            fillObj.transform.localPosition = new Vector3(-2.31f, 0f, 0f);
-            var fillSr = fillObj.AddComponent<SpriteRenderer>();
-            fillSr.sortingOrder = 21;
+            if (overheadBarBackgroundSprite != null && backgroundRenderer != null)
+                backgroundRenderer.sprite = overheadBarBackgroundSprite;
+            if (overheadBarFillSprite != null && worldBarFillRenderer != null)
+                worldBarFillRenderer.sprite = overheadBarFillSprite;
 
-            fillSr.sprite = overheadBarFillSprite;
-            fillSr.color = Color.white;
-            fillObj.transform.localScale = new Vector3(worldBarFullWidth, 0.55f, 1f);
-
-            worldBarFillTransform = fillObj.transform;
+            worldBarFillTransform = fill;
+            if (worldBarFillTransform != null)
+                worldBarFillBasePosition = worldBarFillTransform.localPosition;
             worldBarContainer.SetActive(false);
         }
 
@@ -195,8 +180,31 @@ namespace WitchShmup.Boss
             if (worldBarFillTransform != null)
             {
                 normalizedHealth = Mathf.Clamp01(normalizedHealth);
-                worldBarFillTransform.localScale = new Vector3(worldBarFullWidth * normalizedHealth, 0.55f, 1f);
+                Vector3 fillScale = worldBarFillTransform.localScale;
+                fillScale.x = Mathf.Max(0f, worldBarFullWidth) * normalizedHealth;
+                worldBarFillTransform.localScale = fillScale;
+
+                // Keep the left edge fixed so the bar drains from left to right.
+                float spriteWidth = worldBarFillRenderer != null && worldBarFillRenderer.sprite != null
+                    ? worldBarFillRenderer.sprite.bounds.size.x
+                    : 1f;
+                Vector3 fillPosition = worldBarFillBasePosition;
+                fillPosition.x -= spriteWidth * Mathf.Max(0f, worldBarFullWidth) * (1f - normalizedHealth) * 0.5f;
+                worldBarFillTransform.localPosition = fillPosition;
             }
+        }
+
+        /// <summary>Intercepts a projectile when an orbital stone overlaps the boss hitbox.</summary>
+        public bool TryInterceptProjectile(Projectile projectile)
+        {
+            if (projectile == null || !projectile.IsPlayerProjectile) return false;
+
+            foreach (OrbitingStone stone in activeOrbitingStones)
+            {
+                if (stone != null && stone.TryConsumeProjectile(projectile))
+                    return true;
+            }
+            return false;
         }
 
         private void Start()
@@ -206,7 +214,10 @@ namespace WitchShmup.Boss
 
             hud = FindFirstObjectByType<HUDController>();
 
-            SpawnOrbitingStones();
+            if (orbitingStonePrefab != null)
+                SpawnOrbitingStones();
+            else
+                Debug.LogWarning("GolemBoss: atribua o prefab de pedra orbital no Inspector.", this);
         }
 
         public void SpawnOrbitingStones()
@@ -218,21 +229,13 @@ namespace WitchShmup.Boss
             }
             activeOrbitingStones.Clear();
 
+            if (orbitingStonePrefab == null || orbitingStoneCount <= 0) return;
+
             float angleStep = 360f / orbitingStoneCount;
             for (int i = 0; i < orbitingStoneCount; i++)
             {
                 float angle = i * angleStep;
-                GameObject stoneObj;
-
-                if (orbitingStonePrefab != null)
-                {
-                    stoneObj = Instantiate(orbitingStonePrefab, transform.position, Quaternion.identity, transform);
-                }
-                else
-                {
-                    stoneObj = CreateFallbackOrbitingStone();
-                    stoneObj.transform.SetParent(transform);
-                }
+                GameObject stoneObj = Instantiate(orbitingStonePrefab, transform.position, Quaternion.identity, transform);
 
                 var orb = stoneObj.GetComponent<OrbitingStone>();
                 orb.Initialize(transform, orbitRadius, orbitSpeed, angle);
@@ -343,19 +346,16 @@ namespace WitchShmup.Boss
                 dir = ((Vector2)playerTarget.position - (Vector2)spawnPos).normalized;
             }
 
-            if (bigRockPrefab != null)
+            if (bigRockPrefab == null)
             {
-                GameObject rock = Instantiate(bigRockPrefab, spawnPos, Quaternion.identity);
-                var comp = rock.GetComponent<BigRockProjectile>();
-                if (comp != null)
-                {
-                    comp.Initialize(dir, isEnraged ? 11f : 8.5f);
-                }
+                Debug.LogWarning("GolemBoss: atribua o prefab de pedra grande no Inspector.", this);
+                PlayIdleAnim();
+                yield break;
             }
-            else
-            {
-                CreateFallbackBigRock(spawnPos, dir);
-            }
+
+            GameObject rock = Instantiate(bigRockPrefab, spawnPos, Quaternion.identity);
+            var comp = rock.GetComponent<BigRockProjectile>();
+            if (comp != null) comp.Initialize(dir, isEnraged ? 11f : 8.5f);
 
             // Volta para idle após 0.6s
             yield return new WaitForSeconds(0.6f);
@@ -370,14 +370,13 @@ namespace WitchShmup.Boss
 
             Vector3 spawnPos = transform.position + new Vector3(-2f, 0f, 0f);
 
-            if (stoneWallPrefab != null)
+            if (stoneWallPrefab == null)
             {
-                Instantiate(stoneWallPrefab, spawnPos, Quaternion.identity);
+                Debug.LogWarning("GolemBoss: atribua o prefab da barreira de pedra no Inspector.", this);
+                PlayIdleAnim();
+                yield break;
             }
-            else
-            {
-                CreateFallbackStoneWall(spawnPos);
-            }
+            Instantiate(stoneWallPrefab, spawnPos, Quaternion.identity);
 
             // Volta para idle após 0.5s
             yield return new WaitForSeconds(0.5f);
@@ -400,7 +399,6 @@ namespace WitchShmup.Boss
             {
                 hud.SetBossHealth(normalizedHp);
             }
-
             UpdateOverheadBar(normalizedHp);
 
             // Ativa modo furioso ao chegar a 50% de HP
@@ -510,86 +508,6 @@ namespace WitchShmup.Boss
             }
 
             Destroy(gameObject);
-        }
-
-        private GameObject CreateFallbackOrbitingStone()
-        {
-            GameObject obj = new GameObject("MiniOrbitingStone");
-            var sr = obj.AddComponent<SpriteRenderer>();
-            sr.color = new Color(0.7f, 0.7f, 0.75f, 1f);
-            sr.sortingOrder = 9;
-
-            Texture2D tex = new Texture2D(12, 12, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Point;
-            Color[] cols = new Color[144];
-            for (int i = 0; i < cols.Length; i++) cols[i] = new Color(0.65f, 0.65f, 0.7f, 1f);
-            tex.SetPixels(cols);
-            tex.Apply();
-            sr.sprite = Sprite.Create(tex, new Rect(0, 0, 12, 12), new Vector2(0.5f, 0.5f), 16f);
-
-            var col = obj.AddComponent<BoxCollider2D>();
-            col.isTrigger = true;
-            col.size = new Vector2(0.75f, 0.75f);
-
-            obj.AddComponent<OrbitingStone>();
-            return obj;
-        }
-
-        private void CreateFallbackBigRock(Vector3 pos, Vector2 dir)
-        {
-            GameObject rock = new GameObject("Boss_BigRock");
-            rock.transform.position = pos;
-            var sr = rock.AddComponent<SpriteRenderer>();
-            sr.color = new Color(0.6f, 0.58f, 0.65f, 1f);
-            sr.sortingOrder = 8;
-
-            Texture2D tex = new Texture2D(32, 32, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Point;
-            Color[] cols = new Color[32 * 32];
-            for (int i = 0; i < cols.Length; i++) cols[i] = new Color(0.55f, 0.52f, 0.6f, 1f);
-            tex.SetPixels(cols);
-            tex.Apply();
-            sr.sprite = Sprite.Create(tex, new Rect(0, 0, 32, 32), new Vector2(0.5f, 0.5f), 16f);
-
-            var col = rock.AddComponent<CircleCollider2D>();
-            col.isTrigger = true;
-            col.radius = 1f;
-
-            var comp = rock.AddComponent<BigRockProjectile>();
-            comp.Initialize(dir, isEnraged ? 10f : 8f);
-        }
-
-        private void CreateFallbackStoneWall(Vector3 centerPos)
-        {
-            GameObject wall = new GameObject("Boss_StoneWall");
-            wall.transform.position = centerPos;
-            wall.AddComponent<StoneWallObstacle>();
-
-            float[] yOffsets = { -2.5f, 0f, 2.5f };
-            foreach (float y in yOffsets)
-            {
-                GameObject seg = new GameObject("StoneSegment");
-                seg.transform.SetParent(wall.transform);
-                seg.transform.localPosition = new Vector3(0f, y, 0f);
-
-                var sr = seg.AddComponent<SpriteRenderer>();
-                sr.color = new Color(0.5f, 0.48f, 0.55f, 1f);
-                sr.sortingOrder = 5;
-
-                Texture2D tex = new Texture2D(20, 36, TextureFormat.RGBA32, false);
-                tex.filterMode = FilterMode.Point;
-                Color[] cols = new Color[20 * 36];
-                for (int i = 0; i < cols.Length; i++) cols[i] = new Color(0.5f, 0.48f, 0.55f, 1f);
-                tex.SetPixels(cols);
-                tex.Apply();
-                sr.sprite = Sprite.Create(tex, new Rect(0, 0, 20, 36), new Vector2(0.5f, 0.5f), 16f);
-
-                var col = seg.AddComponent<BoxCollider2D>();
-                col.isTrigger = true;
-                col.size = new Vector2(1.2f, 2.2f);
-
-                seg.AddComponent<StoneWallSegment>();
-            }
         }
 
         private void OnTriggerEnter2D(Collider2D other)

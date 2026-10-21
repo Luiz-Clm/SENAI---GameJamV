@@ -420,9 +420,9 @@ namespace WitchShmup.Editor
             sr.sprite = sprite;
             sr.sortingOrder = 9;
 
-            var col = obj.AddComponent<BoxCollider2D>();
+            var col = obj.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
-            col.size = new Vector2(0.8f, 0.8f);
+            col.radius = 0.4f;
 
             var rb = obj.AddComponent<Rigidbody2D>();
             rb.gravityScale = 0f;
@@ -459,7 +459,7 @@ namespace WitchShmup.Editor
                 rb.gravityScale = 0f;
                 rb.bodyType = RigidbodyType2D.Kinematic;
 
-                seg.AddComponent<StoneWallSegment>();
+                seg.AddComponent<StoneWallObstacle>();
             }
 
             PrefabUtility.SaveAsPrefabAsset(wall, path);

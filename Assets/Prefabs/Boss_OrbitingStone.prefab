@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 2838498700983246723}
   - component: {fileID: 1705560968665463850}
   - component: {fileID: 8479436249957004518}
+  - component: {fileID: 7000000000000000003}
   m_Layer: 0
   m_Name: Boss_OrbitingStone
   m_TagString: Untagged
@@ -29,7 +30,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.6, y: 0.6, z: 0.6}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -83,7 +84,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 9
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -4061550948010020638, guid: 4d2366146a559ef4aa4710a10f60cbac, type: 3}
+  m_Sprite: {fileID: -8500310853942971837, guid: bf5e7152a81696c4aabd91c0141ada2b, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -136,4 +137,44 @@ MonoBehaviour:
   orbitRadius: 3
   orbitSpeed: 90
   currentAngle: 0
+  maxHealth: 5
+  currentHealth: 5
   contactDamage: 1
+  damageFlashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
+  breakEffectPrefab: {fileID: 0}
+--- !u!58 &7000000000000000003
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4827508033461453811}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 1
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: -0.29695877, y: -0.14298001}
+  m_Radius: 1.2168977

@@ -1,10 +1,16 @@
 fileFormatVersion: 2
-guid: a19773f41f86f734d869c46da52c2f61
+guid: 74a5db57437aa3946bfa60304d839ae4
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4606908045521496030
-    second: Heart_0
+      213: 4738278921413833161
+    second: InimigoOlho-SpriteSheet_0
+  - first:
+      213: -6392111597651537564
+    second: InimigoOlho-SpriteSheet_1
+  - first:
+      213: 6709923099735705121
+    second: InimigoOlho-SpriteSheet_2
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -51,7 +57,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 16
+  spritePixelsToUnits: 32
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -75,7 +81,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 0
+    textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -126,13 +132,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Heart_0
+      name: InimigoOlho-SpriteSheet_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 1
-        width: 16
-        height: 14
+        x: 13
+        y: 15
+        width: 60
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +147,52 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: ed7a23e75760fef30800000000000000
-      internalID: 4606908045521496030
+      spriteID: 9c1b795139fb1c140800000000000000
+      internalID: 4738278921413833161
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: InimigoOlho-SpriteSheet_1
+      rect:
+        serializedVersion: 2
+        x: 80
+        y: 15
+        width: 78
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 46153596e58aa47a0800000000000000
+      internalID: -6392111597651537564
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: InimigoOlho-SpriteSheet_2
+      rect:
+        serializedVersion: 2
+        x: 171
+        y: 0
+        width: 55
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1264fed228f6e1d50800000000000000
+      internalID: 6709923099735705121
       vertices: []
       indices: 
       edges: []
@@ -161,7 +211,9 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Heart_0: 4606908045521496030
+      InimigoOlho-SpriteSheet_0: 4738278921413833161
+      InimigoOlho-SpriteSheet_1: -6392111597651537564
+      InimigoOlho-SpriteSheet_2: 6709923099735705121
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

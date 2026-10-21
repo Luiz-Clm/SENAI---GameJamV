@@ -14,24 +14,24 @@ namespace WitchShmup.Player
     {
         [Header("Status de Mana (Inspector)")]
         [Tooltip("Mana maxima do mago")]
-        [SerializeField] private float maxMana = 200f;
+        public float maxMana = 200f;
 
         [Tooltip("Mana atual do mago (somente leitura / debug)")]
-        [SerializeField] private float currentMana = 200f;
+        public float currentMana = 200f;
 
         [Tooltip("Custo base de mana por disparo")]
-        [SerializeField] private float manaCostPerShot = 5f;
+        public float manaCostPerShot = 5f;
 
         [Tooltip("Taxa de regeneracao de mana por segundo")]
-        [SerializeField] private float manaRechargeRate = 25f;
+        public float manaRechargeRate = 25f;
 
         [Tooltip("Tempo de espera (em segundos) apos o disparo para a mana comecar a recarregar")]
-        [SerializeField] private float rechargeDelayAfterShot = 0.45f;
+        public float rechargeDelayAfterShot = 0.45f;
 
         [Header("Mecanica de Cansaco (Fadiga)")]
         [Tooltip("Porcentagem minima de mana (0.1 = 10%, 0.30 = 30%) para o mago deixar de ficar cansado e voltar a atirar")]
         [Range(0.1f, 0.9f)]
-        [SerializeField] private float fatigueRecoveryThreshold = 0.30f;
+        public float fatigueRecoveryThreshold = 0.30f;
 
         [Tooltip("Indica se o mago esta cansado e incapaz de atirar")]
         [SerializeField] private bool isExhausted = false;
