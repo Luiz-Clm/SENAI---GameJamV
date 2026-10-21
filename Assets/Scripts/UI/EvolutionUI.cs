@@ -9,37 +9,44 @@ using WitchShmup.Core;
 namespace WitchShmup.UI
 {
     /// <summary>
-    /// EvolutionUI — Árvore de Upgrades (Tab 1) + Evoluir Cajado (Tab 2).
-    ///
-    /// 10 nós:  vit → vel → foc → des → {esq: pel → ima → seg | dir: rap → dup → per}
-    ///
-    /// Estados visuais dos nós:
-    ///   Cinza   = bloqueado (requisito não atendido)
-    ///   Ciano   = disponível para comprar
-    ///   Rosa    = comprado
-    ///   Dourado = nível máximo
-    ///
-    /// Hover → anel colorido + card de detalhes à direita.
-    /// Click → seleciona + tenta comprar.
+    /// EvolutionUI — Repaginado com estilo gótico/arcano em pixel-art.
+    /// Suporte total à personalização sem resetar modificações do usuário:
+    ///   - Liberdade total para mudar tamanhos globais ou individuais dos nós.
+    ///   - Posições editáveis no Inspector e na Scene View sem serem sobrescritas.
+    ///   - Não destrói os GameObjects ao reabrir a janela, preservando ajustes finos.
+    ///   - Navegação interativa com arrasto do mouse e zoom com a roda.
     /// </summary>
     [ExecuteAlways]
     [RequireComponent(typeof(Canvas))]
     [RequireComponent(typeof(UnityEngine.UI.GraphicRaycaster))]
     public class EvolutionUI : MonoBehaviour
     {
-        // ─── Node data ────────────────────────────────────────────────────────
+        // ─── Node Data Configurável no Inspector ──────────────────────────────
         [Serializable]
         public class NodeData
         {
             public string id;
             public string displayName;
+            [TextArea(2, 4)]
             public string description;
             public string effectText;
+            [Tooltip("ID do nó que é pré-requisito para este. Deixe vazio para nós iniciais.")]
             public string requirementId;
-            public int    maxLevel;
-            public int    cost;
-            public string iconText;
-            public Vector2 htmlPos;   // coordenadas no espaço HTML (560×500)
+            public int    maxLevel = 1;
+            public int    cost = 1;
+
+            [Header("Customização Visual")]
+            [Tooltip("Arraste aqui um Sprite personalizado para este nó. Se deixar vazio, usa o ícone padrão.")]
+            public Sprite customIcon;
+
+            [Tooltip("Posição livre do nó (X, Y) no Canvas da Árvore. Edite livremente para mudar o formato!")]
+            public Vector2 canvasPos;
+
+            [Tooltip("Tamanho personalizado deste nó circular (ex: 80, 80). Se deixar (0,0), usa o tamanho padrão global.")]
+            public Vector2 customNodeSize = Vector2.zero;
+
+            [Tooltip("Tamanho personalizado do ícone dentro deste nó. Se deixar (0,0), usa o tamanho padrão global.")]
+            public Vector2 customIconSize = Vector2.zero;
 
             // runtime refs
             [NonSerialized] public GameObject      nodeGo;
@@ -49,47 +56,102 @@ namespace WitchShmup.UI
             [NonSerialized] public TextMeshProUGUI levelLabel;
         }
 
-        // ─── Colours ──────────────────────────────────────────────────────────
-        static Color C_BG      = new Color(0.05f, 0.04f, 0.09f, 0.97f);
-        static Color C_PANEL   = new Color(0.11f, 0.08f, 0.19f, 1f);
-        static Color C_DARK    = new Color(0.07f, 0.05f, 0.12f, 1f);
-        static Color C_LINE    = new Color(0.29f, 0.21f, 0.47f, 1f);
-        static Color C_LOCKED  = new Color(0.14f, 0.11f, 0.20f, 1f);
-        static Color C_AVAIL   = new Color(0.37f, 0.90f, 1.00f, 1f);
-        static Color C_BOUGHT  = new Color(1.00f, 0.36f, 0.56f, 1f);
-        static Color C_GOLD    = new Color(1.00f, 0.78f, 0.23f, 1f);
-        static Color C_MUT     = new Color(0.65f, 0.58f, 0.80f, 1f);
-        static Color C_CARD    = new Color(0.91f, 0.84f, 0.97f, 1f);
-        static Color C_DARK2   = new Color(0.16f, 0.09f, 0.25f, 1f);
+        // ─── Configurações da Árvore no Inspector ────────────────────────────
+        [Header("Tamanhos Globais da Árvore (Mude livremente!)")]
+        [Tooltip("Tamanho padrão de cada nó circular da árvore.")]
+        public Vector2 defaultNodeSize = new Vector2(68, 68);
 
-        // ─── Node definitions ─────────────────────────────────────────────────
-        readonly List<NodeData> NODES = new List<NodeData>
-        {
-            // Coluna central
-            new NodeData { id="vit", displayName="Vitalidade",      description="Seu corpo de mago aguenta mais pancada na masmorra.",           effectText="+1 Coração de Vida",           requirementId=null,  maxLevel=3, cost=1, iconText="♥", htmlPos=new Vector2(280,440) },
-            new NodeData { id="vel", displayName="Vassoura Veloz",   description="A vassoura corta o ar mais rápido e fica fácil desviar dos tiros.", effectText="Mais 8% de velocidade",        requirementId="vit", maxLevel=1, cost=2, iconText="⚡", htmlPos=new Vector2(280,370) },
-            new NodeData { id="foc", displayName="Foco Arcano",      description="O cristal do cajado brilha mais forte e seus tiros machucam mais.", effectText="Mais 1 de dano",               requirementId="vel", maxLevel=1, cost=2, iconText="⚔", htmlPos=new Vector2(280,300) },
-            new NodeData { id="des", displayName="Despertar Arcano", description="Libera os dois caminhos: proteção e ofensiva.",                    effectText="+1 de dano arcano",            requirementId="foc", maxLevel=1, cost=2, iconText="★", htmlPos=new Vector2(280,230) },
-            // Ramo Esquerdo (Defesa)
-            new NodeData { id="pel", displayName="Pele de Pedra",    description="Você aprendeu um truque com o golem: pancadas doem menos.",       effectText="8% menos dano recebido",       requirementId="des", maxLevel=1, cost=2, iconText="🛡", htmlPos=new Vector2(175,160) },
-            new NodeData { id="ima", displayName="Ímã de Almas",     description="Os skill points dropados voam até você de mais longe.",            effectText="Mais 30% de alcance dos drops", requirementId="pel", maxLevel=1, cost=2, iconText="🧲", htmlPos=new Vector2(115,100) },
-            new NodeData { id="seg", displayName="Segundo Fôlego",   description="Quando a vida zera, você volta uma vez com um pouco de vida.",     effectText="Revive 1x com 35% de vida",    requirementId="ima", maxLevel=1, cost=5, iconText="☠", htmlPos=new Vector2( 55, 60) },
-            // Ramo Direito (Ofensiva)
-            new NodeData { id="rap", displayName="Tiro Rápido",      description="O cajado dispara com mais frequência.",                            effectText="Mais 10% de cadência",          requirementId="des", maxLevel=1, cost=2, iconText=">>", htmlPos=new Vector2(385,160) },
-            new NodeData { id="per", displayName="Tiro Perfurante",  description="As magias atravessam o primeiro inimigo e acertam o de trás.",    effectText="Tiros atravessam 1 inimigo",    requirementId="rap", maxLevel=1, cost=3, iconText="->", htmlPos=new Vector2(445,100) },
-            new NodeData { id="dup", displayName="Fileiras de Tiro", description="Dispara projéteis em fileiras verticais como nos jogos de nave.",    effectText="2 fileiras de tiro verticais",  requirementId="per", maxLevel=2, cost=3, iconText="::", htmlPos=new Vector2(505, 60) },
-        };
+        [Tooltip("Tamanho padrão do ícone interno dentro do nó.")]
+        public Vector2 defaultIconSize = new Vector2(40, 40);
+
+        [Tooltip("Espessura das linhas que conectam os nós da árvore.")]
+        public float lineThickness = 5f;
+
+        [Tooltip("Tamanho da área navegável da árvore.")]
+        public Vector2 treeAreaSize = new Vector2(2000, 2000);
+
+        [Header("Árvore de Habilidades (Customização Livre)")]
+        [Tooltip("Lista de nós da árvore. Modifique posições (canvasPos), ícones (customIcon) e requisitos livremente!")]
+        [SerializeField] public List<NodeData> treeNodes = new List<NodeData>();
+
+        [Header("Navegação Interativa (Pan / Arraste)")]
+        [Tooltip("Se ativado: segurar o mouse e arrastar para baixo move a árvore para cima (e vice-versa).")]
+        [SerializeField] public bool invertDrag = true;
+        [Tooltip("Sensibilidade do movimento de arraste.")]
+        [SerializeField] public float dragSensitivity = 1.0f;
+        [Tooltip("Habilita zoom suave com a roda do mouse.")]
+        [SerializeField] public bool enableZoom = true;
+
+        // ─── Cores Repaginadas da Paleta Arcana ──────────────────────────────────
+        static readonly Color C_BG_OVERLAY   = new Color(0.04f, 0.03f, 0.08f, 0.96f);
+        static readonly Color C_PANEL_BG     = new Color(0.09f, 0.06f, 0.16f, 1.00f);
+        static readonly Color C_PANEL_BORDER = new Color(0.32f, 0.22f, 0.50f, 1.00f);
+        static readonly Color C_DARK_BOX     = new Color(0.06f, 0.04f, 0.11f, 1.00f);
+        static readonly Color C_DARK_BOX_HL  = new Color(0.12f, 0.08f, 0.20f, 1.00f);
+        static readonly Color C_LINE         = new Color(0.40f, 0.28f, 0.60f, 0.90f);
+        static readonly Color C_LOCKED       = new Color(0.16f, 0.12f, 0.24f, 1.00f);
+        static readonly Color C_AVAIL        = new Color(0.22f, 0.82f, 0.98f, 1.00f);
+        static readonly Color C_BOUGHT       = new Color(0.92f, 0.22f, 0.52f, 1.00f);
+        static readonly Color C_GOLD         = new Color(0.98f, 0.76f, 0.20f, 1.00f);
+        static readonly Color C_MUTED        = new Color(0.70f, 0.64f, 0.82f, 1.00f);
+        static readonly Color C_CARD_BG      = new Color(0.95f, 0.91f, 0.98f, 1.00f);
+        static readonly Color C_CARD_DARK    = new Color(0.14f, 0.09f, 0.22f, 1.00f);
+        static readonly Color C_CYAN_ICE     = new Color(0.30f, 0.78f, 1.00f, 1.00f);
+        static readonly Color C_FIRE_RED     = new Color(0.95f, 0.30f, 0.18f, 1.00f);
+
+        // ─── Cores Configuráveis no Inspector (Não resetam no Play!) ──────────
+        [Header("Cores dos Botões das Abas (Árvore e Evolução)")]
+        [Tooltip("Cor de fundo da aba quando selecionada (ativa).")]
+        public Color tabActiveColor = new Color(0.92f, 0.22f, 0.52f, 1.00f);
+        [Tooltip("Cor de fundo da aba quando desselecionada (inativa).")]
+        public Color tabInactiveColor = new Color(0.12f, 0.08f, 0.20f, 1.00f);
+        [Tooltip("Cor do texto da aba selecionada.")]
+        public Color tabActiveTextColor = Color.white;
+        [Tooltip("Cor do texto da aba inativa.")]
+        public Color tabInactiveTextColor = new Color(0.70f, 0.64f, 0.82f, 1.00f);
+        [Tooltip("Cor da barrinha indicadora sob a aba ativa.")]
+        public Color tabIndicatorColor = new Color(0.98f, 0.76f, 0.20f, 1.00f);
+
+        [Header("Cores dos Nós da Árvore de Habilidades")]
+        [Tooltip("Cor do nó quando bloqueado (pré-requisito não cumprido).")]
+        public Color nodeLockedColor = new Color(0.16f, 0.12f, 0.24f, 1.00f);
+        [Tooltip("Cor do nó quando disponível para comprar.")]
+        public Color nodeAvailableColor = new Color(0.22f, 0.82f, 0.98f, 1.00f);
+        [Tooltip("Cor do nó quando já foi comprado.")]
+        public Color nodeBoughtColor = new Color(0.92f, 0.22f, 0.52f, 1.00f);
+        [Tooltip("Cor do nó quando atingiu o nível máximo.")]
+        public Color nodeMaxedColor = new Color(0.98f, 0.76f, 0.20f, 1.00f);
+
+        [Header("Cores dos Botões de Ação")]
+        [Tooltip("Cor do botão Desbloquear / Comprar Upgrade.")]
+        public Color buyButtonColor = new Color(0.92f, 0.22f, 0.52f, 1.00f);
+        [Tooltip("Cor do botão Evoluir Cajado quando liberado.")]
+        public Color evolveButtonColor = new Color(0.98f, 0.76f, 0.20f, 1.00f);
 
         // ─── Custom Staff Sprites ─────────────────────────────────────────────
-        [Header("Personalização de Sprites (Arraste aqui no Inspector!)")]
-        [Tooltip("Sprite do Cajado Inicial (Madeira / Gelo). Arraste seu PNG aqui ou deixe vazio para usar o padrão.")]
+        [Header("Personalização de Sprites do Cajado")]
         [SerializeField] public Sprite customStaffBasicSprite;
-        [Tooltip("Sprite do Cajado Evoluído (Arcano / Fogo). Arraste seu PNG aqui ou deixe vazio para usar o padrão.")]
         [SerializeField] public Sprite customStaffEvolvedSprite;
-        [Tooltip("Sprite do Coração de Fogo. Arraste seu PNG aqui ou deixe vazio para usar o padrão.")]
         [SerializeField] public Sprite customFireHeartSprite;
-        [Tooltip("Sprite do Núcleo do Boss. Arraste seu PNG aqui ou deixe vazio para usar o padrão.")]
         [SerializeField] public Sprite customBossCoreSprite;
+
+        // ─── Custom Book Background ───────────────────────────────────────────
+        [Header("Personalização do Fundo do Painel (Livro Travel Book)")]
+        [Tooltip("Sprite do livro aberto como fundo. Se vazio, carrega automaticamente o livro montado do Travel Book!")]
+        [SerializeField] public Sprite customBookSprite;
+        [Tooltip("Tamanho do Livro no Canvas. Padrão 1344x960 (escala perfeita 6x do pixel-art sem distorção).")]
+        public Vector2 bookSize = new Vector2(1344, 960);
+
+        public Sprite GetBookSprite()
+        {
+            if (customBookSprite != null) return customBookSprite;
+            var s = LoadSpriteResourceOrAsset("UI_TravelBook_BookAssembled_6x");
+            if (s != null) return s;
+            s = LoadSpriteResourceOrAsset("UI_TravelBook_BookAssembled_4x");
+            if (s != null) return s;
+            s = LoadSpriteResourceOrAsset("UI_TravelBook_BookAssembled_Full");
+            return s;
+        }
 
         private Sprite LoadSpriteResourceOrAsset(string spriteName)
         {
@@ -146,8 +208,14 @@ namespace WitchShmup.UI
         GameObject tabTreeContent, tabStaffContent;
         Button     tabTreeBtn, tabStaffBtn;
         Image      tabTreeBtnBg, tabStaffBtnBg;
+        Image      tabTreeIndicator, tabStaffIndicator;
+        TextMeshProUGUI tabTreeTxt, tabStaffTxt;
         Button     closeBtn;
         TextMeshProUGUI spText;
+
+        // Container interativo da árvore
+        RectTransform    treeContentRt;
+        TreeDraggablePan panController;
 
         // Card detalhes (Tab 1)
         TextMeshProUGUI cardName, cardCost, cardDesc, cardEffect, cardStatus;
@@ -169,224 +237,615 @@ namespace WitchShmup.UI
 
         string selectedId   = "vit";
         bool   staffTabOpen = false;
-        bool   built        = false;
 
         // ─── Lifecycle ────────────────────────────────────────────────────────
-        void Awake()   { EnsureBuilt(); }
-        void Start()   { EnsureBuilt(); HookAll(); RefreshUI(); }
-        void OnEnable(){ EnsureBuilt(); HookAll(); RefreshUI(); }
+        void Awake()
+        {
+            EnsureDefaultNodes();
+            EnsureBuilt();
+        }
 
-        void EnsureBuilt() { if (built) return; Build(); built = true; }
+        void Start()
+        {
+            EnsureDefaultNodes();
+            EnsureBuilt();
+            HookAll();
+            RefreshUI();
+        }
 
-        // ═════════════════════════════════════════════════════════════════════
-        // BUILD
-        // ═════════════════════════════════════════════════════════════════════
+        void OnEnable()
+        {
+            EnsureDefaultNodes();
+            EnsureBuilt();
+            HookAll();
+            RefreshUI();
+        }
+
+        void Update()
+        {
+            if (!Application.isPlaying) return;
+            if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.Escape))
+            {
+                OnClose();
+            }
+        }
+
+        /// <summary>
+        /// Se os elementos já existirem na cena, vincula as referências sem destruir nada!
+        /// Se não existirem, constrói a UI inicial.
+        /// </summary>
+        void EnsureBuilt()
+        {
+            if (HasExistingUI())
+            {
+                BindExistingUI();
+                return;
+            }
+            Build();
+        }
+
+        public bool HasExistingUI()
+        {
+            return transform.Find("FrameBorder/Frame/Tab_Tree") != null;
+        }
+
+        public void EnsureDefaultNodes()
+        {
+            if (treeNodes != null && treeNodes.Count >= 20) return;
+
+            treeNodes = new List<NodeData>
+            {
+                // ── 1. Tronco Base ──────────────────────────────────────────────
+                new NodeData { id="vit", displayName="1. Vitalidade Inicial", description="Seu corpo arcano aguenta mais impacto na masmorra.", effectText="+1 Coração de Vida Máxima", requirementId=null, maxLevel=1, cost=2, canvasPos=new Vector2(0, -320) },
+                new NodeData { id="vel", displayName="2. Vassoura Leve", description="A vassoura corta o ar com leveza, facilitando esquivas.", effectText="+10% Velocidade de Movimento", requirementId="vit", maxLevel=1, cost=2, canvasPos=new Vector2(0, -220) },
+
+                // ── 2. Ramo de Fogo (Coluna Interna Esquerda) ───────────────────
+                new NodeData { id="f_cha", displayName="3. Chama Viva", description="Intensifica o fogo mágico disparado pelo cajado.", effectText="+15% de Dano de Fogo", requirementId="vel", maxLevel=1, cost=2, canvasPos=new Vector2(-90, -110) },
+                new NodeData { id="f_que", displayName="4. Brasa Contínua", description="Inimigos atingidos ardem continuamente ao longo de 2s.", effectText="Dano Contínuo por 2s (DoT)", requirementId="f_cha", maxLevel=1, cost=3, canvasPos=new Vector2(-90, 0) },
+                new NodeData { id="f_are", displayName="5. Impacto Térmico", description="O impacto do fogo causa uma detonação curta ao redor.", effectText="Dano em Área Residual (AoE)", requirementId="f_que", maxLevel=1, cost=4, canvasPos=new Vector2(-90, 110) },
+                new NodeData { id="f_sup", displayName="6. Combustão Espalhada", description="Se o monstro queimar e morrer, espalha brasa aos vizinhos.", effectText="Espalha Chamas em Cadeia", requirementId="f_are", maxLevel=1, cost=4, canvasPos=new Vector2(-70, 220) },
+
+                // ── 3. Asa de Tiro (Coluna Externa Esquerda) ───────────────────
+                new NodeData { id="t_cad", displayName="7. Cadência Constante", description="Acelera a velocidade de recarga e disparo do mago.", effectText="+12% de Velocidade de Ataque", requirementId="f_cha", maxLevel=1, cost=2, canvasPos=new Vector2(-240, -40) },
+                new NodeData { id="t_hit", displayName="8. Cajado Ampliado", description="Aumenta a área de contato de todos os projéteis.", effectText="+20% no Tamanho dos Projéteis", requirementId="t_cad", maxLevel=1, cost=3, canvasPos=new Vector2(-280, 70) },
+                new NodeData { id="t_dup", displayName="9. Tiro Duplo Angular", description="A cada 3 disparos, solta um segundo tiro em leque de 15º.", effectText="Disparo Duplo a cada 3 tiros", requirementId="t_hit", maxLevel=1, cost=4, canvasPos=new Vector2(-280, 180) },
+                new NodeData { id="t_rit", displayName="10. Ritmo Bélico", description="Atirar continuamente por 2s concede um surto de rapidez.", effectText="+10% de Cadência em Combate", requirementId="t_dup", maxLevel=1, cost=4, canvasPos=new Vector2(-210, 280) },
+
+                // ── 4. Ramo de Gelo (Coluna Interna Direita) ────────────────────
+                new NodeData { id="g_lan", displayName="11. Frio Cortante", description="O tiro de gelo penetra o ar com lâminas afiadas.", effectText="+15% de Dano de Gelo", requirementId="vel", maxLevel=1, cost=2, canvasPos=new Vector2(90, -110) },
+                new NodeData { id="g_con", displayName="12. Resfriamento", description="O gelo arrefece os movimentos dos monstros inimigos.", effectText="Lentidão de 20% por 1,5s", requirementId="g_lan", maxLevel=1, cost=3, canvasPos=new Vector2(90, 0) },
+                new NodeData { id="g_que", displayName="13. Quebra-Gelo", description="Causa dano devastador contra alvos que já estejam lentos.", effectText="+25% de Dano em Alvos Lentos", requirementId="g_con", maxLevel=1, cost=4, canvasPos=new Vector2(90, 110) },
+                new NodeData { id="g_per", displayName="14. Gelo Perfurante", description="Se o tiro de gelo abater o primeiro monstro, ele segue em frente.", effectText="Perfuração em Golpe Letal", requirementId="g_que", maxLevel=1, cost=4, canvasPos=new Vector2(70, 220) },
+
+                // ── 5. Asa de Vida (Coluna Externa Direita) ────────────────────
+                new NodeData { id="v_inv", displayName="15. Recuperação Rápida", description="Aumenta o tempo que o mago fica imune após sofrer dano.", effectText="+0,5s de Invulnerabilidade", requirementId="g_lan", maxLevel=1, cost=2, canvasPos=new Vector2(240, -40) },
+                new NodeData { id="v_cor", displayName="16. Coração Adicional", description="Fortalece permanentemente a essência vital do feiticeiro.", effectText="+1 Coração de Vida Máxima", requirementId="v_inv", maxLevel=1, cost=4, canvasPos=new Vector2(280, 70) },
+                new NodeData { id="v_pul", displayName="17. Pulso Protetor", description="Ao levar um golpe, dissipa os projéteis inimigos colados em você.", effectText="Apaga Balas ao Sofrer Dano", requirementId="v_cor", maxLevel=1, cost=4, canvasPos=new Vector2(280, 180) },
+                new NodeData { id="v_seg", displayName="18. Preservação Mágica", description="Ao beirar a derrota, ganha 2 segundos invulneráveis para escapar.", effectText="Sobrevida de 2s em Risco Letal", requirementId="v_pul", maxLevel=1, cost=5, canvasPos=new Vector2(210, 280) },
+
+                // ── 6. Tronco Topo (Centro Superior & Ápice) ───────────────────
+                new NodeData { id="ima", displayName="19. Ímã de Mana", description="Atrai os Skill Points e orbes dropados de muito mais longe.", effectText="+50% de Alcance de Coleta", requirementId="f_sup", maxLevel=1, cost=3, canvasPos=new Vector2(0, 280) },
+                new NodeData { id="fus", displayName="20. Harmonia Elemental", description="Alternar entre Gelo e Fogo fortalece o próximo tiro com faíscas.", effectText="+25% de Dano ao Alternar Elemento", requirementId="ima", maxLevel=1, cost=5, canvasPos=new Vector2(0, 390) }
+            };
+        }
+
         private static void SafeDestroy(GameObject go)
         {
             if (go == null) return;
-            if (Application.isPlaying)
-                Destroy(go);
-            else
-                DestroyImmediate(go);
+            if (Application.isPlaying) Destroy(go);
+            else                       DestroyImmediate(go);
         }
 
-        void Build()
+        // ═════════════════════════════════════════════════════════════════════
+        // APLICAÇÃO VISUAL DO LIVRO (FUNDO DO PAINEL)
+        // ═════════════════════════════════════════════════════════════════════
+        public void EnsureBookVisualsApplied(Transform frameBorder, Transform frame)
         {
-            // Destroy old children
+            if (frameBorder == null || frame == null) return;
+
+            var fbRt = (RectTransform)frameBorder;
+            if (fbRt != null)
+            {
+                fbRt.anchorMin = new Vector2(0.5f, 0.5f);
+                fbRt.anchorMax = new Vector2(0.5f, 0.5f);
+                fbRt.pivot     = new Vector2(0.5f, 0.5f);
+                fbRt.sizeDelta = bookSize;
+                fbRt.anchoredPosition = Vector2.zero;
+            }
+            var fbImg = frameBorder.GetComponent<Image>();
+            if (fbImg != null) fbImg.color = Color.clear;
+
+            var fRt = (RectTransform)frame;
+            if (fRt != null)
+            {
+                fRt.anchorMin = Vector2.zero;
+                fRt.anchorMax = Vector2.one;
+                fRt.sizeDelta = Vector2.zero;
+                fRt.anchoredPosition = Vector2.zero;
+            }
+            var fImg = frame.GetComponent<Image>();
+            if (fImg != null)
+            {
+                var bookSp = GetBookSprite();
+                if (bookSp != null)
+                {
+                    fImg.sprite = bookSp;
+                    fImg.color = Color.white;
+                    fImg.preserveAspect = true;
+                    fImg.type = Image.Type.Simple;
+                }
+            }
+
+            var treeCanvas = frame.Find("Tab_Tree/TreeBorder/TreeCanvas");
+            if (treeCanvas != null)
+            {
+                var tcImg = treeCanvas.GetComponent<Image>();
+                if (tcImg != null) tcImg.color = Color.clear;
+            }
+
+            var treeBorder = frame.Find("Tab_Tree/TreeBorder");
+            if (treeBorder != null)
+            {
+                var tbImg = treeBorder.GetComponent<Image>();
+                if (tbImg != null) tbImg.color = Color.clear;
+
+                var tbRt = (RectTransform)treeBorder;
+                tbRt.anchorMin = new Vector2(0.045f, 0.055f);
+                tbRt.anchorMax = new Vector2(0.485f, 0.88f);
+                tbRt.sizeDelta = Vector2.zero;
+                tbRt.anchoredPosition = Vector2.zero;
+            }
+
+            var cardBorder = frame.Find("Tab_Tree/CardBorder");
+            if (cardBorder != null)
+            {
+                var cbImg = cardBorder.GetComponent<Image>();
+                if (cbImg != null) cbImg.color = Color.clear;
+
+                var cbRt = (RectTransform)cardBorder;
+                cbRt.anchorMin = new Vector2(0.515f, 0.055f);
+                cbRt.anchorMax = new Vector2(0.955f, 0.88f);
+                cbRt.sizeDelta = Vector2.zero;
+                cbRt.anchoredPosition = Vector2.zero;
+            }
+
+            var card = frame.Find("Tab_Tree/CardBorder/Card");
+            if (card != null)
+            {
+                var cImg = card.GetComponent<Image>();
+                if (cImg != null) cImg.color = Color.clear;
+            }
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // BINDING DE ELEMENTOS EXISTENTES (NÃO DESTROI MODIFICAÇÕES DO USUÁRIO)
+        // ═════════════════════════════════════════════════════════════════════
+        public void BindExistingUI()
+        {
+            var frameBorder = transform.Find("FrameBorder");
+            if (frameBorder == null) return;
+            var frame = frameBorder.Find("Frame");
+            if (frame == null) return;
+
+            EnsureBookVisualsApplied(frameBorder, frame);
+
+            var hdr = frame.Find("Header");
+            if (hdr != null)
+            {
+                var bt = hdr.Find("Btn_Tree");
+                if (bt != null)
+                {
+                    tabTreeBtn = bt.GetComponent<Button>();
+                    tabTreeBtnBg = bt.GetComponent<Image>();
+                    tabTreeTxt = bt.Find("Text")?.GetComponent<TextMeshProUGUI>();
+                    tabTreeIndicator = bt.Find("Indicator")?.GetComponent<Image>();
+                }
+
+                var bs = hdr.Find("Btn_Staff");
+                if (bs != null)
+                {
+                    tabStaffBtn = bs.GetComponent<Button>();
+                    tabStaffBtnBg = bs.GetComponent<Image>();
+                    tabStaffTxt = bs.Find("Text")?.GetComponent<TextMeshProUGUI>();
+                    tabStaffIndicator = bs.Find("Indicator")?.GetComponent<Image>();
+                }
+
+                var spBx = hdr.Find("SP_Border/SP_Box");
+                if (spBx != null) spText = spBx.Find("SP")?.GetComponent<TextMeshProUGUI>();
+
+                var clo = hdr.Find("Btn_Close");
+                if (clo != null) closeBtn = clo.GetComponent<Button>();
+            }
+
+            var tTree = frame.Find("Tab_Tree");
+            if (tTree != null)
+            {
+                tabTreeContent = tTree.gameObject;
+                var treeCanvas = tTree.Find("TreeBorder/TreeCanvas");
+                if (treeCanvas != null)
+                {
+                    panController = treeCanvas.GetComponent<TreeDraggablePan>();
+                    var tContent = treeCanvas.Find("TreeContent");
+                    if (tContent != null)
+                    {
+                        treeContentRt = tContent.GetComponent<RectTransform>();
+                        if (panController != null) panController.SetContent(treeContentRt);
+
+                        // Reconecta os nós existentes e respeita posições/tamanhos editados na Scene View!
+                        foreach (var n in treeNodes)
+                        {
+                            var nTr = tContent.Find($"Node_{n.id}");
+                            if (nTr != null)
+                            {
+                                n.nodeGo = nTr.gameObject;
+                                n.nodeBg = nTr.GetComponent<Image>();
+                                n.nodeRing = nTr.Find("Ring")?.GetComponent<Image>();
+                                n.nodeIcon = nTr.Find("Icon")?.GetComponent<Image>();
+                                n.levelLabel = nTr.Find("Lv")?.GetComponent<TextMeshProUGUI>();
+
+                                // Atualiza sprite se houver customIcon
+                                if (n.nodeIcon != null) n.nodeIcon.sprite = GetNodeSprite(n);
+
+                                var rt = (RectTransform)nTr;
+                                n.canvasPos = rt.anchoredPosition;
+
+                                if (n.customNodeSize == Vector2.zero && rt.sizeDelta != defaultNodeSize)
+                                {
+                                    n.customNodeSize = rt.sizeDelta;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                var cardTr = tTree.Find("CardBorder/Card");
+                if (cardTr != null)
+                {
+                    cardName = cardTr.Find("Name")?.GetComponent<TextMeshProUGUI>();
+                    cardCost = cardTr.Find("CostBorder/CostBox/CostTxt")?.GetComponent<TextMeshProUGUI>();
+                    cardIconBox = cardTr.Find("IconBox")?.gameObject;
+                    if (cardIconBox != null)
+                    {
+                        cardIconImg = cardIconBox.transform.Find("IconPreview")?.GetComponent<Image>();
+                        cardPipsContainer = cardIconBox.transform.Find("Pips");
+                    }
+                    cardDesc = cardTr.Find("DescBox/Desc")?.GetComponent<TextMeshProUGUI>();
+                    cardEffect = cardTr.Find("EffectBox/Effect")?.GetComponent<TextMeshProUGUI>();
+                    cardStatus = cardTr.Find("Status")?.GetComponent<TextMeshProUGUI>();
+                    var bBuy = cardTr.Find("Btn_Buy");
+                    if (bBuy != null)
+                    {
+                        buyBtn = bBuy.GetComponent<Button>();
+                        buyBtnLabel = bBuy.Find("Label")?.GetComponent<TextMeshProUGUI>();
+                    }
+                }
+            }
+
+            var tStaff = frame.Find("Tab_Staff");
+            if (tStaff != null)
+            {
+                tabStaffContent = tStaff.gameObject;
+                var curBox = tStaff.Find("BoxCur_Border/Box_Cur");
+                if (curBox != null)
+                {
+                    curStaffImg = curBox.Find("Img")?.GetComponent<Image>();
+                    curStaffName = curBox.Find("Name")?.GetComponent<TextMeshProUGUI>();
+                    curStaffStat = curBox.Find("Stat")?.GetComponent<TextMeshProUGUI>();
+                }
+                var nxtBox = tStaff.Find("BoxNxt_Border/Box_Nxt") ?? tStaff.Find("Box_Nxt");
+                if (nxtBox != null)
+                {
+                    nxtStaffBox = nxtBox.gameObject;
+                    nxtStaffImg = nxtBox.Find("Img")?.GetComponent<Image>();
+                    nxtStaffName = nxtBox.Find("Name")?.GetComponent<TextMeshProUGUI>();
+                    nxtStaffStat = nxtBox.Find("Stat")?.GetComponent<TextMeshProUGUI>();
+                }
+                var matP = tStaff.Find("BoxNxt_Border/MatPanel") ?? tStaff.Find("MatPanel");
+                if (matP != null)
+                {
+                    needSummary = matP.Find("Need")?.GetComponent<TextMeshProUGUI>();
+                    var mBat = matP.Find("Mat_Coração de Fogo");
+                    if (mBat != null)
+                    {
+                        batSegCont = mBat.Find("Segs");
+                        batCountTxt = mBat.Find("Count")?.GetComponent<TextMeshProUGUI>();
+                    }
+                    var mCore = matP.Find("Mat_Núcleo do Boss");
+                    if (mCore != null)
+                    {
+                        coreSegCont = mCore.Find("Segs");
+                        coreCountTxt = mCore.Find("Count")?.GetComponent<TextMeshProUGUI>();
+                    }
+                }
+                var ev = tStaff.Find("BoxNxt_Border/Btn_Evolve") ?? tStaff.Find("Btn_Evolve");
+                if (ev != null)
+                {
+                    evolveBtn = ev.GetComponent<Button>();
+                    evolveBtnLabel = ev.Find("Label")?.GetComponent<TextMeshProUGUI>();
+                }
+                var msgTr = tStaff.Find("BoxNxt_Border/Msg") ?? tStaff.Find("Msg");
+                if (msgTr != null) staffMsg = msgTr.GetComponent<TextMeshProUGUI>();
+            }
+
+            HookAll();
+            RefreshUI();
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // BUILD PROCEDURAL DA INTERFACE (CHAMADO APENAS QUANDO A UI NÃO EXISTE OU AO FORÇAR)
+        // ═════════════════════════════════════════════════════════════════════
+        public void Build()
+        {
+            EnsureDefaultNodes();
+
             for (int i = transform.childCount - 1; i >= 0; i--)
                 SafeDestroy(transform.GetChild(i).gameObject);
 
-            // ── Configure the Canvas that [RequireComponent] guarantees exists ──
-            // overrideSorting breaks free from parent HUD_Canvas that has scale=(0,0,0).
             var selfCanvas = GetComponent<Canvas>();
             selfCanvas.overrideSorting = true;
             selfCanvas.sortingOrder    = 100;
 
-            // Make this RectTransform fill the whole screen
             var selfRt = GetComponent<RectTransform>();
             if (selfRt)
             {
-                selfRt.anchorMin       = Vector2.zero;
-                selfRt.anchorMax       = Vector2.one;
-                selfRt.sizeDelta       = Vector2.zero;
+                selfRt.anchorMin        = Vector2.zero;
+                selfRt.anchorMax        = Vector2.one;
+                selfRt.sizeDelta        = Vector2.zero;
                 selfRt.anchoredPosition = Vector2.zero;
-                selfRt.localScale      = Vector3.one;   // ensure no inherited zero-scale
+                selfRt.localScale       = Vector3.one;
             }
-            Img(gameObject, C_BG);
+            Img(gameObject, C_BG_OVERLAY);
 
-            // Central frame — fullscreen (anchors 0→1, delta 0) with a small inset margin
-            var frame = Rect("Frame", transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(-80, -60));
-            Img(frame, C_PANEL);
+            // Container central do livro no formato 1.4:1 (pixel-perfect 1344x960)
+            var frameBorder = Rect("FrameBorder", transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), bookSize);
+            Img(frameBorder, Color.clear);
+
+            // O Frame agora exibe o Sprite completo do Livro Aberto montado do Travel Book!
+            var frame = Rect("Frame", frameBorder.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero);
+            var frameImg = Img(frame, Color.white);
+            frameImg.sprite = GetBookSprite();
+            frameImg.preserveAspect = true;
+            frameImg.type = Image.Type.Simple;
 
             BuildHeader(frame.transform);
 
-            // Tab 1
-            tabTreeContent  = Rect("Tab_Tree",  frame.transform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-48,-110));
-            SetAnchoredPos(tabTreeContent, new Vector2(0,-44));
+            // Tab 1: Árvore de Habilidades (Página Esquerda = Árvore; Página Direita = Card de Detalhes)
+            tabTreeContent = Rect("Tab_Tree", frame.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             BuildTreeTab(tabTreeContent.transform);
 
-            // Tab 2
-            tabStaffContent = Rect("Tab_Staff", frame.transform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-48,-110));
-            SetAnchoredPos(tabStaffContent, new Vector2(0,-44));
+            // Tab 2: Evolução do Cajado (Página Esquerda = Cajado Atual; Página Direita = Próximo + Materiais)
+            tabStaffContent = Rect("Tab_Staff", frame.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             BuildStaffTab(tabStaffContent.transform);
             tabStaffContent.SetActive(false);
 
-            // IMPORTANTE: Coloca o Header como último filho para ficar SEMPRE na frente das abas,
-            // garantindo que os botões de troca de aba recebam cliques sem bloqueio de raycasts.
             var hdr = frame.transform.Find("Header");
-            if (hdr != null)
-            {
-                hdr.SetAsLastSibling();
-            }
+            if (hdr != null) hdr.SetAsLastSibling();
+
+            HookAll();
+            SwitchTab(false);
         }
 
-        // ─── Header ──────────────────────────────────────────────────────────
+        // ─── Header: 2 Botões no Topo (Tabs Marcadores) + SP + Fechar ────────
         void BuildHeader(Transform parent)
         {
-            var hdr = Rect("Header", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-48,62));
-            SetAnchoredPos(hdr, new Vector2(0,-16));
+            var hdr = Rect("Header", parent, new Vector2(0.045f, 0.88f), new Vector2(0.955f, 0.98f), new Vector2(0.5f, 1f), Vector2.zero);
+            SetAnchoredPos(hdr, Vector2.zero);
 
-            // Tab tree
-            var bt = Rect("Btn_Tree",  hdr.transform, new Vector2(0,0.5f), new Vector2(0,0.5f), new Vector2(0,0.5f), new Vector2(310,54));
-            tabTreeBtnBg = Img(bt, C_BOUGHT);
+            var navBg = Rect("NavBg", hdr.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero);
+            Img(navBg, Color.clear);
+
+            // Botão 1: Árvore (Aba Marcador Esquerdo)
+            var bt = Rect("Btn_Tree", hdr.transform, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(280, 48));
+            SetAnchoredPos(bt, new Vector2(10, 0));
+            tabTreeBtnBg = Img(bt, tabActiveColor);
             tabTreeBtn   = bt.AddComponent<Button>();
-            Txt("Text", bt.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.one, "ÁRVORE DE UPGRADES", 18, Color.white, FontStyles.Bold);
+            tabTreeTxt   = Txt("Text", bt.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.one, 
+                               "✦ ÁRVORE DE HABILIDADES", 16, tabActiveTextColor, FontStyles.Bold);
+            tabTreeTxt.alignment = TextAlignmentOptions.Center;
 
-            // Tab staff
-            var bs = Rect("Btn_Staff", hdr.transform, new Vector2(0,0.5f), new Vector2(0,0.5f), new Vector2(0,0.5f), new Vector2(260,54));
-            SetAnchoredPos(bs, new Vector2(324,0));
-            tabStaffBtnBg = Img(bs, C_LINE);
+            var treeIndGo = Rect("Indicator", bt.transform, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 0), new Vector2(0, 4));
+            tabTreeIndicator = Img(treeIndGo, tabIndicatorColor);
+
+            // Botão 2: Cajado (Aba Marcador Direito)
+            var bs = Rect("Btn_Staff", hdr.transform, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(240, 48));
+            SetAnchoredPos(bs, new Vector2(300, 0));
+            tabStaffBtnBg = Img(bs, tabInactiveColor);
             tabStaffBtn   = bs.AddComponent<Button>();
-            Txt("Text", bs.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.one, "EVOLUIR CAJADO", 18, Color.white, FontStyles.Bold);
+            tabStaffTxt   = Txt("Text", bs.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.one, 
+                                "⚡ EVOLUIR CAJADO", 16, tabInactiveTextColor, FontStyles.Bold);
+            tabStaffTxt.alignment = TextAlignmentOptions.Center;
 
-            // Skill points
-            var spBox = Rect("SP_Box", hdr.transform, new Vector2(1,0.5f), new Vector2(1,0.5f), new Vector2(1,0.5f), new Vector2(200,54));
-            SetAnchoredPos(spBox, new Vector2(-60,0));
-            Img(spBox, new Color(0.04f,0.03f,0.06f,1f));
-            spText = Txt("SP", spBox.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.one, "SP: 0", 20, C_GOLD, FontStyles.Bold);
+            var staffIndGo = Rect("Indicator", bs.transform, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 0), new Vector2(0, 4));
+            tabStaffIndicator = Img(staffIndGo, Color.clear);
+
+            // Caixa de SP no canto superior direito do livro
+            var spBorder = Rect("SP_Border", hdr.transform, new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(210, 44));
+            SetAnchoredPos(spBorder, new Vector2(-65, 0));
+            Img(spBorder, C_GOLD);
+
+            var spBox = Rect("SP_Box", spBorder.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(-4, -4));
+            Img(spBox, C_DARK_BOX);
+
+            spText = Txt("SP", spBox.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.one, 
+                         "★ SP: 0", 17, C_GOLD, FontStyles.Bold);
             spText.alignment = TextAlignmentOptions.Center;
 
-            // Close
-            var clo = Rect("Btn_Close", hdr.transform, new Vector2(1,0.5f), new Vector2(1,0.5f), new Vector2(1,0.5f), new Vector2(54,54));
-            Img(clo, C_BOUGHT);
+            // Botão Fechar [X] no canto superior direito do livro
+            var clo = Rect("Btn_Close", hdr.transform, new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(46, 44));
+            SetAnchoredPos(clo, new Vector2(-10, 0));
+            Img(clo, new Color(0.75f, 0.15f, 0.28f, 1f));
             closeBtn = clo.AddComponent<Button>();
-            Txt("X", clo.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.one, "✕", 26, Color.white, FontStyles.Bold);
+
+            var cloTxt = Txt("X", clo.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.one, 
+                             "✕", 22, Color.white, FontStyles.Bold);
+            cloTxt.alignment = TextAlignmentOptions.Center;
         }
 
-        // ─── Tab 1: Tree ──────────────────────────────────────────────────────
+        // ─── Tab 1: Árvore Interativa (Página Esquerda = Árvore; Direita = Detalhes) ──
         void BuildTreeTab(Transform parent)
         {
-            // Subtitle
-            var sub = Txt("Sub", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(0,28),
-                "Inimigos dropam skill points. Passe o mouse num nó e clique para desbloquear.",
-                18, C_MUT, FontStyles.Normal);
-            sub.alignment = TextAlignmentOptions.Center;
+            // Página Esquerda do Livro: Área da Árvore
+            var treeBorder = Rect("TreeBorder", parent, new Vector2(0.045f, 0.055f), new Vector2(0.485f, 0.88f), Vector2.zero, Vector2.zero);
+            Img(treeBorder, Color.clear);
 
-            // Left: tree canvas (0..58% width)
-            var treeBox = Rect("TreeCanvas", parent, Vector2.zero, new Vector2(0.57f,1), Vector2.zero, new Vector2(0,-34));
-            Img(treeBox, C_DARK);
+            // TreeCanvas com fundo transparente para o pergaminho do livro aparecer!
+            var treeCanvas = Rect("TreeCanvas", treeBorder.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            Img(treeCanvas, Color.clear);
+            treeCanvas.AddComponent<RectMask2D>();
 
-            // Right: detail card (60..100%)
-            var card = Rect("Card", parent, new Vector2(0.61f,0), new Vector2(1,1), new Vector2(0,0), new Vector2(0,0));
-            Img(card, C_CARD);
+            panController = treeCanvas.AddComponent<TreeDraggablePan>();
+            panController.dragSensitivity = dragSensitivity;
+            panController.invertDrag = invertDrag;
+            panController.enableZoom = enableZoom;
+
+            // Container interno móvel com tamanho configurável
+            var contentGo = Rect("TreeContent", treeCanvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), treeAreaSize);
+            treeContentRt = contentGo.GetComponent<RectTransform>();
+            panController.SetContent(treeContentRt);
+
+            // Página Direita do Livro: Card de Detalhes
+            var cardBorder = Rect("CardBorder", parent, new Vector2(0.515f, 0.055f), new Vector2(0.955f, 0.88f), Vector2.zero, Vector2.zero);
+            Img(cardBorder, Color.clear);
+
+            var card = Rect("Card", cardBorder.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            Img(card, Color.clear);
             BuildDetailCard(card.transform);
 
-            // Lines behind nodes
-            var linesRoot = Rect("Lines", treeBox.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), Vector2.zero);
-            foreach (var n in NODES)
+            RedrawLines();
+
+            // Constrói cada Nó com suporte aos tamanhos personalizados
+            foreach (var n in treeNodes)
+            {
+                Vector2 nodeSize = (n.customNodeSize != Vector2.zero) ? n.customNodeSize : defaultNodeSize;
+                Vector2 iconSize = (n.customIconSize != Vector2.zero) ? n.customIconSize : defaultIconSize;
+
+                var nodeGo = Rect($"Node_{n.id}", treeContentRt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), nodeSize);
+                SetAnchoredPos(nodeGo, n.canvasPos);
+                n.nodeGo = nodeGo;
+
+                n.nodeBg = Img(nodeGo, C_LOCKED);
+
+                var ringGo = Rect("Ring", nodeGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(12, 12));
+                n.nodeRing = Img(ringGo, new Color(C_AVAIL.r, C_AVAIL.g, C_AVAIL.b, 0f));
+                ringGo.transform.SetAsFirstSibling();
+
+                var iconGo = Rect("Icon", nodeGo.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), iconSize);
+                n.nodeIcon = iconGo.AddComponent<Image>();
+                n.nodeIcon.sprite = GetNodeSprite(n);
+                n.nodeIcon.preserveAspect = true;
+                n.nodeIcon.raycastTarget = false;
+
+                n.levelLabel = Txt("Lv", nodeGo.transform, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 0), new Vector2(0, 22),
+                    "", 13, C_MUTED, FontStyles.Bold);
+                n.levelLabel.alignment = TextAlignmentOptions.Center;
+                SetAnchoredPos(n.levelLabel.gameObject, new Vector2(0, - (nodeSize.y * 0.5f + 12f)));
+
+                var trig = nodeGo.AddComponent<EventTrigger>();
+                Vector2 pointerDownPos = Vector2.zero;
+
+                AddTrigger(trig, EventTriggerType.PointerDown, data => {
+                    pointerDownPos = ((PointerEventData)data).position;
+                });
+
+                AddTrigger(trig, EventTriggerType.PointerEnter, _ => {
+                    SelectNode(n.id);
+                    PulseRing(n, true);
+                });
+
+                AddTrigger(trig, EventTriggerType.PointerExit, _ => {
+                    PulseRing(n, false);
+                });
+
+                AddTrigger(trig, EventTriggerType.Drag, data => {
+                    if (panController != null) panController.OnDrag((PointerEventData)data);
+                });
+
+                AddTrigger(trig, EventTriggerType.PointerClick, data => {
+                    var ped = (PointerEventData)data;
+                    if (Vector2.Distance(ped.position, pointerDownPos) < 10f)
+                    {
+                        SelectNode(n.id);
+                        TryBuy(n.id);
+                    }
+                });
+            }
+
+            // Botão "Resetar / Centralizar Visão [⟲]" na página esquerda
+            var resetGo = Rect("Btn_ResetView", treeCanvas.transform, new Vector2(1, 0), new Vector2(1, 0), new Vector2(1, 0), new Vector2(110, 30));
+            SetAnchoredPos(resetGo, new Vector2(-12, 12));
+            Img(resetGo, new Color(0.20f, 0.14f, 0.32f, 0.85f));
+            var rBtn = resetGo.AddComponent<Button>();
+            rBtn.onClick.AddListener(() => {
+                if (panController != null) panController.ResetView();
+            });
+            var rTxt = Txt("Txt", resetGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero,
+                           "⟲ Centralizar", 12, C_GOLD, FontStyles.Bold);
+            rTxt.alignment = TextAlignmentOptions.Center;
+
+            var leg = Txt("Legend", treeCanvas.transform, new Vector2(0, 0), new Vector2(0.75f, 0), new Vector2(0, 0), new Vector2(0, 24),
+                "● Bloqueado  ● Disponível  ● Comprado  ★ Máximo",
+                12, new Color(0.35f, 0.25f, 0.18f, 0.95f), FontStyles.Bold);
+            SetAnchoredPos(leg.gameObject, new Vector2(12, 10));
+        }
+
+        public void RedrawLines()
+        {
+            if (treeContentRt == null) return;
+
+            var linesObj = treeContentRt.Find("Lines");
+            if (linesObj != null)
+            {
+                SafeDestroy(linesObj.gameObject);
+            }
+
+            var linesRoot = Rect("Lines", treeContentRt, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero);
+            linesRoot.transform.SetAsFirstSibling();
+
+            foreach (var n in treeNodes)
             {
                 if (string.IsNullOrEmpty(n.requirementId)) continue;
                 var req = GetNode(n.requirementId);
                 if (req == null) continue;
-                DrawLine(linesRoot.transform, HtmlToCanvas(req.htmlPos), HtmlToCanvas(n.htmlPos));
+                DrawLine(linesRoot.transform, req.canvasPos, n.canvasPos);
             }
-
-            // Nodes
-            foreach (var n in NODES)
-            {
-                Vector2 pos = HtmlToCanvas(n.htmlPos);
-
-                var nodeGo = Rect($"Node_{n.id}", treeBox.transform, new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(68,68));
-                SetAnchoredPos(nodeGo, pos);
-                n.nodeGo = nodeGo;
-
-                // Background
-                n.nodeBg = Img(nodeGo, C_LOCKED);
-
-                // Hover ring (larger, behind bg via SetAsFirstSibling)
-                var ringGo = Rect("Ring", nodeGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), new Vector2(12,12));
-                n.nodeRing = Img(ringGo, new Color(C_AVAIL.r,C_AVAIL.g,C_AVAIL.b,0f));
-                ringGo.transform.SetAsFirstSibling();
-
-                // Icon (Image renderizada com SkillIconProvider)
-                var iconGo = Rect("Icon", nodeGo.transform, new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(40,40));
-                n.nodeIcon = iconGo.AddComponent<Image>();
-                n.nodeIcon.sprite = SkillIconProvider.GetIcon(n.id);
-                n.nodeIcon.preserveAspect = true;
-                n.nodeIcon.raycastTarget = false;
-
-                // Level label (below node)
-                n.levelLabel = Txt("Lv", nodeGo.transform, new Vector2(0,0), new Vector2(0,0), new Vector2(0.5f,0), new Vector2(68,22),
-                    "", 13, C_MUT, FontStyles.Normal);
-                n.levelLabel.alignment = TextAlignmentOptions.Center;
-                SetAnchoredPos(n.levelLabel.gameObject, new Vector2(0,-42));
-
-                // Interaction via EventTrigger
-                var trig = nodeGo.AddComponent<EventTrigger>();
-                AddTrigger(trig, EventTriggerType.PointerEnter, _ => { SelectNode(n.id); PulseRing(n, true);  });
-                AddTrigger(trig, EventTriggerType.PointerExit,  _ =>                      PulseRing(n, false) );
-                AddTrigger(trig, EventTriggerType.PointerClick, _ => { SelectNode(n.id); TryBuy(n.id);        });
-            }
-
-            // Bottom Legend & Cheats
-            var leg = Txt("Legend", treeBox.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(-20,24),
-                "Cinza = bloqueado  •  Ciano = pode comprar  •  Rosa = comprado  •  Dourado = nível máximo",
-                14, C_MUT, FontStyles.Normal);
-            SetAnchoredPos(leg.gameObject, new Vector2(0, 10));
-            leg.alignment = TextAlignmentOptions.Center;
         }
 
+        public Sprite GetNodeSprite(NodeData n)
+        {
+            if (n.customIcon != null) return n.customIcon;
+            return SkillIconProvider.GetIcon(n.id);
+        }
+
+        // ─── Card de Detalhes Repaginado (Estilo Manuscrito Medieval) ──────────
         void BuildDetailCard(Transform parent)
         {
-            // Node name
-            cardName = Txt("Name", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-16,40),
-                "Vitalidade", 26, C_DARK2, FontStyles.Bold);
-            SetAnchoredPos(cardName.gameObject, new Vector2(16,-12));
+            cardName = Txt("Name", parent, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, 1), new Vector2(-160, 44),
+                "Vitalidade Arcana", 23, C_CARD_DARK, FontStyles.Bold);
+            SetAnchoredPos(cardName.gameObject, new Vector2(18, -14));
 
-            // Cost badge
-            var costBx = Rect("CostBox", parent, new Vector2(1,1), new Vector2(1,1), new Vector2(1,1), new Vector2(120,34));
-            SetAnchoredPos(costBx, new Vector2(-16,-12));
-            Img(costBx, new Color(0.04f,0.03f,0.06f,1f));
-            cardCost = Txt("CostTxt", costBx.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), Vector2.zero,
-                "CUSTO 1 SP", 16, C_GOLD, FontStyles.Bold);
+            var costBorder = Rect("CostBorder", parent, new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1), new Vector2(130, 36));
+            SetAnchoredPos(costBorder, new Vector2(-18, -14));
+            Img(costBorder, C_GOLD);
+
+            var costBx = Rect("CostBox", costBorder.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(-4, -4));
+            Img(costBx, C_DARK_BOX);
+
+            cardCost = Txt("CostTxt", costBx.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero,
+                "CUSTO 1 SP", 15, C_GOLD, FontStyles.Bold);
             cardCost.alignment = TextAlignmentOptions.Center;
 
-            // "Descrição:"
-            var lblDesc = Txt("LblDesc", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-16,22),
-                "Descrição:", 16, C_MUT, FontStyles.Italic);
-            SetAnchoredPos(lblDesc.gameObject, new Vector2(16,-52));
+            cardIconBox = Rect("IconBox", parent, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(340, 115));
+            SetAnchoredPos(cardIconBox, new Vector2(0, -68));
+            Img(cardIconBox, C_DARK_BOX);
 
-            // Description text
-            cardDesc = Txt("Desc", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0,1), new Vector2(-32,60),
-                "", 18, C_DARK2, FontStyles.Normal);
-            SetAnchoredPos(cardDesc.gameObject, new Vector2(16,-74));
-            cardDesc.textWrappingMode = TMPro.TextWrappingModes.Normal;
-
-            // ── Visual Icon Showcase Box ──
-            cardIconBox = Rect("IconBox", parent, new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(0.5f,1), new Vector2(300,120));
-            SetAnchoredPos(cardIconBox, new Vector2(0,-140));
-            Img(cardIconBox, new Color(0.08f, 0.05f, 0.15f, 1f));
-
-            // Glowing Icon inside showcase box
-            var iconPre = Rect("IconPreview", cardIconBox.transform, new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(64,64));
-            SetAnchoredPos(iconPre, new Vector2(0,12));
+            var iconPre = Rect("IconPreview", cardIconBox.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(64, 64));
+            SetAnchoredPos(iconPre, new Vector2(0, 12));
             cardIconImg = iconPre.AddComponent<Image>();
             cardIconImg.preserveAspect = true;
             cardIconImg.raycastTarget = false;
 
-            // Level Pips container below the icon
-            var pipsGo = Rect("Pips", cardIconBox.transform, new Vector2(0.5f,0), new Vector2(0.5f,0), new Vector2(0.5f,0), new Vector2(160,20));
-            SetAnchoredPos(pipsGo, new Vector2(0,10));
+            var pipsGo = Rect("Pips", cardIconBox.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(180, 20));
+            SetAnchoredPos(pipsGo, new Vector2(0, 12));
             var hlg = pipsGo.AddComponent<HorizontalLayoutGroup>();
             hlg.spacing = 8;
             hlg.childAlignment = TextAnchor.MiddleCenter;
@@ -394,140 +853,143 @@ namespace WitchShmup.UI
             hlg.childForceExpandHeight = false;
             cardPipsContainer = pipsGo.transform;
 
-            // Effect (rosa em negrito)
-            cardEffect = Txt("Effect", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-24,32),
-                "", 22, C_BOUGHT, FontStyles.Bold);
-            SetAnchoredPos(cardEffect.gameObject, new Vector2(0,-272));
+            var descBox = Rect("DescBox", parent, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0.5f, 1), new Vector2(-36, 92));
+            SetAnchoredPos(descBox, new Vector2(0, -196));
+            Img(descBox, new Color(0.92f, 0.88f, 0.82f, 0.70f));
+
+            var lblDesc = Txt("LblDesc", descBox.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, 1), new Vector2(-16, 22),
+                "DESCRIÇÃO:", 13, new Color(0.40f, 0.30f, 0.52f, 1f), FontStyles.Bold);
+            SetAnchoredPos(lblDesc.gameObject, new Vector2(12, -6));
+
+            cardDesc = Txt("Desc", descBox.transform, new Vector2(0, 0), new Vector2(1, 1), new Vector2(0.5f, 0.5f), new Vector2(-24, -30),
+                           "", 15, C_CARD_DARK, FontStyles.Normal);
+            SetAnchoredPos(cardDesc.gameObject, new Vector2(0, -8));
+            cardDesc.textWrappingMode = TextWrappingModes.Normal;
+
+            var effectBox = Rect("EffectBox", parent, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0.5f, 1), new Vector2(-36, 50));
+            SetAnchoredPos(effectBox, new Vector2(0, -298));
+            Img(effectBox, new Color(0.20f, 0.12f, 0.30f, 0.95f));
+
+            cardEffect = Txt("Effect", effectBox.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero,
+                "+1 Coração de Vida", 17, C_GOLD, FontStyles.Bold);
             cardEffect.alignment = TextAlignmentOptions.Center;
 
-            // Status message (above button)
-            cardStatus = Txt("Status", parent, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(-24,26),
-                "", 16, C_MUT, FontStyles.Italic);
-            SetAnchoredPos(cardStatus.gameObject, new Vector2(0,66));
+            cardStatus = Txt("Status", parent, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 0), new Vector2(-36, 26),
+                "", 14, new Color(0.35f, 0.25f, 0.45f, 1f), FontStyles.Italic);
+            SetAnchoredPos(cardStatus.gameObject, new Vector2(0, 72));
             cardStatus.alignment = TextAlignmentOptions.Center;
 
-            // Buy button
-            var btnGo = Rect("Btn_Buy", parent, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(-24,54));
-            SetAnchoredPos(btnGo, new Vector2(0,8));
+            var btnGo = Rect("Btn_Buy", parent, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 0), new Vector2(-36, 52));
+            SetAnchoredPos(btnGo, new Vector2(0, 14));
             Img(btnGo, C_BOUGHT);
             buyBtn = btnGo.AddComponent<Button>();
-            buyBtnLabel = Txt("Label", btnGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), Vector2.zero,
-                "DESBLOQUEAR", 20, Color.white, FontStyles.Bold);
+
+            buyBtnLabel = Txt("Label", btnGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero,
+                "DESBLOQUEAR", 19, Color.white, FontStyles.Bold);
             buyBtnLabel.alignment = TextAlignmentOptions.Center;
             buyBtn.onClick.AddListener(() => TryBuy(selectedId));
         }
 
-        // ─── Tab 2: Staff ─────────────────────────────────────────────────────
+        // ─── Tab 2: Evolução do Cajado (Página Esquerda = Atual; Página Direita = Próximo + Materiais) ──
         void BuildStaffTab(Transform parent)
         {
-            // Title
-            var title = Txt("Title", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(0,48),
-                "EVOLUIR", 34, C_BOUGHT, FontStyles.Bold);
-            SetAnchoredPos(title.gameObject, new Vector2(0,-8));
-            title.alignment = TextAlignmentOptions.Center;
+            // Página Esquerda: Cajado Atual
+            var boxCurBorder = Rect("BoxCur_Border", parent, new Vector2(0.045f, 0.055f), new Vector2(0.485f, 0.88f), Vector2.zero, Vector2.zero);
+            Img(boxCurBorder, Color.clear);
 
-            var sub = Txt("Sub", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(0,30),
-                "Troque drops dos inimigos por uma versão mais forte do seu cajado.", 20, C_MUT, FontStyles.Normal);
-            SetAnchoredPos(sub.gameObject, new Vector2(0,-58));
-            sub.alignment = TextAlignmentOptions.Center;
+            var boxCur = Rect("Box_Cur", boxCurBorder.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero);
+            Img(boxCur, Color.clear);
 
-            // ── Row: ATUAL | → | PRÓXIMO ──
-            float rowTop = -96f;
-
-            // Box Atual (Cajado de Gelo)
-            var boxCur = Rect("Box_Cur", parent, new Vector2(0.06f,1), new Vector2(0.44f,1), new Vector2(0.5f,1), new Vector2(0,240));
-            SetAnchoredPos(boxCur, new Vector2(0, rowTop));
-            Img(boxCur, C_DARK);
-            var curTag = Txt("Tag", boxCur.transform, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(0,24),
-                "ATUAL", 14, C_MUT, FontStyles.Normal);
-            SetAnchoredPos(curTag.gameObject, new Vector2(0,-8));
+            var curTag = Txt("Tag", boxCur.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0.5f, 1), new Vector2(0, 30),
+                "● EM USO", 16, C_CYAN_ICE, FontStyles.Bold);
+            SetAnchoredPos(curTag.gameObject, new Vector2(0, -18));
             curTag.alignment = TextAlignmentOptions.Center;
 
-            curStaffImg = MakeImg("Img", boxCur.transform, new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(100,150));
-            SetAnchoredPos(curStaffImg.gameObject, new Vector2(0,12));
+            curStaffImg = MakeImg("Img", boxCur.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(140, 180));
+            SetAnchoredPos(curStaffImg.gameObject, new Vector2(0, 40));
             curStaffImg.preserveAspect = true;
             curStaffImg.color = Color.white;
             curStaffImg.sprite = GetBasicStaffSprite();
 
-            curStaffName = Txt("Name", boxCur.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,28),
-                "Cajado de Gelo", 20, Color.white, FontStyles.Bold);
-            SetAnchoredPos(curStaffName.gameObject, new Vector2(0,36));
+            curStaffName = Txt("Name", boxCur.transform, new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 32),
+                "Cajado de Gelo", 22, C_CARD_DARK, FontStyles.Bold);
+            SetAnchoredPos(curStaffName.gameObject, new Vector2(0, -85));
             curStaffName.alignment = TextAlignmentOptions.Center;
 
-            curStaffStat = Txt("Stat", boxCur.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,24),
-                "Dano: 1.0 (Base Gelo)", 15, C_MUT, FontStyles.Normal);
-            SetAnchoredPos(curStaffStat.gameObject, new Vector2(0,12));
+            curStaffStat = Txt("Stat", boxCur.transform, new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 26),
+                "Dano Base: 1.0 (Orbe Glacial)", 15, new Color(0.15f, 0.45f, 0.70f, 1f), FontStyles.Bold);
+            SetAnchoredPos(curStaffStat.gameObject, new Vector2(0, -120));
             curStaffStat.alignment = TextAlignmentOptions.Center;
 
-            // Arrow centre
-            var arw = Txt("Arrow", parent, new Vector2(0.44f,1), new Vector2(0.56f,1), new Vector2(0.5f,1), new Vector2(0,80),
-                "->", 36, C_BOUGHT, FontStyles.Bold);
-            SetAnchoredPos(arw.gameObject, new Vector2(0, rowTop - 90f));
-            arw.alignment = TextAlignmentOptions.Center;
+            var curDesc = Txt("CurDesc", boxCur.transform, new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-40, 60),
+                "Canaliza energia pura de gelo. Seus projéteis desaceleram os monstros da masmorra.", 14, new Color(0.35f, 0.28f, 0.22f, 0.9f), FontStyles.Italic);
+            SetAnchoredPos(curDesc.gameObject, new Vector2(0, -175));
+            curDesc.alignment = TextAlignmentOptions.Center;
 
-            // Box Próximo (Cajado de Fogo)
-            nxtStaffBox = Rect("Box_Nxt", parent, new Vector2(0.56f,1), new Vector2(0.94f,1), new Vector2(0.5f,1), new Vector2(0,240));
-            SetAnchoredPos(nxtStaffBox, new Vector2(0, rowTop));
-            Img(nxtStaffBox, C_DARK);
+            // Página Direita: Próximo Cajado + Painel de Materiais + Botão de Evolução
+            var boxNxtBorder = Rect("BoxNxt_Border", parent, new Vector2(0.515f, 0.055f), new Vector2(0.955f, 0.88f), Vector2.zero, Vector2.zero);
+            Img(boxNxtBorder, Color.clear);
 
-            var nxtTag = Txt("Tag", nxtStaffBox.transform, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(0,24),
-                "PRÓXIMO", 14, C_GOLD, FontStyles.Normal);
-            SetAnchoredPos(nxtTag.gameObject, new Vector2(0,-8));
+            var boxNxt = Rect("Box_Nxt", boxNxtBorder.transform, new Vector2(0, 0.58f), new Vector2(1, 1), new Vector2(0.5f, 0.5f), Vector2.zero);
+            Img(boxNxt, Color.clear);
+            nxtStaffBox = boxNxt;
+
+            var nxtTag = Txt("Tag", boxNxt.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0.5f, 1), new Vector2(0, 26),
+                "★ PRÓXIMO NÍVEL", 15, C_GOLD, FontStyles.Bold);
+            SetAnchoredPos(nxtTag.gameObject, new Vector2(0, -10));
             nxtTag.alignment = TextAlignmentOptions.Center;
 
-            nxtStaffImg = MakeImg("Img", nxtStaffBox.transform, new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), new Vector2(100,150));
-            SetAnchoredPos(nxtStaffImg.gameObject, new Vector2(0,12));
+            nxtStaffImg = MakeImg("Img", boxNxt.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(90, 120));
+            SetAnchoredPos(nxtStaffImg.gameObject, new Vector2(0, 12));
             nxtStaffImg.preserveAspect = true;
             nxtStaffImg.color = Color.white;
             nxtStaffImg.sprite = GetEvolvedStaffSprite();
 
-            nxtStaffName = Txt("Name", nxtStaffBox.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,28),
-                "Cajado de Fogo", 20, Color.white, FontStyles.Bold);
-            SetAnchoredPos(nxtStaffName.gameObject, new Vector2(0,36));
+            nxtStaffName = Txt("Name", boxNxt.transform, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 0), new Vector2(0, 28),
+                "Cajado de Fogo", 20, C_CARD_DARK, FontStyles.Bold);
+            SetAnchoredPos(nxtStaffName.gameObject, new Vector2(0, 30));
             nxtStaffName.alignment = TextAlignmentOptions.Center;
 
-            nxtStaffStat = Txt("Stat", nxtStaffBox.transform, new Vector2(0,0), new Vector2(1,0), new Vector2(0.5f,0), new Vector2(0,24),
-                "+60% de Dano (1.6 Dano / Tiro)", 15, C_GOLD, FontStyles.Bold);
-            SetAnchoredPos(nxtStaffStat.gameObject, new Vector2(0,12));
+            nxtStaffStat = Txt("Stat", boxNxt.transform, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 0), new Vector2(0, 24),
+                "+60% de Dano (1.6 / Tiro) • Dano Contínuo", 14, C_FIRE_RED, FontStyles.Bold);
+            SetAnchoredPos(nxtStaffStat.gameObject, new Vector2(0, 6));
             nxtStaffStat.alignment = TextAlignmentOptions.Center;
 
-            // Need summary
-            needSummary = Txt("Need", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-40,36),
-                "Requer <color=#ffc83a>7</color> Corações de Fogo e <color=#ffc83a>1</color> Núcleo do Boss",
-                22, Color.white, FontStyles.Normal);
-            SetAnchoredPos(needSummary.gameObject, new Vector2(0, rowTop - 270f));
+            // Painel de Materiais dentro da página direita
+            var matPanel = Rect("MatPanel", boxNxtBorder.transform, new Vector2(0, 0.16f), new Vector2(1, 0.56f), new Vector2(0.5f, 0.5f), Vector2.zero);
+            Img(matPanel, new Color(0.12f, 0.08f, 0.18f, 0.92f));
+
+            needSummary = Txt("Need", matPanel.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0.5f, 1), new Vector2(-24, 28),
+                "MATERIAIS NECESSÁRIOS: <color=#ffc83a>7</color> Corações e <color=#ffc83a>1</color> Núcleo",
+                15, Color.white, FontStyles.Bold);
+            SetAnchoredPos(needSummary.gameObject, new Vector2(0, -8));
             needSummary.alignment = TextAlignmentOptions.Center;
             needSummary.richText  = true;
 
-            // Mat rows
-            float matY = rowTop - 315f;
-            BuildMatRow(parent, new Vector2(0, matY),       "Coração de Fogo", GetFireHeartSprite(), 7, out batSegCont,  out batCountTxt);
-            BuildMatRow(parent, new Vector2(0, matY - 72f), "Núcleo do Boss",   GetBossCoreSprite(),  1, out coreSegCont, out coreCountTxt);
+            BuildMatRow(matPanel.transform, new Vector2(0, -40), "Coração de Fogo", GetFireHeartSprite(), 7, out batSegCont, out batCountTxt);
+            BuildMatRow(matPanel.transform, new Vector2(0, -100), "Núcleo do Boss",   GetBossCoreSprite(),  1, out coreSegCont, out coreCountTxt);
 
-            // Evolve button
-            var evGo = Rect("Btn_Evolve", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-40,54));
-            SetAnchoredPos(evGo, new Vector2(0, matY - 160f));
+            var evGo = Rect("Btn_Evolve", boxNxtBorder.transform, new Vector2(0.04f, 0.05f), new Vector2(0.96f, 0.14f), new Vector2(0.5f, 0.5f), Vector2.zero);
             Img(evGo, C_BOUGHT);
-            evolveBtn      = evGo.AddComponent<Button>();
-            evolveBtnLabel = Txt("Label", evGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f,0.5f), Vector2.zero,
-                "EVOLUIR", 22, Color.white, FontStyles.Bold);
+            evolveBtn = evGo.AddComponent<Button>();
+
+            evolveBtnLabel = Txt("Label", evGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero,
+                "★ EVOLUIR CAJADO ★", 20, Color.white, FontStyles.Bold);
             evolveBtnLabel.alignment = TextAlignmentOptions.Center;
             evolveBtn.onClick.AddListener(OnEvolveClicked);
 
-            staffMsg = Txt("Msg", parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-40,28),
-                "Derrote inimigos para coletar os drops que faltam.", 18, C_MUT, FontStyles.Italic);
-            SetAnchoredPos(staffMsg.gameObject, new Vector2(0, matY - 202f));
+            staffMsg = Txt("Msg", boxNxtBorder.transform, new Vector2(0, 0.005f), new Vector2(1, 0.045f), new Vector2(0.5f, 0.5f), Vector2.zero,
+                "Derrote morcegos de fogo e chefes para recolher materiais.", 13, new Color(0.35f, 0.28f, 0.22f, 0.9f), FontStyles.Italic);
             staffMsg.alignment = TextAlignmentOptions.Center;
         }
 
         void BuildMatRow(Transform parent, Vector2 anchoredPos, string label, Sprite iconSprite, int total,
                          out Transform segContainer, out TextMeshProUGUI countTxt)
         {
-            var box = Rect("Mat_" + label, parent, new Vector2(0,1), new Vector2(1,1), new Vector2(0.5f,1), new Vector2(-60,58));
+            var box = Rect("Mat_" + label, parent, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0.5f, 1), new Vector2(-36, 54));
             SetAnchoredPos(box, anchoredPos);
-            Img(box, C_DARK);
+            Img(box, C_DARK_BOX_HL);
 
-            // Icon Sprite
             if (iconSprite != null)
             {
                 var iconGo = Rect("Icon", box.transform, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(36, 36));
@@ -539,47 +1001,57 @@ namespace WitchShmup.UI
                 iconImg.raycastTarget = false;
             }
 
-            // Label
-            var lbl = Txt("Lbl", box.transform, new Vector2(0, 0.5f), new Vector2(0.6f, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 24),
-                label, 18, Color.white, FontStyles.Bold);
-            SetAnchoredPos(lbl.gameObject, new Vector2(56, 10));
+            var lbl = Txt("Lbl", box.transform, new Vector2(0, 0.5f), new Vector2(0.45f, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 24),
+                label, 17, Color.white, FontStyles.Bold);
+            SetAnchoredPos(lbl.gameObject, new Vector2(56, 8));
 
-            // Segments
-            var segsGo = Rect("Segs", box.transform, new Vector2(0, 0.5f), new Vector2(0.6f, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 10));
-            SetAnchoredPos(segsGo, new Vector2(56, -14));
+            var segsGo = Rect("Segs", box.transform, new Vector2(0, 0.5f), new Vector2(0.75f, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 12));
+            SetAnchoredPos(segsGo, new Vector2(56, -12));
             var hlg = segsGo.AddComponent<HorizontalLayoutGroup>();
-            hlg.spacing = 5; hlg.childForceExpandWidth = true; hlg.childForceExpandHeight = true;
+            hlg.spacing = 6; 
+            hlg.childForceExpandWidth = true; 
+            hlg.childForceExpandHeight = true;
             segContainer = segsGo.transform;
+
             for (int i = 0; i < total; i++)
             {
-                var s = new GameObject($"Seg_{i}"); s.transform.SetParent(segContainer, false);
+                var s = new GameObject($"Seg_{i}"); 
+                s.transform.SetParent(segContainer, false);
                 s.AddComponent<Image>().color = C_LOCKED;
             }
 
-            // Count (right side)
-            countTxt = Txt("Count", box.transform, new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(80, 28),
+            countTxt = Txt("Count", box.transform, new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(100, 28),
                 $"0/{total}", 18, Color.white, FontStyles.Bold);
             SetAnchoredPos(countTxt.gameObject, new Vector2(-16, 0));
             countTxt.alignment = TextAlignmentOptions.MidlineRight;
         }
 
         // ═════════════════════════════════════════════════════════════════════
-        // HOOK + REFRESH
+        // HOOKS E ALTERNÂNCIA DE ABAS
         // ═════════════════════════════════════════════════════════════════════
         void HookAll()
         {
-            if (tabTreeBtn  != null) { tabTreeBtn .onClick.RemoveAllListeners(); tabTreeBtn .onClick.AddListener(() => SwitchTab(false)); }
+            if (tabTreeBtn  != null) { tabTreeBtn.onClick.RemoveAllListeners();  tabTreeBtn.onClick.AddListener(() => SwitchTab(false)); }
             if (tabStaffBtn != null) { tabStaffBtn.onClick.RemoveAllListeners(); tabStaffBtn.onClick.AddListener(() => SwitchTab(true));  }
-            if (closeBtn    != null) { closeBtn   .onClick.RemoveAllListeners(); closeBtn   .onClick.AddListener(OnClose); }
+            if (closeBtn    != null) { closeBtn.onClick.RemoveAllListeners();    closeBtn.onClick.AddListener(OnClose); }
         }
 
         public void SwitchTab(bool toStaff)
         {
             staffTabOpen = toStaff;
-            if (tabTreeContent  != null) tabTreeContent .SetActive(!toStaff);
+
+            if (tabTreeContent  != null) tabTreeContent.SetActive(!toStaff);
             if (tabStaffContent != null) tabStaffContent.SetActive(toStaff);
-            if (tabTreeBtnBg    != null) tabTreeBtnBg .color = !toStaff ? C_BOUGHT : C_LINE;
-            if (tabStaffBtnBg   != null) tabStaffBtnBg.color =  toStaff ? C_BOUGHT : C_LINE;
+
+            if (tabTreeBtnBg != null) tabTreeBtnBg.color = !toStaff ? tabActiveColor : tabInactiveColor;
+            if (tabStaffBtnBg != null) tabStaffBtnBg.color = toStaff ? tabActiveColor : tabInactiveColor;
+
+            if (tabTreeTxt != null) tabTreeTxt.color = !toStaff ? tabActiveTextColor : tabInactiveTextColor;
+            if (tabStaffTxt != null) tabStaffTxt.color = toStaff ? tabActiveTextColor : tabInactiveTextColor;
+
+            if (tabTreeIndicator != null) tabTreeIndicator.color = !toStaff ? tabIndicatorColor : Color.clear;
+            if (tabStaffIndicator != null) tabStaffIndicator.color = toStaff ? tabIndicatorColor : Color.clear;
+
             RefreshUI();
         }
 
@@ -589,7 +1061,8 @@ namespace WitchShmup.UI
         {
             if (GameManager.Instance == null) return;
             int sp = GameManager.Instance.SkillPoints;
-            if (spText != null) spText.text = $"SKILL POINTS: {sp}";
+            if (spText != null) spText.text = $"★ SP: {sp}";
+
             RefreshNodes();
             if (!staffTabOpen) RefreshDetailCard();
             else               RefreshStaffTab();
@@ -599,7 +1072,7 @@ namespace WitchShmup.UI
         {
             if (GameManager.Instance == null) return;
             int sp = GameManager.Instance.SkillPoints;
-            foreach (var n in NODES)
+            foreach (var n in treeNodes)
             {
                 if (n.nodeBg == null) continue;
                 int  lvl     = GameManager.Instance.GetSkillLevel(n.id);
@@ -607,21 +1080,18 @@ namespace WitchShmup.UI
                 bool maxed   = lvl >= n.maxLevel;
                 bool canBuy  = reached && !maxed && sp >= n.cost;
 
-                // Background colour
-                if (maxed)         n.nodeBg.color = C_GOLD;
-                else if (lvl > 0)  n.nodeBg.color = C_BOUGHT;
-                else if (canBuy)   n.nodeBg.color = C_AVAIL;
-                else               n.nodeBg.color = C_LOCKED;
+                if (maxed)        n.nodeBg.color = nodeMaxedColor;
+                else if (lvl > 0) n.nodeBg.color = nodeBoughtColor;
+                else if (canBuy)  n.nodeBg.color = nodeAvailableColor;
+                else              n.nodeBg.color = nodeLockedColor;
 
-                // Ring base colour (alpha preserved from hover)
                 if (n.nodeRing != null)
                 {
-                    Color rc = maxed ? C_GOLD : canBuy ? C_AVAIL : C_BOUGHT;
+                    Color rc = maxed ? nodeMaxedColor : canBuy ? nodeAvailableColor : nodeBoughtColor;
                     float a  = n.nodeRing.color.a;
                     n.nodeRing.color = new Color(rc.r, rc.g, rc.b, a);
                 }
 
-                // Node icon tint
                 if (n.nodeIcon != null)
                 {
                     if (maxed) n.nodeIcon.color = new Color(1f, 0.95f, 0.8f, 1f);
@@ -646,37 +1116,32 @@ namespace WitchShmup.UI
             bool maxed   = lvl >= n.maxLevel;
             bool canBuy  = reached && !maxed && sp >= n.cost;
 
-            if (cardName   != null) cardName.text   = n.displayName;
-            if (cardCost   != null) cardCost.text   = maxed ? "CUSTO -" : $"CUSTO {n.cost} SP";
-            if (cardDesc   != null) cardDesc.text   = n.description;
+            if (cardName != null) cardName.text = n.displayName;
+            if (cardCost != null) cardCost.text = maxed ? "CUSTO: —" : $"CUSTO: {n.cost} SP";
+            if (cardDesc != null) cardDesc.text = n.description;
 
-            // Ícone do Card
             if (cardIconImg != null)
             {
-                cardIconImg.sprite = SkillIconProvider.GetIcon(n.id);
-                cardIconImg.color = Color.white;
+                cardIconImg.sprite = GetNodeSprite(n);
+                cardIconImg.color  = Color.white;
             }
 
-            // Pips de nível abaixo do ícone no Card
             if (cardPipsContainer != null)
             {
                 for (int i = cardPipsContainer.childCount - 1; i >= 0; i--)
-                {
                     SafeDestroy(cardPipsContainer.GetChild(i).gameObject);
-                }
 
                 for (int i = 0; i < n.maxLevel; i++)
                 {
                     var pip = new GameObject($"Pip_{i}");
                     pip.transform.SetParent(cardPipsContainer, false);
                     var prt = pip.AddComponent<RectTransform>();
-                    prt.sizeDelta = new Vector2(16, 12);
+                    prt.sizeDelta = new Vector2(18, 12);
                     var pImg = pip.AddComponent<Image>();
-                    pImg.color = (i < lvl) ? (maxed ? C_GOLD : C_BOUGHT) : C_LOCKED;
+                    pImg.color = (i < lvl) ? (maxed ? nodeMaxedColor : nodeBoughtColor) : nodeLockedColor;
                 }
             }
 
-            // Efeito textual dinâmico
             if (cardEffect != null)
             {
                 if (n.id == "vit")
@@ -701,22 +1166,22 @@ namespace WitchShmup.UI
             string statusMsg = "";
             bool   btnActive = false;
             string btnLabel  = "DESBLOQUEAR";
-            Color  btnColor  = new Color(0.35f,0.28f,0.48f,1f);
+            Color  btnColor  = new Color(0.35f, 0.28f, 0.48f, 1f);
 
             if (maxed)
             {
-                statusMsg = "Nível máximo alcançado!";
-                btnLabel  = "MÁXIMO";
+                statusMsg = "Habilidade no nível máximo!";
+                btnLabel  = "NÍVEL MÁXIMO";
             }
             else if (!reached)
             {
                 var req = GetNode(n.requirementId);
-                statusMsg = $"Requer: {(req != null ? req.displayName : "anterior")}";
+                statusMsg = $"Requer: {(req != null ? req.displayName : "habilidade anterior")}";
                 btnLabel  = "BLOQUEADO";
             }
             else if (sp < n.cost)
             {
-                statusMsg = $"Faltam {n.cost - sp} skill point(s)";
+                statusMsg = $"Faltam {n.cost - sp} Skill Point(s)";
                 btnLabel  = "SP INSUFICIENTE";
             }
             else
@@ -724,7 +1189,7 @@ namespace WitchShmup.UI
                 statusMsg = "Pronto para desbloquear!";
                 btnActive = true;
                 btnLabel  = "DESBLOQUEAR";
-                btnColor  = C_BOUGHT;
+                btnColor  = buyButtonColor;
             }
 
             if (cardStatus  != null) cardStatus.text = statusMsg;
@@ -741,14 +1206,14 @@ namespace WitchShmup.UI
         {
             if (GameManager.Instance == null) return;
 
-            bool evolved  = GameManager.Instance.IsStaffEvolved;
-            int  bat      = GameManager.Instance.FireHeartsCount;
-            int  reqBat   = GameManager.Instance.FireHeartsRequired;
-            int  core     = GameManager.Instance.BossCoresCount;
-            int  reqCore  = GameManager.Instance.BossCoresRequired;
+            bool evolved = GameManager.Instance.IsStaffEvolved;
+            int  bat     = GameManager.Instance.FireHeartsCount;
+            int  reqBat  = GameManager.Instance.FireHeartsRequired;
+            int  core    = GameManager.Instance.BossCoresCount;
+            int  reqCore = GameManager.Instance.BossCoresRequired;
 
-            if (batCountTxt  != null) { batCountTxt .text  = $"{bat}/{reqBat}";   batCountTxt .color = bat  >= reqBat  ? C_GOLD : Color.white; }
-            if (coreCountTxt != null) { coreCountTxt.text  = $"{core}/{reqCore}"; coreCountTxt.color = core >= reqCore ? C_GOLD : Color.white; }
+            if (batCountTxt  != null) { batCountTxt.text  = $"{bat}/{reqBat}";   batCountTxt.color  = bat  >= reqBat  ? C_GOLD : Color.white; }
+            if (coreCountTxt != null) { coreCountTxt.text = $"{core}/{reqCore}"; coreCountTxt.color = core >= reqCore ? C_GOLD : Color.white; }
 
             UpdateSegs(batSegCont,  bat,  reqBat);
             UpdateSegs(coreSegCont, core, reqCore);
@@ -757,27 +1222,27 @@ namespace WitchShmup.UI
 
             if (evolved)
             {
-                if (curStaffName  != null) curStaffName.text  = "Cajado de Fogo";
-                if (curStaffStat  != null) curStaffStat.text  = "+60% de Dano (1.6 Dano / Tiro)";
-                if (curStaffImg   != null) { curStaffImg.sprite = GetEvolvedStaffSprite(); curStaffImg.color = Color.white; }
-                if (nxtStaffBox   != null) nxtStaffBox.SetActive(false);
-                if (needSummary   != null) needSummary.text   = "Cajado totalmente evoluído!";
-                if (staffMsg      != null) staffMsg.text      = "Nenhuma evolução restante.";
-                if (evolveBtn     != null) { evolveBtn.interactable = false; var bi = evolveBtn.GetComponent<Image>(); if (bi) bi.color = C_LINE; }
-                if (evolveBtnLabel!= null) evolveBtnLabel.text = "MÁXIMO";
+                if (curStaffName != null) curStaffName.text = "Cajado Arcano das Chamas";
+                if (curStaffStat != null) curStaffStat.text = "+60% de Dano (1.6 / Tiro) • Fogo";
+                if (curStaffImg  != null) { curStaffImg.sprite = GetEvolvedStaffSprite(); curStaffImg.color = Color.white; }
+                if (nxtStaffBox  != null) nxtStaffBox.SetActive(false);
+                if (needSummary  != null) needSummary.text = "Cajado no ápice de poder!";
+                if (staffMsg     != null) staffMsg.text = "Todas as evoluções do cajado foram concluídas.";
+                if (evolveBtn    != null) { evolveBtn.interactable = false; var bi = evolveBtn.GetComponent<Image>(); if (bi) bi.color = C_LINE; }
+                if (evolveBtnLabel != null) evolveBtnLabel.text = "NÍVEL MÁXIMO";
             }
             else
             {
-                if (curStaffName  != null) curStaffName.text  = "Cajado de Gelo";
-                if (curStaffStat  != null) curStaffStat.text  = "Dano: 1.0 (Base Gelo)";
-                if (curStaffImg   != null) { curStaffImg.sprite = GetBasicStaffSprite(); curStaffImg.color = Color.white; }
-                if (nxtStaffName  != null) nxtStaffName.text  = "Cajado de Fogo";
-                if (nxtStaffStat  != null) nxtStaffStat.text  = "+60% de Dano (1.6 Dano / Tiro)";
-                if (nxtStaffImg   != null) { nxtStaffImg.sprite = GetEvolvedStaffSprite(); nxtStaffImg.color = Color.white; }
-                if (nxtStaffBox   != null) nxtStaffBox.SetActive(true);
-                if (evolveBtn     != null) { evolveBtn.interactable = canEvolve; var bi = evolveBtn.GetComponent<Image>(); if (bi) bi.color = canEvolve ? C_GOLD : new Color(0.35f,0.28f,0.48f,1f); }
-                if (evolveBtnLabel!= null) evolveBtnLabel.text = canEvolve ? "EVOLUIR" : "MATERIAIS INSUFICIENTES";
-                if (staffMsg      != null) staffMsg.text       = canEvolve ? "Tudo pronto! Pode evoluir." : "Derrote inimigos para coletar os drops que faltam.";
+                if (curStaffName != null) curStaffName.text = "Cajado de Gelo";
+                if (curStaffStat != null) curStaffStat.text = "Dano Base: 1.0 (Orbe Glacial)";
+                if (curStaffImg  != null) { curStaffImg.sprite = GetBasicStaffSprite(); curStaffImg.color = Color.white; }
+                if (nxtStaffName != null) nxtStaffName.text = "Cajado de Fogo";
+                if (nxtStaffStat != null) nxtStaffStat.text = "+60% de Dano (1.6 / Tiro) • Fogo";
+                if (nxtStaffImg  != null) { nxtStaffImg.sprite = GetEvolvedStaffSprite(); nxtStaffImg.color = Color.white; }
+                if (nxtStaffBox  != null) nxtStaffBox.SetActive(true);
+                if (evolveBtn    != null) { evolveBtn.interactable = canEvolve; var bi = evolveBtn.GetComponent<Image>(); if (bi) bi.color = canEvolve ? evolveButtonColor : new Color(0.35f, 0.28f, 0.48f, 1f); }
+                if (evolveBtnLabel != null) evolveBtnLabel.text = canEvolve ? "★ EVOLUIR CAJADO ★" : "MATERIAIS INSUFICIENTES";
+                if (staffMsg     != null) staffMsg.text = canEvolve ? "Tudo pronto! Pressione o botão para evoluir." : "Derrote morcegos de fogo e chefes para recolher materiais.";
             }
         }
 
@@ -804,7 +1269,7 @@ namespace WitchShmup.UI
         }
 
         // ═════════════════════════════════════════════════════════════════════
-        // ACTIONS
+        // AÇÕES
         // ═════════════════════════════════════════════════════════════════════
         void TryBuy(string id)
         {
@@ -827,9 +1292,6 @@ namespace WitchShmup.UI
             else { gameObject.SetActive(false); Time.timeScale = 1f; }
         }
 
-        // ═════════════════════════════════════════════════════════════════════
-        // HELPERS
-        // ═════════════════════════════════════════════════════════════════════
         bool IsReachable(NodeData n)
         {
             if (string.IsNullOrEmpty(n.requirementId)) return true;
@@ -838,25 +1300,18 @@ namespace WitchShmup.UI
 
         NodeData GetNode(string id)
         {
-            if (string.IsNullOrEmpty(id)) return null;
-            return NODES.Find(x => x.id == id);
-        }
-
-        // HTML (560×500, Y-down) → Unity canvas (Y-up)
-        Vector2 HtmlToCanvas(Vector2 html)
-        {
-            float x = (html.x / 560f - 0.5f) * 840f;
-            float y = (0.5f - html.y / 500f) * 590f;
-            return new Vector2(x, y);
+            if (string.IsNullOrEmpty(id) || treeNodes == null) return null;
+            return treeNodes.Find(x => x.id == id);
         }
 
         void DrawLine(Transform parent, Vector2 a, Vector2 b)
         {
-            var go  = new GameObject("Line"); go.transform.SetParent(parent, false);
+            var go  = new GameObject("Line"); 
+            go.transform.SetParent(parent, false);
             var rt  = go.AddComponent<RectTransform>();
             var dir = b - a;
             rt.anchoredPosition = (a + b) * 0.5f;
-            rt.sizeDelta        = new Vector2(dir.magnitude, 5f);
+            rt.sizeDelta        = new Vector2(dir.magnitude, lineThickness);
             rt.localRotation    = Quaternion.Euler(0, 0, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
             go.AddComponent<Image>().color = C_LINE;
         }
@@ -875,13 +1330,11 @@ namespace WitchShmup.UI
             n.nodeRing.color = new Color(c.r, c.g, c.b, on ? 0.9f : 0f);
         }
 
-        // ── Lightweight builder helpers ────────────────────────────────────────
-        // Returns the GameObject (not RectTransform) so .AddComponent<> works.
-
         GameObject Rect(string name, Transform parent,
             Vector2 ancMin, Vector2 ancMax, Vector2 pivot, Vector2 size)
         {
-            var go = new GameObject(name); go.transform.SetParent(parent, false);
+            var go = new GameObject(name); 
+            go.transform.SetParent(parent, false);
             var rt = go.AddComponent<RectTransform>();
             rt.anchorMin = ancMin; rt.anchorMax = ancMax; rt.pivot = pivot; rt.sizeDelta = size;
             return go;
@@ -890,7 +1343,8 @@ namespace WitchShmup.UI
         Image Img(GameObject go, Color col)
         {
             var img = go.GetComponent<Image>() ?? go.AddComponent<Image>();
-            img.color = col; return img;
+            img.color = col; 
+            return img;
         }
 
         TextMeshProUGUI Txt(string name, Transform parent,
@@ -899,10 +1353,12 @@ namespace WitchShmup.UI
         {
             var go  = Rect(name, parent, ancMin, ancMax, pivot, size);
             var tmp = go.AddComponent<TextMeshProUGUI>();
-            tmp.text      = text; tmp.fontSize  = fs;
-            tmp.color     = col;  tmp.fontStyle = style;
-            tmp.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
-            tmp.raycastTarget = false; // Garante que rótulos de texto estáticos nunca bloqueiem cliques
+            tmp.text      = text; 
+            tmp.fontSize  = fs;
+            tmp.color     = col;  
+            tmp.fontStyle = style;
+            tmp.textWrappingMode = TextWrappingModes.NoWrap;
+            tmp.raycastTarget = false;
             return tmp;
         }
 
@@ -943,10 +1399,144 @@ namespace WitchShmup.UI
         [ContextMenu("★ Gerar UI no Canvas (Preview no Editor) ★")]
         public void EditorBuildUI()
         {
+            if (HasExistingUI())
+            {
+                BindExistingUI();
+                EditorApplyInspectorToScene();
+            }
+            else
+            {
+                Build();
+                RefreshUI();
+            }
+            UnityEditor.EditorUtility.SetDirty(gameObject);
+            Debug.Log("<color=green>[EvolutionUI] Interface sincronizada no Canvas sem perder modificações!</color>");
+        }
+
+        [ContextMenu("★ Aplicar Posições e Tamanhos do Inspector na Cena ★")]
+        public void EditorApplyInspectorToScene()
+        {
+            if (treeContentRt == null && HasExistingUI())
+            {
+                BindExistingUI();
+            }
+
+            if (treeContentRt == null)
+            {
+                Debug.LogWarning("[EvolutionUI] A hierarquia ainda não existe no Canvas. Use 'Forçar Reconstrução' primeiro.");
+                return;
+            }
+
+            // Atualiza tamanho do container
+            treeContentRt.sizeDelta = treeAreaSize;
+
+            foreach (var n in treeNodes)
+            {
+                var nTr = treeContentRt.Find($"Node_{n.id}");
+                if (nTr != null)
+                {
+                    var rt = (RectTransform)nTr;
+                    rt.anchoredPosition = n.canvasPos;
+
+                    Vector2 nodeSize = (n.customNodeSize != Vector2.zero) ? n.customNodeSize : defaultNodeSize;
+                    rt.sizeDelta = nodeSize;
+
+                    var iconTr = nTr.Find("Icon");
+                    if (iconTr != null)
+                    {
+                        var iconRt = (RectTransform)iconTr;
+                        Vector2 iconSize = (n.customIconSize != Vector2.zero) ? n.customIconSize : defaultIconSize;
+                        iconRt.sizeDelta = iconSize;
+                        var img = iconTr.GetComponent<Image>();
+                        if (img != null) img.sprite = GetNodeSprite(n);
+                    }
+
+                    var lvTr = nTr.Find("Lv");
+                    if (lvTr != null)
+                    {
+                        ((RectTransform)lvTr).anchoredPosition = new Vector2(0, - (nodeSize.y * 0.5f + 12f));
+                    }
+                }
+            }
+
+            RedrawLines();
+            RefreshUI();
+            UnityEditor.EditorUtility.SetDirty(gameObject);
+            Debug.Log("<color=green>[EvolutionUI] Posições, tamanhos e linhas atualizados com sucesso no Canvas!</color>");
+        }
+
+        [ContextMenu("★ Salvar Posições e Tamanhos da Scene View para o Inspector ★")]
+        public void EditorSaveSceneToInspector()
+        {
+            if (treeContentRt == null && HasExistingUI())
+            {
+                BindExistingUI();
+            }
+
+            if (treeContentRt == null)
+            {
+                Debug.LogWarning("[EvolutionUI] A hierarquia da árvore não foi encontrada na cena.");
+                return;
+            }
+
+            int count = 0;
+            foreach (var n in treeNodes)
+            {
+                var nTr = treeContentRt.Find($"Node_{n.id}");
+                if (nTr != null)
+                {
+                    var rt = (RectTransform)nTr;
+                    n.canvasPos = rt.anchoredPosition;
+
+                    if (rt.sizeDelta != defaultNodeSize)
+                    {
+                        n.customNodeSize = rt.sizeDelta;
+                    }
+
+                    var iconTr = nTr.Find("Icon");
+                    if (iconTr != null)
+                    {
+                        var iconRt = (RectTransform)iconTr;
+                        if (iconRt.sizeDelta != defaultIconSize)
+                        {
+                            n.customIconSize = iconRt.sizeDelta;
+                        }
+                    }
+                    count++;
+                }
+            }
+
+            UnityEditor.EditorUtility.SetDirty(gameObject);
+            Debug.Log($"<color=cyan>[EvolutionUI] {count} nós sincronizados da Scene View para o Inspector com sucesso!</color>");
+        }
+
+        [ContextMenu("★ Aplicar Fundo do Livro no Painel ★")]
+        public void EditorApplyBookBackground()
+        {
+            var frameBorder = transform.Find("FrameBorder");
+            if (frameBorder == null)
+            {
+                Build();
+                RefreshUI();
+                UnityEditor.EditorUtility.SetDirty(gameObject);
+                Debug.Log("<color=green>[EvolutionUI] Painel construído com fundo do Livro!</color>");
+                return;
+            }
+
+            EnsureBookVisualsApplied(frameBorder, frameBorder.Find("Frame"));
+            BindExistingUI();
+            RefreshUI();
+            UnityEditor.EditorUtility.SetDirty(gameObject);
+            Debug.Log("<color=green>[EvolutionUI] Fundo do Livro aplicado no Canvas com sucesso!</color>");
+        }
+
+        [ContextMenu("★ Forçar Reconstrução Completa (Recriar Tudo do Zero) ★")]
+        public void EditorForceRebuildUI()
+        {
             Build();
             RefreshUI();
             UnityEditor.EditorUtility.SetDirty(gameObject);
-            Debug.Log("<color=green>[EvolutionUI] Interface gerada no Canvas com sucesso! Agora você pode visualizar e selecionar cada elemento na Scene View.</color>");
+            Debug.Log("<color=yellow>[EvolutionUI] Interface reconstruída do zero com sucesso!</color>");
         }
 
         [ContextMenu("★ Limpar Preview do Canvas ★")]
@@ -956,10 +1546,131 @@ namespace WitchShmup.UI
             {
                 DestroyImmediate(transform.GetChild(i).gameObject);
             }
-            built = false;
             UnityEditor.EditorUtility.SetDirty(gameObject);
             Debug.Log("[EvolutionUI] Preview limpo do Canvas.");
         }
+
+        [ContextMenu("★ Restaurar Nós e Posições Padrão ★")]
+        public void EditorResetDefaultNodes()
+        {
+            treeNodes.Clear();
+            EnsureDefaultNodes();
+            Build();
+            RefreshUI();
+            UnityEditor.EditorUtility.SetDirty(gameObject);
+            Debug.Log("<color=yellow>[EvolutionUI] Nós restaurados para o padrão de 20 nós.</color>");
+        }
 #endif
+    }
+
+    /// <summary>
+    /// Permite arrastar (pan) e dar zoom interativo na área da Árvore de Habilidades com o mouse.
+    /// Funciona com clique e arraste (M1 ou M3) e roda do mouse para zoom.
+    /// </summary>
+    public class TreeDraggablePan : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler, IScrollHandler
+    {
+        [Header("Alvo do Movimento")]
+        [Tooltip("Container (RectTransform) onde estão os nós e linhas da árvore.")]
+        public RectTransform contentToMove;
+
+        [Header("Sensibilidade e Direção")]
+        [Tooltip("Sensibilidade do arrasto do mouse.")]
+        public float dragSensitivity = 1.0f;
+
+        [Tooltip("Se ativado: segurar o mouse e arrastar para baixo move a árvore para cima (e vice-versa).")]
+        public bool invertDrag = true;
+
+        [Header("Zoom com a Roda do Mouse")]
+        public bool enableZoom = true;
+        public float zoomSensitivity = 0.08f;
+        public float minZoom = 0.5f;
+        public float maxZoom = 1.8f;
+
+        [Header("Limites de Movimento (Clamp)")]
+        public bool clampMovement = true;
+        public Vector2 minBounds = new Vector2(-1200, -1200);
+        public Vector2 maxBounds = new Vector2(1200, 1200);
+
+        private Vector2 defaultPosition = Vector2.zero;
+        private Vector3 defaultScale = Vector3.one;
+        private bool isDragging = false;
+        private Vector2 dragStartPos;
+
+        public bool IsDragging => isDragging;
+
+        private void Awake()
+        {
+            if (contentToMove != null)
+            {
+                defaultPosition = contentToMove.anchoredPosition;
+                defaultScale = contentToMove.localScale;
+            }
+        }
+
+        public void SetContent(RectTransform target)
+        {
+            contentToMove = target;
+            if (contentToMove != null)
+            {
+                defaultPosition = contentToMove.anchoredPosition;
+                defaultScale = contentToMove.localScale;
+            }
+        }
+
+        public void OnBeginDrag(PointerEventData eventData)
+        {
+            isDragging = true;
+            dragStartPos = eventData.position;
+        }
+
+        public void OnDrag(PointerEventData eventData)
+        {
+            if (contentToMove == null) return;
+
+            Vector2 delta = eventData.delta * dragSensitivity;
+
+            // Se invertDrag estiver ativo: arrastar para baixo (delta negativo) faz o conteúdo subir (positivo)
+            if (invertDrag)
+            {
+                delta = -delta;
+            }
+
+            Vector2 newPos = contentToMove.anchoredPosition + delta;
+
+            if (clampMovement)
+            {
+                newPos.x = Mathf.Clamp(newPos.x, minBounds.x, maxBounds.x);
+                newPos.y = Mathf.Clamp(newPos.y, minBounds.y, maxBounds.y);
+            }
+
+            contentToMove.anchoredPosition = newPos;
+        }
+
+        public void OnEndDrag(PointerEventData eventData)
+        {
+            isDragging = false;
+        }
+
+        public void OnScroll(PointerEventData eventData)
+        {
+            if (!enableZoom || contentToMove == null) return;
+
+            float scroll = eventData.scrollDelta.y;
+            if (Mathf.Abs(scroll) > 0.01f)
+            {
+                float currentScale = contentToMove.localScale.x;
+                float targetScale = Mathf.Clamp(currentScale + scroll * zoomSensitivity, minZoom, maxZoom);
+                contentToMove.localScale = new Vector3(targetScale, targetScale, 1f);
+            }
+        }
+
+        public void ResetView()
+        {
+            if (contentToMove != null)
+            {
+                contentToMove.anchoredPosition = defaultPosition;
+                contentToMove.localScale = defaultScale;
+            }
+        }
     }
 }

@@ -52,36 +52,71 @@ namespace WitchShmup.UI
 
             switch (id)
             {
+                // Tronco
                 case "vit":
+                case "v_cor":
                     DrawHeart(pixels, W, H);
                     break;
                 case "vel":
                     DrawLightning(pixels, W, H);
                     break;
-                case "foc":
-                    DrawSword(pixels, W, H);
-                    break;
-                case "des":
-                    DrawStar(pixels, W, H);
-                    break;
-                case "pel":
-                    DrawShield(pixels, W, H);
-                    break;
                 case "ima":
                     DrawMagnet(pixels, W, H);
                     break;
-                case "seg":
-                    DrawGhost(pixels, W, H);
+                case "fus":
+                case "des":
+                    DrawStar(pixels, W, H);
                     break;
+
+                // Fogo
+                case "f_cha":
+                case "foc":
+                    DrawSword(pixels, W, H);
+                    break;
+                case "f_que":
+                case "f_are":
+                case "f_sup":
+                    DrawStar(pixels, W, H);
+                    break;
+
+                // Tiro
+                case "t_cad":
                 case "rap":
                     DrawDoubleChevron(pixels, W, H);
                     break;
-                case "per":
-                    DrawPiercingArrow(pixels, W, H);
+                case "t_hit":
+                    DrawStar(pixels, W, H);
                     break;
+                case "t_dup":
                 case "dup":
                     DrawMultiShotBullets(pixels, W, H);
                     break;
+                case "t_rit":
+                    DrawLightning(pixels, W, H);
+                    break;
+
+                // Gelo
+                case "g_lan":
+                case "g_per":
+                case "per":
+                    DrawPiercingArrow(pixels, W, H);
+                    break;
+                case "g_con":
+                case "g_que":
+                    DrawSword(pixels, W, H);
+                    break;
+
+                // Vida
+                case "v_inv":
+                case "v_pul":
+                case "pel":
+                    DrawShield(pixels, W, H);
+                    break;
+                case "v_seg":
+                case "seg":
+                    DrawGhost(pixels, W, H);
+                    break;
+
                 default:
                     DrawStar(pixels, W, H);
                     break;

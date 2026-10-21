@@ -277,8 +277,8 @@ namespace WitchShmup.Core
 
         private void Update()
         {
-            // Pressionar tecla 'E' abre/fecha a tela de evolução
-            if (Input.GetKeyDown(KeyCode.E))
+            // Pressionar tecla 'Tab' ou 'E' abre/fecha a tela de evolução e árvore
+            if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.E))
             {
                 ToggleEvolutionPanel();
             }
@@ -391,6 +391,8 @@ namespace WitchShmup.Core
             return false;
         }
 
+        private readonly Dictionary<string, int> customSkillLevels = new Dictionary<string, int>();
+
         public int GetSkillLevel(string id)
         {
             switch (id)
@@ -409,7 +411,8 @@ namespace WitchShmup.Core
                 case "qtd_tiro": return LevelQtdTiro;
                 case "pod_gelo": return LevelPodGelo;
                 case "pod_fogo": return LevelPodFogo;
-                default: return 0;
+                default:
+                    return customSkillLevels.TryGetValue(id, out int lvl) ? lvl : 0;
             }
         }
 
@@ -491,7 +494,13 @@ namespace WitchShmup.Core
                     break;
 
                 default:
-                    return false;
+                    customSkillLevels[id] = GetSkillLevel(id) + 1;
+                    if (id.StartsWith("f_") && pShooting != null) pShooting.AddBonusDamage(0.6f);
+                    else if (id.StartsWith("g_") && pShooting != null) pShooting.AddBonusDamage(0.6f);
+                    else if (id.StartsWith("t_") && pShooting != null) pShooting.AddFireRateBonus(0.08f);
+                    else if (id.StartsWith("v_") && pHealth != null) pHealth.IncreaseMaxHealth(2);
+                    else if (id == "fus" && pShooting != null) pShooting.AddBonusDamage(1.5f);
+                    break;
             }
 
             OnSkillUpgraded?.Invoke(id, GetSkillLevel(id));
@@ -536,6 +545,15 @@ namespace WitchShmup.Core
 
             bool isOpening = !evolutionPanel.activeSelf;
             evolutionPanel.SetActive(isOpening);
+
+            if (isOpening)
+            {
+                var evoUi = evolutionPanel.GetComponent<WitchShmup.UI.EvolutionUI>();
+                if (evoUi != null)
+                {
+                    evoUi.SwitchTab(false); // Sempre abre na Árvore de Habilidades conforme solicitado
+                }
+            }
 
             // Pausa o jogo quando a tela de evolução abre!
             Time.timeScale = isOpening ? 0f : 1f;
