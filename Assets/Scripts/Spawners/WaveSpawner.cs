@@ -22,6 +22,14 @@ namespace WitchShmup.Spawners
 
         [SerializeField] private GameObject batPrefab;
 
+        [Header("Inimigos da Biblioteca Submersa")]
+        [Tooltip("Zóio: nasce acima da maré.")]
+        [SerializeField] private GameObject eyePrefab;
+        [Tooltip("Livro alado: nasce acima da maré.")]
+        [SerializeField] private GameObject wingedBookPrefab;
+        [Tooltip("Peixe-lanterna: nasce abaixo da maré.")]
+        [SerializeField] private GameObject lanternFishPrefab;
+
 
 
         [Header("Duração da Fase")]
@@ -363,43 +371,45 @@ namespace WitchShmup.Spawners
 
         {
 
-            // Progressão: início mais Rushers simples, depois mais Morcegos e formações mistas
-
             float batChance = (stageTimer < 25f) ? 0.35f : (stageTimer < 60f) ? 0.55f : 0.70f;
-
             bool spawnRusher = (Random.value > batChance);
-
-
-
+            var water = WitchShmup.Environment.PhaseTwoWaterSystem.Instance;
             GameObject enemyObj = null;
-            if (spawnRusher)
+
+            if (water != null)
             {
-                if (rusherPrefab != null)
+                bool underwater = water.IsSubmerged(spawnPos.y);
+                if (underwater)
                 {
-                    enemyObj = Instantiate(rusherPrefab, spawnPos, Quaternion.identity);
+                    GameObject prefab = lanternFishPrefab != null ? lanternFishPrefab : rusherPrefab;
+                    enemyObj = prefab != null ? Instantiate(prefab, spawnPos, Quaternion.identity) : CreateFallbackRusher(spawnPos);
                 }
                 else
                 {
-                    enemyObj = CreateFallbackRusher(spawnPos);
+                    GameObject prefab = Random.value < 0.5f ? eyePrefab : wingedBookPrefab;
+                    if (prefab == null) prefab = eyePrefab != null ? eyePrefab : (wingedBookPrefab != null ? wingedBookPrefab : batPrefab);
+                    enemyObj = prefab != null ? Instantiate(prefab, spawnPos, Quaternion.identity) : CreateFallbackBat(spawnPos);
                 }
+            }
+            else if (spawnRusher)
+            {
+                enemyObj = rusherPrefab != null ? Instantiate(rusherPrefab, spawnPos, Quaternion.identity) : CreateFallbackRusher(spawnPos);
             }
             else
             {
-                if (batPrefab != null)
-                {
-                    enemyObj = Instantiate(batPrefab, spawnPos, Quaternion.identity);
-                }
-                else
-                {
-                    enemyObj = CreateFallbackBat(spawnPos);
-                }
+                enemyObj = batPrefab != null ? Instantiate(batPrefab, spawnPos, Quaternion.identity) : CreateFallbackBat(spawnPos);
             }
-
             if (enemyObj != null)
             {
                 var enemy = enemyObj.GetComponent<EnemyBase>();
                 if (enemy != null)
                 {
+                    if (water != null)
+                    {
+                        enemy.SetWaterZone(water.IsSubmerged(spawnPos.y)
+                            ? WitchShmup.Enemies.EnemyWaterZone.UnderwaterOnly
+                            : WitchShmup.Enemies.EnemyWaterZone.SurfaceOnly);
+                    }
                     enemy.ApplyDifficultyMultipliers(
                         enemyHealthMultiplier,
                         enemySpeedMultiplier,

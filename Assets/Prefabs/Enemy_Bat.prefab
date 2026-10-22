@@ -195,13 +195,18 @@ MonoBehaviour:
   weaknessDamageMultiplier: 2
   spriteRenderer: {fileID: 0}
   damageFlashColor: {r: 1, g: 0.3, b: 0.3, a: 1}
-  deathEffectPrefab: {fileID: 0}
+  deathEffectPrefab: {fileID: 3300000, guid: 3b4dc135d6c3fe94bb3fe8b652568aa0, type: 3}
+  deathSound: {fileID: 0}
+  deathSoundVolume: 0.8
+  waterZone: 0
+  waterZoneMargin: 0.2
   fireHeartDropPrefab: {fileID: 4564538101699445348, guid: e84576b1058d72249a30caa2d58c0d42, type: 3}
   fireHeartDropChance: 0.4
   healthPotionDropPrefab: {fileID: 5928424389976600072, guid: ada803e6703f6f1428dc77aa6c3d3022, type: 3}
   healthPotionDropChance: 0.25
   skillPointDropPrefab: {fileID: 8771554972207094783, guid: aa5f32342019cda4bafec4220899e705, type: 3}
   skillPointDropChance: 0.35
+  difficultyHealthMultiplier: 1
   horizontalSpeed: 3.2
   waveFrequency: 3
   waveAmplitude: 1.2

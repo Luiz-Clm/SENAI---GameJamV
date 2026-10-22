@@ -8,6 +8,8 @@ using WitchShmup.Drops;
 
 namespace WitchShmup.Enemies
 {
+    public enum EnemyWaterZone { Any, SurfaceOnly, UnderwaterOnly }
+
     [RequireComponent(typeof(Collider2D), typeof(Rigidbody2D))]
     public class EnemyBase : MonoBehaviour, IDamageable
     {
@@ -25,6 +27,12 @@ namespace WitchShmup.Enemies
         [SerializeField] protected SpriteRenderer spriteRenderer;
         [SerializeField] protected Color damageFlashColor = new Color(1f, 0.3f, 0.3f, 1f);
         [SerializeField] protected GameObject deathEffectPrefab;
+        [SerializeField] protected AudioClip deathSound;
+        [SerializeField, Range(0f, 1f)] protected float deathSoundVolume = 0.8f;
+
+        [Header("Limite de Movimento pela Maré")]
+        [SerializeField] protected EnemyWaterZone waterZone = EnemyWaterZone.Any;
+        [SerializeField, Min(0f)] protected float waterZoneMargin = 0.2f;
 
         [Header("Item Drops")]
         [SerializeField] protected GameObject fireHeartDropPrefab;
@@ -97,6 +105,37 @@ namespace WitchShmup.Enemies
         protected virtual void Update()
         {
             CheckOffscreenDespawn();
+        }
+
+        protected virtual void LateUpdate()
+        {
+            ApplyWaterZoneLimit();
+        }
+
+        public void SetWaterZone(EnemyWaterZone zone) => waterZone = zone;
+
+        private void ApplyWaterZoneLimit()
+        {
+            var water = WitchShmup.Environment.PhaseTwoWaterSystem.Instance;
+            if (water == null || waterZone == EnemyWaterZone.Any) return;
+
+            float boundary = water.SurfaceY;
+            float y = transform.position.y;
+            if (waterZone == EnemyWaterZone.SurfaceOnly)
+                y = Mathf.Max(y, boundary + waterZoneMargin);
+            else
+                y = Mathf.Min(y, boundary - waterZoneMargin);
+
+            Camera cam = Camera.main;
+            if (cam != null && cam.orthographic)
+            {
+                float halfHeight = cam.orthographicSize;
+                y = waterZone == EnemyWaterZone.SurfaceOnly
+                    ? Mathf.Clamp(y, boundary + waterZoneMargin, cam.transform.position.y + halfHeight - 0.25f)
+                    : Mathf.Clamp(y, cam.transform.position.y - halfHeight + 0.25f, boundary - waterZoneMargin);
+            }
+
+            transform.position = new Vector3(transform.position.x, y, transform.position.z);
         }
 
         protected virtual void CheckOffscreenDespawn()
@@ -209,6 +248,9 @@ namespace WitchShmup.Enemies
 
             DropItems();
 
+            if (deathSound != null)
+                AudioSource.PlayClipAtPoint(deathSound, transform.position, deathSoundVolume);
+
             if (deathEffectPrefab != null)
             {
                 Instantiate(deathEffectPrefab, transform.position, Quaternion.identity);
@@ -220,48 +262,18 @@ namespace WitchShmup.Enemies
 
         protected virtual void DropItems()
         {
-            // Monta a lista de drops possíveis com seus pesos
-            // Apenas adiciona um drop se o prefab estiver atribuído
-            float totalWeight = 0f;
-            float fhWeight = (fireHeartDropPrefab != null) ? fireHeartDropChance : 0f;
-            float hpWeight = (healthPotionDropPrefab != null) ? healthPotionDropChance : 0f;
-            float spWeight = (skillPointDropPrefab != null) ? skillPointDropChance : 0f;
-            totalWeight = fhWeight + hpWeight + spWeight;
-
-            // Sem nenhum drop possível
-            if (totalWeight <= 0f) return;
-
-            // Roll único: chance de dropar ALGUMA coisa = soma dos pesos (cap 1)
-            float dropRoll = UnityEngine.Random.value;
-            float dropChance = Mathf.Min(1f, totalWeight);
-            if (dropRoll > dropChance) return; // Não dropa nada desta vez
-
-            // Normaliza e escolhe qual item dropar
-            float pick = UnityEngine.Random.value * totalWeight;
-            GameObject prefabToDrop = null;
-
-            if (pick < fhWeight)
-            {
-                prefabToDrop = fireHeartDropPrefab;
-            }
-            else if (pick < fhWeight + hpWeight)
-            {
-                prefabToDrop = healthPotionDropPrefab;
-            }
-            else
-            {
-                prefabToDrop = skillPointDropPrefab;
-            }
-
-            if (prefabToDrop != null)
-            {
-                // Pequeno offset aleatório para não sobrepor outros drops
-                Vector2 offset = UnityEngine.Random.insideUnitCircle * 0.5f;
-                Vector3 spawnPos = transform.position + new Vector3(offset.x, offset.y, 0f);
-                Instantiate(prefabToDrop, spawnPos, Quaternion.identity);
-            }
+            // Cada item tem sua própria probabilidade no Inspector; podem sair vários itens.
+            TryDrop(fireHeartDropPrefab, fireHeartDropChance);
+            TryDrop(healthPotionDropPrefab, healthPotionDropChance);
+            TryDrop(skillPointDropPrefab, skillPointDropChance);
         }
 
+        private void TryDrop(GameObject prefab, float chance)
+        {
+            if (prefab == null || UnityEngine.Random.value >= Mathf.Clamp01(chance)) return;
+            Vector2 offset = UnityEngine.Random.insideUnitCircle * 0.5f;
+            Instantiate(prefab, transform.position + new Vector3(offset.x, offset.y, 0f), Quaternion.identity);
+        }
         protected virtual void OnTriggerEnter2D(Collider2D other)
         {
             if (other.CompareTag("Player") || other.GetComponentInParent<WitchShmup.Player.PlayerController>() != null)

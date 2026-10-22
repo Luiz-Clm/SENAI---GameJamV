@@ -305,6 +305,15 @@ namespace WitchShmup.Player
                 isFiring = Input.GetKey(KeyCode.Space) || Input.GetMouseButton(0);
             }
 
+            // Na Biblioteca Submersa, o fogo apaga ao atravessar a superfície.
+            if (isFiring && currentElement == ElementType.Fire &&
+                WitchShmup.Environment.PhaseTwoWaterSystem.Instance != null &&
+                WitchShmup.Environment.PhaseTwoWaterSystem.Instance.IsSubmerged(
+                    WitchShmup.Environment.PhaseTwoWaterSystem.Instance.GetPlayerHeadY()))
+            {
+                return;
+            }
+
             if (isFiring && Time.time >= nextFireTime)
             {
                 float cost = (CurrentConfig != null && CurrentConfig.manaCost > 0f) ? CurrentConfig.manaCost : -1f;

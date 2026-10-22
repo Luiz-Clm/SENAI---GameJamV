@@ -293,6 +293,104 @@ namespace SpellGlide
             return clip;
         }
 
+        /// <summary>
+        /// Som de morte de inimigo: estalo seco + ruído branco curto decrescente.
+        /// </summary>
+        public static AudioClip CreateEnemyDeathSound()
+        {
+            const int sampleRate = 44100;
+            const float duration = 0.28f;
+            int totalSamples = (int)(sampleRate * duration);
+            float[] data = new float[totalSamples];
+            var rng = new System.Random(777);
+
+            for (int i = 0; i < totalSamples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float progress = t / duration;
+
+                // Estalo inicial (thump)
+                float thump = Mathf.Sin(2f * Mathf.PI * 180f * t) * Mathf.Exp(-30f * t) * 0.8f;
+
+                // Ruído branco com decaimento (dispersão de partículas)
+                float noise = (float)(rng.NextDouble() * 2.0 - 1.0);
+                float noiseEnv = Mathf.Exp(-12f * t) * 0.5f;
+
+                // Chiado descendente (frequência cai)
+                float chirp = Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(600f, 80f, progress) * t)
+                              * Mathf.Exp(-8f * t) * 0.35f;
+
+                data[i] = Mathf.Clamp((thump + noise * noiseEnv + chirp) * 0.9f, -1f, 1f);
+            }
+
+            AudioClip clip = AudioClip.Create("GeneratedEnemyDeath", totalSamples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        /// <summary>
+        /// Som de coleta de item: sino mágico brilhante + shimmer ascendente.
+        /// </summary>
+        public static AudioClip CreateItemCollectSound()
+        {
+            const int sampleRate = 44100;
+            const float duration = 0.32f;
+            int totalSamples = (int)(sampleRate * duration);
+            float[] data = new float[totalSamples];
+
+            for (int i = 0; i < totalSamples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float progress = t / duration;
+
+                // Frequência sobe (shimmer)
+                float freq = Mathf.Lerp(520f, 1200f, progress);
+                float shimmer = Mathf.Sin(2f * Mathf.PI * freq * t) * 0.5f;
+
+                // Harmônico de sino
+                float bell = Mathf.Sin(2f * Mathf.PI * 880f * t) * 0.4f
+                           + Mathf.Sin(2f * Mathf.PI * 1320f * t) * 0.2f;
+
+                float env = Mathf.Exp(-7f * t);
+                data[i] = Mathf.Clamp((shimmer + bell) * env * 0.75f, -1f, 1f);
+            }
+
+            AudioClip clip = AudioClip.Create("GeneratedItemCollect", totalSamples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        /// <summary>
+        /// Som de coleta de FireHeart: sino mais grave e místico.
+        /// </summary>
+        public static AudioClip CreateFireHeartCollectSound()
+        {
+            const int sampleRate = 44100;
+            const float duration = 0.45f;
+            int totalSamples = (int)(sampleRate * duration);
+            float[] data = new float[totalSamples];
+
+            for (int i = 0; i < totalSamples; i++)
+            {
+                float t = (float)i / sampleRate;
+
+                // Sino grave mágico
+                float bell = Mathf.Sin(2f * Mathf.PI * 440f * t) * 0.55f
+                           + Mathf.Sin(2f * Mathf.PI * 660f * t) * 0.30f
+                           + Mathf.Sin(2f * Mathf.PI * 330f * t) * 0.20f;
+
+                // Vibrato suave (mystical feel)
+                float vibrato = 1f + 0.04f * Mathf.Sin(2f * Mathf.PI * 6f * t);
+
+                float env = Mathf.Exp(-5f * t);
+                data[i] = Mathf.Clamp(bell * vibrato * env * 0.7f, -1f, 1f);
+            }
+
+            AudioClip clip = AudioClip.Create("GeneratedFireHeartCollect", totalSamples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
         public static byte[] ConvertClipToWav(AudioClip clip)
         {
             int samples = clip.samples;
