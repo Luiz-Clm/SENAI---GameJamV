@@ -1,9 +1,17 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
 namespace WitchShmup.Core
 {
+    [Serializable]
+    public class SavedSkillLevel
+    {
+        public string id;
+        public int level;
+    }
+
     [Serializable]
     public class SaveData
     {
@@ -36,6 +44,7 @@ namespace WitchShmup.Core
         public int levelRap = 0;  // Tiro Rápido
         public int levelDup = 0;  // Tiro Duplo
         public int levelPer = 0;  // Tiro Perfurante
+        public List<SavedSkillLevel> customSkillLevels = new List<SavedSkillLevel>();
 
         public int GetSkillLevel(string id)
         {

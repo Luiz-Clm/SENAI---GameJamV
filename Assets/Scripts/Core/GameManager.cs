@@ -167,7 +167,7 @@ namespace WitchShmup.Core
                 maxUnlockedPhase = Mathf.Max(currentPhase, data.maxUnlockedPhase);
 
                 // Carrega níveis da árvore
-                LevelVitality = data.levelVit;
+                LevelVitality = Mathf.Clamp(data.levelVit, 0, 5);
                 LevelVeloz = data.levelVel;
                 LevelVelTiro = data.levelVel;
                 LevelFoco = data.levelFoc;
@@ -181,6 +181,16 @@ namespace WitchShmup.Core
                 LevelQtdTiro = data.levelDup;
                 LevelPerfurante = data.levelPer;
                 LevelPodFogo = data.levelPer;
+
+                customSkillLevels.Clear();
+                if (data.customSkillLevels != null)
+                {
+                    foreach (var savedSkill in data.customSkillLevels)
+                    {
+                        if (savedSkill == null || string.IsNullOrEmpty(savedSkill.id) || savedSkill.level <= 0) continue;
+                        customSkillLevels[savedSkill.id] = savedSkill.level;
+                    }
+                }
 
                 if (data.highScore > highScore)
                 {
@@ -241,11 +251,12 @@ namespace WitchShmup.Core
             var pHealth = FindFirstObjectByType<PlayerHealth>();
             var pShooting = FindFirstObjectByType<PlayerShooting>();
             var pController = FindFirstObjectByType<PlayerController>();
+            var pMana = FindFirstObjectByType<PlayerMana>();
 
             if (pHealth != null)
             {
-                // Bônus de Vitalidade (+5 por nível)
-                if (LevelVitality > 0) pHealth.IncreaseMaxHealth(LevelVitality * 5);
+                // Vitalidade concede +1 coração por nível.
+                if (LevelVitality > 0) pHealth.IncreaseMaxHealth(LevelVitality);
                 // Bônus de Despertar (+3 de vida)
                 if (LevelDespertar > 0) pHealth.IncreaseMaxHealth(LevelDespertar * 3);
                 // Pele de pedra
@@ -272,6 +283,20 @@ namespace WitchShmup.Core
                 {
                     ApplyStaffEvolutionBonus();
                 }
+            }
+
+            if (pMana != null)
+            {
+                int reservoirLevel = GetSkillLevel("mana_reservoir");
+                int flowLevel = GetSkillLevel("mana_flow");
+                if (reservoirLevel > 0) pMana.IncreaseMaxMana(25f * reservoirLevel);
+                if (flowLevel > 0)
+                {
+                    pMana.IncreaseManaRechargeRate(8f * flowLevel);
+                    pMana.ReduceRechargeDelay(0.1f * flowLevel);
+                }
+                if (GetSkillLevel("mana_breath") > 0) pMana.SetFatigueRecoveryThreshold(0.15f);
+                if (GetSkillLevel("mana_efficiency") > 0) pMana.SetManaCostPerShot(4f);
             }
         }
 
@@ -418,18 +443,20 @@ namespace WitchShmup.Core
 
         public bool UpgradeSkill(string id, int cost)
         {
+            if (id == "vit" && LevelVitality >= 5) return false;
             if (!SpendSkillPoints(cost)) return false;
 
             var pHealth     = FindFirstObjectByType<PlayerHealth>();
             var pShooting   = FindFirstObjectByType<PlayerShooting>();
             var pController = FindFirstObjectByType<PlayerController>();
+            var pMana       = FindFirstObjectByType<PlayerMana>();
 
             switch (id)
             {
                 case "vit":
                     LevelVitality++;
-                    // +10 de vida (5 corações de 2 HP cada, baseado em maxHealth=4)
-                    if (pHealth != null) pHealth.IncreaseMaxHealth(5);
+                    // +1 coração de vida máxima por nível.
+                    if (pHealth != null) pHealth.IncreaseMaxHealth(1);
                     break;
 
                 case "vel":
@@ -500,6 +527,18 @@ namespace WitchShmup.Core
                     else if (id.StartsWith("t_") && pShooting != null) pShooting.AddFireRateBonus(0.08f);
                     else if (id.StartsWith("v_") && pHealth != null) pHealth.IncreaseMaxHealth(2);
                     else if (id == "fus" && pShooting != null) pShooting.AddBonusDamage(1.5f);
+
+                    if (pMana != null)
+                    {
+                        if (id == "mana_reservoir") pMana.IncreaseMaxMana(25f);
+                        else if (id == "mana_flow")
+                        {
+                            pMana.IncreaseManaRechargeRate(8f);
+                            pMana.ReduceRechargeDelay(0.1f);
+                        }
+                        else if (id == "mana_breath") pMana.SetFatigueRecoveryThreshold(0.15f);
+                        else if (id == "mana_efficiency") pMana.SetManaCostPerShot(4f);
+                    }
                     break;
             }
 
@@ -632,8 +671,15 @@ namespace WitchShmup.Core
                 levelRap = LevelRapido,
                 levelDup = LevelDuplo,
                 levelPer = LevelPerfurante,
+                customSkillLevels = new List<SavedSkillLevel>(),
                 hasSeenStory = true
             };
+
+            foreach (var skill in customSkillLevels)
+            {
+                if (skill.Value <= 0) continue;
+                data.customSkillLevels.Add(new SavedSkillLevel { id = skill.Key, level = skill.Value });
+            }
 
             if (advancePhase)
             {

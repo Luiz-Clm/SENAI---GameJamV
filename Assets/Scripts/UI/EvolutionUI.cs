@@ -68,7 +68,7 @@ namespace WitchShmup.UI
         public float lineThickness = 5f;
 
         [Tooltip("Tamanho da área navegável da árvore.")]
-        public Vector2 treeAreaSize = new Vector2(2000, 2000);
+        public Vector2 treeAreaSize = new Vector2(1500, 1800);
 
         [Header("Árvore de Habilidades (Customização Livre)")]
         [Tooltip("Lista de nós da árvore. Modifique posições (canvasPos), ícones (customIcon) e requisitos livremente!")]
@@ -76,7 +76,7 @@ namespace WitchShmup.UI
 
         [Header("Navegação Interativa (Pan / Arraste)")]
         [Tooltip("Se ativado: segurar o mouse e arrastar para baixo move a árvore para cima (e vice-versa).")]
-        [SerializeField] public bool invertDrag = true;
+        [SerializeField] public bool invertDrag = false;
         [Tooltip("Sensibilidade do movimento de arraste.")]
         [SerializeField] public float dragSensitivity = 1.0f;
         [Tooltip("Habilita zoom suave com a roda do mouse.")]
@@ -216,6 +216,7 @@ namespace WitchShmup.UI
         // Container interativo da árvore
         RectTransform    treeContentRt;
         TreeDraggablePan panController;
+        readonly HashSet<string> visibleNodeIds = new HashSet<string>();
 
         // Card detalhes (Tab 1)
         TextMeshProUGUI cardName, cardCost, cardDesc, cardEffect, cardStatus;
@@ -291,12 +292,16 @@ namespace WitchShmup.UI
 
         public void EnsureDefaultNodes()
         {
-            if (treeNodes != null && treeNodes.Count >= 20) return;
+            if (treeNodes != null && treeNodes.Count >= 20)
+            {
+                EnsureManaNodes();
+                return;
+            }
 
             treeNodes = new List<NodeData>
             {
                 // ── 1. Tronco Base ──────────────────────────────────────────────
-                new NodeData { id="vit", displayName="1. Vitalidade Inicial", description="Seu corpo arcano aguenta mais impacto na masmorra.", effectText="+1 Coração de Vida Máxima", requirementId=null, maxLevel=1, cost=2, canvasPos=new Vector2(0, -320) },
+                new NodeData { id="vit", displayName="1. Coração Reforçado", description="Cada nível aumenta sua vida máxima em um coração.", effectText="+1 Coração de Vida Máxima por nível", requirementId=null, maxLevel=5, cost=1, canvasPos=new Vector2(0, -320) },
                 new NodeData { id="vel", displayName="2. Vassoura Leve", description="A vassoura corta o ar com leveza, facilitando esquivas.", effectText="+10% Velocidade de Movimento", requirementId="vit", maxLevel=1, cost=2, canvasPos=new Vector2(0, -220) },
 
                 // ── 2. Ramo de Fogo (Coluna Interna Esquerda) ───────────────────
@@ -327,6 +332,22 @@ namespace WitchShmup.UI
                 new NodeData { id="ima", displayName="19. Ímã de Mana", description="Atrai os Skill Points e orbes dropados de muito mais longe.", effectText="+50% de Alcance de Coleta", requirementId="f_sup", maxLevel=1, cost=3, canvasPos=new Vector2(0, 280) },
                 new NodeData { id="fus", displayName="20. Harmonia Elemental", description="Alternar entre Gelo e Fogo fortalece o próximo tiro com faíscas.", effectText="+25% de Dano ao Alternar Elemento", requirementId="ima", maxLevel=1, cost=5, canvasPos=new Vector2(0, 390) }
             };
+
+            EnsureManaNodes();
+        }
+
+        void EnsureManaNodes()
+        {
+            if (treeNodes == null) treeNodes = new List<NodeData>();
+
+            if (GetNode("mana_reservoir") == null)
+                treeNodes.Add(new NodeData { id="mana_reservoir", displayName="Reservatório Arcano", description="Aumenta a quantidade máxima de mana.", effectText="Mana máxima: 100 → 125", requirementId="vit", maxLevel=1, cost=1, canvasPos=new Vector2(0, -430) });
+            if (GetNode("mana_flow") == null)
+                treeNodes.Add(new NodeData { id="mana_flow", displayName="Fluxo de Mana", description="A mana recarrega mais rápido após disparar.", effectText="Recarga: 22 → 30/s • Atraso: 0,45 → 0,35s", requirementId="mana_reservoir", maxLevel=1, cost=2, canvasPos=new Vector2(0, -530) });
+            if (GetNode("mana_breath") == null)
+                treeNodes.Add(new NodeData { id="mana_breath", displayName="Fôlego do Mago", description="Recupera a capacidade de disparar com menos mana.", effectText="Limite de recuperação da fadiga: 30% → 15%", requirementId="mana_flow", maxLevel=1, cost=3, canvasPos=new Vector2(0, -630) });
+            if (GetNode("mana_efficiency") == null)
+                treeNodes.Add(new NodeData { id="mana_efficiency", displayName="Eficiência Arcana", description="Reduz o custo de mana de cada disparo.", effectText="Custo por disparo: 5 → 4 de mana", requirementId="mana_breath", maxLevel=1, cost=4, canvasPos=new Vector2(0, -730) });
         }
 
         private static void SafeDestroy(GameObject go)
@@ -464,24 +485,39 @@ namespace WitchShmup.UI
                 var treeCanvas = tTree.Find("TreeBorder/TreeCanvas");
                 if (treeCanvas != null)
                 {
-                    panController = treeCanvas.GetComponent<TreeDraggablePan>();
+                    panController = treeCanvas.GetComponent<TreeDraggablePan>()
+                        ?? treeCanvas.gameObject.AddComponent<TreeDraggablePan>();
                     var tContent = treeCanvas.Find("TreeContent");
                     if (tContent != null)
                     {
                         treeContentRt = tContent.GetComponent<RectTransform>();
-                        if (panController != null) panController.SetContent(treeContentRt);
+                        treeContentRt.sizeDelta = treeAreaSize;
+                        panController.SetContent(treeContentRt);
+                        panController.dragSensitivity = dragSensitivity;
+                        panController.invertDrag = invertDrag;
+                        panController.enableZoom = enableZoom;
+                        panController.minZoom = 0.25f;
 
                         // Reconecta os nós existentes e respeita posições/tamanhos editados na Scene View!
                         foreach (var n in treeNodes)
                         {
                             var nTr = tContent.Find($"Node_{n.id}");
-                            if (nTr != null)
+                            if (nTr == null)
+                            {
+                                BuildTreeNode(n);
+                                continue;
+                            }
+                            else
                             {
                                 n.nodeGo = nTr.gameObject;
                                 n.nodeBg = nTr.GetComponent<Image>();
                                 n.nodeRing = nTr.Find("Ring")?.GetComponent<Image>();
                                 n.nodeIcon = nTr.Find("Icon")?.GetComponent<Image>();
                                 n.levelLabel = nTr.Find("Lv")?.GetComponent<TextMeshProUGUI>();
+
+                                BindNodeInteractions(n, nTr.gameObject);
+                                if (n.nodeRing != null) n.nodeRing.raycastTarget = false;
+                                if (n.nodeIcon != null) n.nodeIcon.raycastTarget = false;
 
                                 // Atualiza sprite se houver customIcon
                                 if (n.nodeIcon != null) n.nodeIcon.sprite = GetNodeSprite(n);
@@ -714,61 +750,7 @@ namespace WitchShmup.UI
             RedrawLines();
 
             // Constrói cada Nó com suporte aos tamanhos personalizados
-            foreach (var n in treeNodes)
-            {
-                Vector2 nodeSize = (n.customNodeSize != Vector2.zero) ? n.customNodeSize : defaultNodeSize;
-                Vector2 iconSize = (n.customIconSize != Vector2.zero) ? n.customIconSize : defaultIconSize;
-
-                var nodeGo = Rect($"Node_{n.id}", treeContentRt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), nodeSize);
-                SetAnchoredPos(nodeGo, n.canvasPos);
-                n.nodeGo = nodeGo;
-
-                n.nodeBg = Img(nodeGo, C_LOCKED);
-
-                var ringGo = Rect("Ring", nodeGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(12, 12));
-                n.nodeRing = Img(ringGo, new Color(C_AVAIL.r, C_AVAIL.g, C_AVAIL.b, 0f));
-                ringGo.transform.SetAsFirstSibling();
-
-                var iconGo = Rect("Icon", nodeGo.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), iconSize);
-                n.nodeIcon = iconGo.AddComponent<Image>();
-                n.nodeIcon.sprite = GetNodeSprite(n);
-                n.nodeIcon.preserveAspect = true;
-                n.nodeIcon.raycastTarget = false;
-
-                n.levelLabel = Txt("Lv", nodeGo.transform, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 0), new Vector2(0, 22),
-                    "", 13, C_MUTED, FontStyles.Bold);
-                n.levelLabel.alignment = TextAlignmentOptions.Center;
-                SetAnchoredPos(n.levelLabel.gameObject, new Vector2(0, - (nodeSize.y * 0.5f + 12f)));
-
-                var trig = nodeGo.AddComponent<EventTrigger>();
-                Vector2 pointerDownPos = Vector2.zero;
-
-                AddTrigger(trig, EventTriggerType.PointerDown, data => {
-                    pointerDownPos = ((PointerEventData)data).position;
-                });
-
-                AddTrigger(trig, EventTriggerType.PointerEnter, _ => {
-                    SelectNode(n.id);
-                    PulseRing(n, true);
-                });
-
-                AddTrigger(trig, EventTriggerType.PointerExit, _ => {
-                    PulseRing(n, false);
-                });
-
-                AddTrigger(trig, EventTriggerType.Drag, data => {
-                    if (panController != null) panController.OnDrag((PointerEventData)data);
-                });
-
-                AddTrigger(trig, EventTriggerType.PointerClick, data => {
-                    var ped = (PointerEventData)data;
-                    if (Vector2.Distance(ped.position, pointerDownPos) < 10f)
-                    {
-                        SelectNode(n.id);
-                        TryBuy(n.id);
-                    }
-                });
-            }
+            foreach (var n in treeNodes) BuildTreeNode(n);
 
             // Botão "Resetar / Centralizar Visão [⟲]" na página esquerda
             var resetGo = Rect("Btn_ResetView", treeCanvas.transform, new Vector2(1, 0), new Vector2(1, 0), new Vector2(1, 0), new Vector2(110, 30));
@@ -788,6 +770,34 @@ namespace WitchShmup.UI
             SetAnchoredPos(leg.gameObject, new Vector2(12, 10));
         }
 
+        GameObject BuildTreeNode(NodeData n)
+        {
+            Vector2 nodeSize = n.customNodeSize != Vector2.zero ? n.customNodeSize : defaultNodeSize;
+            Vector2 iconSize = n.customIconSize != Vector2.zero ? n.customIconSize : defaultIconSize;
+            var nodeGo = Rect($"Node_{n.id}", treeContentRt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), nodeSize);
+            SetAnchoredPos(nodeGo, n.canvasPos);
+            n.nodeGo = nodeGo;
+            n.nodeBg = Img(nodeGo, C_LOCKED);
+
+            var ringGo = Rect("Ring", nodeGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(12, 12));
+            n.nodeRing = Img(ringGo, new Color(C_AVAIL.r, C_AVAIL.g, C_AVAIL.b, 0f));
+            n.nodeRing.raycastTarget = false;
+            ringGo.transform.SetAsFirstSibling();
+
+            var iconGo = Rect("Icon", nodeGo.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), iconSize);
+            n.nodeIcon = iconGo.AddComponent<Image>();
+            n.nodeIcon.sprite = GetNodeSprite(n);
+            n.nodeIcon.preserveAspect = true;
+            n.nodeIcon.raycastTarget = false;
+
+            n.levelLabel = Txt("Lv", nodeGo.transform, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 0), new Vector2(0, 22),
+                "", 13, C_MUTED, FontStyles.Bold);
+            n.levelLabel.alignment = TextAlignmentOptions.Center;
+            SetAnchoredPos(n.levelLabel.gameObject, new Vector2(0, -(nodeSize.y * 0.5f + 12f)));
+            BindNodeInteractions(n, nodeGo);
+            return nodeGo;
+        }
+
         public void RedrawLines()
         {
             if (treeContentRt == null) return;
@@ -805,7 +815,7 @@ namespace WitchShmup.UI
             {
                 if (string.IsNullOrEmpty(n.requirementId)) continue;
                 var req = GetNode(n.requirementId);
-                if (req == null) continue;
+                if (req == null || !visibleNodeIds.Contains(n.id) || !visibleNodeIds.Contains(req.id)) continue;
                 DrawLine(linesRoot.transform, req.canvasPos, n.canvasPos);
             }
         }
@@ -1071,6 +1081,7 @@ namespace WitchShmup.UI
         void RefreshNodes()
         {
             if (GameManager.Instance == null) return;
+            UpdateNodeVisibility();
             int sp = GameManager.Instance.SkillPoints;
             foreach (var n in treeNodes)
             {
@@ -1078,7 +1089,8 @@ namespace WitchShmup.UI
                 int  lvl     = GameManager.Instance.GetSkillLevel(n.id);
                 bool reached = IsReachable(n);
                 bool maxed   = lvl >= n.maxLevel;
-                bool canBuy  = reached && !maxed && sp >= n.cost;
+                int cost = GetNodeCost(n, lvl);
+                bool canBuy  = reached && !maxed && sp >= cost;
 
                 if (maxed)        n.nodeBg.color = nodeMaxedColor;
                 else if (lvl > 0) n.nodeBg.color = nodeBoughtColor;
@@ -1114,10 +1126,11 @@ namespace WitchShmup.UI
             int  lvl     = GameManager.Instance.GetSkillLevel(n.id);
             bool reached = IsReachable(n);
             bool maxed   = lvl >= n.maxLevel;
-            bool canBuy  = reached && !maxed && sp >= n.cost;
+            int  cost    = GetNodeCost(n, lvl);
+            bool canBuy  = reached && !maxed && sp >= cost;
 
             if (cardName != null) cardName.text = n.displayName;
-            if (cardCost != null) cardCost.text = maxed ? "CUSTO: —" : $"CUSTO: {n.cost} SP";
+            if (cardCost != null) cardCost.text = maxed ? "CUSTO: —" : $"CUSTO: {cost} SP";
             if (cardDesc != null) cardDesc.text = n.description;
 
             if (cardIconImg != null)
@@ -1146,10 +1159,7 @@ namespace WitchShmup.UI
             {
                 if (n.id == "vit")
                 {
-                    if (lvl == 0) cardEffect.text = "+1 Coração de Vida (Total: 5)";
-                    else if (lvl == 1) cardEffect.text = "+1 Coração de Vida (Total: 6)";
-                    else if (lvl == 2) cardEffect.text = "+1 Coração de Vida (Total: 7 - MÁXIMO)";
-                    else cardEffect.text = "Vida Máxima Atingida (7 Corações)";
+                    cardEffect.text = n.effectText;
                 }
                 else if (n.id == "dup")
                 {
@@ -1179,9 +1189,9 @@ namespace WitchShmup.UI
                 statusMsg = $"Requer: {(req != null ? req.displayName : "habilidade anterior")}";
                 btnLabel  = "BLOQUEADO";
             }
-            else if (sp < n.cost)
+            else if (sp < cost)
             {
-                statusMsg = $"Faltam {n.cost - sp} Skill Point(s)";
+                statusMsg = $"Faltam {cost - sp} Skill Point(s)";
                 btnLabel  = "SP INSUFICIENTE";
             }
             else
@@ -1277,8 +1287,14 @@ namespace WitchShmup.UI
             NodeData n = GetNode(id);
             if (n == null) return;
             int lvl = GameManager.Instance.GetSkillLevel(n.id);
-            if (!IsReachable(n) || lvl >= n.maxLevel || GameManager.Instance.SkillPoints < n.cost) return;
-            if (GameManager.Instance.UpgradeSkill(n.id, n.cost)) RefreshUI();
+            int cost = GetNodeCost(n, lvl);
+            if (!IsReachable(n) || lvl >= n.maxLevel || GameManager.Instance.SkillPoints < cost) return;
+            if (GameManager.Instance.UpgradeSkill(n.id, cost)) RefreshUI();
+        }
+
+        int GetNodeCost(NodeData node, int currentLevel)
+        {
+            return node.id == "vit" ? node.cost + currentLevel : node.cost;
         }
 
         void OnEvolveClicked()
@@ -1313,7 +1329,104 @@ namespace WitchShmup.UI
             rt.anchoredPosition = (a + b) * 0.5f;
             rt.sizeDelta        = new Vector2(dir.magnitude, lineThickness);
             rt.localRotation    = Quaternion.Euler(0, 0, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
-            go.AddComponent<Image>().color = C_LINE;
+            var image = go.AddComponent<Image>();
+            image.color = C_LINE;
+            image.raycastTarget = false;
+        }
+
+        void BindNodeInteractions(NodeData n, GameObject nodeGo)
+        {
+            if (n == null || nodeGo == null) return;
+            var trig = nodeGo.GetComponent<EventTrigger>() ?? nodeGo.AddComponent<EventTrigger>();
+            // Scene-authored EventTriggers have empty serialized callbacks. Rebind them at runtime.
+            trig.triggers.Clear();
+            Vector2 pointerDownPos = Vector2.zero;
+
+            AddTrigger(trig, EventTriggerType.PointerDown, data =>
+                pointerDownPos = ((PointerEventData)data).position);
+            AddTrigger(trig, EventTriggerType.PointerEnter, _ =>
+            {
+                SelectNode(n.id);
+                PulseRing(n, true);
+            });
+            AddTrigger(trig, EventTriggerType.PointerExit, _ => PulseRing(n, false));
+            AddTrigger(trig, EventTriggerType.PointerClick, data =>
+            {
+                var pointer = (PointerEventData)data;
+                if (Vector2.Distance(pointer.position, pointerDownPos) < 10f)
+                {
+                    SelectNode(n.id);
+                    TryBuy(n.id);
+                }
+            });
+        }
+
+        void UpdateNodeVisibility()
+        {
+            var nextVisible = new HashSet<string>();
+            var distance = new Dictionary<string, int>();
+            var queue = new Queue<NodeData>();
+
+            // Revele a raiz e os dois próximos passos até o jogador comprar sua primeira habilidade.
+            bool hasPurchased = false;
+            foreach (var node in treeNodes)
+            {
+                if (GameManager.Instance.GetSkillLevel(node.id) > 0)
+                {
+                    hasPurchased = true;
+                    nextVisible.Add(node.id);
+                    if (!distance.ContainsKey(node.id))
+                    {
+                        distance[node.id] = 0;
+                        queue.Enqueue(node);
+                    }
+                }
+            }
+
+            if (!hasPurchased)
+            {
+                foreach (var node in treeNodes)
+                {
+                    if (string.IsNullOrEmpty(node.requirementId))
+                    {
+                        nextVisible.Add(node.id);
+                        distance[node.id] = 0;
+                        queue.Enqueue(node);
+                    }
+                }
+            }
+
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                int currentDistance = distance[current.id];
+                if (currentDistance >= 2) continue;
+
+                foreach (var child in treeNodes)
+                {
+                    if (child.requirementId != current.id) continue;
+                    int childDistance = currentDistance + 1;
+                    if (distance.TryGetValue(child.id, out int knownDistance) && knownDistance <= childDistance) continue;
+                    distance[child.id] = childDistance;
+                    nextVisible.Add(child.id);
+                    queue.Enqueue(child);
+                }
+            }
+
+            bool changed = !visibleNodeIds.SetEquals(nextVisible);
+            foreach (var node in treeNodes)
+            {
+                bool visible = nextVisible.Contains(node.id);
+                if (node.nodeGo != null && node.nodeGo.activeSelf != visible)
+                {
+                    node.nodeGo.SetActive(visible);
+                    changed = true;
+                }
+            }
+
+            visibleNodeIds.Clear();
+            visibleNodeIds.UnionWith(nextVisible);
+            if (changed) RedrawLines();
         }
 
         void AddTrigger(EventTrigger trig, EventTriggerType type, UnityEngine.Events.UnityAction<BaseEventData> action)
@@ -1567,7 +1680,7 @@ namespace WitchShmup.UI
     /// Permite arrastar (pan) e dar zoom interativo na área da Árvore de Habilidades com o mouse.
     /// Funciona com clique e arraste (M1 ou M3) e roda do mouse para zoom.
     /// </summary>
-    public class TreeDraggablePan : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler, IScrollHandler
+    public class TreeDraggablePan : MonoBehaviour
     {
         [Header("Alvo do Movimento")]
         [Tooltip("Container (RectTransform) onde estão os nós e linhas da árvore.")]
@@ -1583,7 +1696,7 @@ namespace WitchShmup.UI
         [Header("Zoom com a Roda do Mouse")]
         public bool enableZoom = true;
         public float zoomSensitivity = 0.08f;
-        public float minZoom = 0.5f;
+        public float minZoom = 0.25f;
         public float maxZoom = 1.8f;
 
         [Header("Limites de Movimento (Clamp)")]
@@ -1594,12 +1707,86 @@ namespace WitchShmup.UI
         private Vector2 defaultPosition = Vector2.zero;
         private Vector3 defaultScale = Vector3.one;
         private bool isDragging = false;
-        private Vector2 dragStartPos;
+        private Vector2 lastMousePosition;
 
         public bool IsDragging => isDragging;
 
+        private void OnEnable()
+        {
+            isDragging = false;
+            ConfigureCanvasCamera();
+            TryBindContent();
+        }
+
+        private void Update()
+        {
+            if (contentToMove == null && !TryBindContent()) return;
+
+            // Pan directly from mouse state instead of relying on UI drag
+            // events, which are unreliable on this World Space canvas.
+            // The project has Both input backends enabled; use Unity's legacy
+            // mouse polling here so this remains independent of the UI module.
+            Vector2 mousePosition = Input.mousePosition;
+            bool pointerInsideTree = IsPointerInsideTree(mousePosition);
+
+            // Start the pan only when M1 is pressed inside the tree viewport.
+            // Once started, keep dragging even if the cursor leaves the viewport.
+            if (!isDragging && pointerInsideTree && Input.GetMouseButtonDown(0))
+            {
+                isDragging = true;
+                lastMousePosition = mousePosition;
+            }
+
+            if (isDragging && Input.GetMouseButton(0))
+            {
+                Vector2 delta = (mousePosition - lastMousePosition) * dragSensitivity;
+                if (invertDrag) delta = -delta;
+                MoveContent(delta);
+                lastMousePosition = mousePosition;
+            }
+            else if (!Input.GetMouseButton(0)) isDragging = false;
+
+            if (enableZoom && pointerInsideTree)
+            {
+                float scroll = Input.mouseScrollDelta.y;
+                if (Mathf.Abs(scroll) > 0.01f) ApplyZoom(scroll);
+            }
+        }
+
+        private bool IsPointerInsideTree(Vector2 screenPosition)
+        {
+            var viewport = transform as RectTransform;
+            if (viewport == null) return false;
+
+            var canvas = ConfigureCanvasCamera();
+            Camera eventCamera = canvas == null || canvas.renderMode == RenderMode.ScreenSpaceOverlay
+                ? null
+                : (canvas.worldCamera != null ? canvas.worldCamera : Camera.main);
+
+            return RectTransformUtility.RectangleContainsScreenPoint(viewport, screenPosition, eventCamera);
+        }
+
+        private Canvas ConfigureCanvasCamera()
+        {
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay && canvas.worldCamera == null)
+                canvas.worldCamera = Camera.main;
+            return canvas;
+        }
+
+        private bool TryBindContent()
+        {
+            if (contentToMove == null)
+            {
+                var content = transform.Find("TreeContent") as RectTransform;
+                if (content != null) SetContent(content);
+            }
+            return contentToMove != null;
+        }
+
         private void Awake()
         {
+            ConfigureCanvasCamera();
             if (contentToMove != null)
             {
                 defaultPosition = contentToMove.anchoredPosition;
@@ -1617,24 +1804,8 @@ namespace WitchShmup.UI
             }
         }
 
-        public void OnBeginDrag(PointerEventData eventData)
+        private void MoveContent(Vector2 delta)
         {
-            isDragging = true;
-            dragStartPos = eventData.position;
-        }
-
-        public void OnDrag(PointerEventData eventData)
-        {
-            if (contentToMove == null) return;
-
-            Vector2 delta = eventData.delta * dragSensitivity;
-
-            // Se invertDrag estiver ativo: arrastar para baixo (delta negativo) faz o conteúdo subir (positivo)
-            if (invertDrag)
-            {
-                delta = -delta;
-            }
-
             Vector2 newPos = contentToMove.anchoredPosition + delta;
 
             if (clampMovement)
@@ -1646,16 +1817,10 @@ namespace WitchShmup.UI
             contentToMove.anchoredPosition = newPos;
         }
 
-        public void OnEndDrag(PointerEventData eventData)
+        private void ApplyZoom(float scrollDelta)
         {
-            isDragging = false;
-        }
-
-        public void OnScroll(PointerEventData eventData)
-        {
-            if (!enableZoom || contentToMove == null) return;
-
-            float scroll = eventData.scrollDelta.y;
+            // Normalize o delta para manter cada passo do zoom previsível.
+            float scroll = Mathf.Clamp(scrollDelta, -1f, 1f);
             if (Mathf.Abs(scroll) > 0.01f)
             {
                 float currentScale = contentToMove.localScale.x;

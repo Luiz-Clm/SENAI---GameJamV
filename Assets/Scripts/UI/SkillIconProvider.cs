@@ -57,6 +57,18 @@ namespace WitchShmup.UI
                 case "v_cor":
                     DrawHeart(pixels, W, H);
                     break;
+                case "mana_reservoir":
+                    DrawMagnet(pixels, W, H);
+                    break;
+                case "mana_flow":
+                    DrawLightning(pixels, W, H);
+                    break;
+                case "mana_breath":
+                    DrawGhost(pixels, W, H);
+                    break;
+                case "mana_efficiency":
+                    DrawStar(pixels, W, H);
+                    break;
                 case "vel":
                     DrawLightning(pixels, W, H);
                     break;
