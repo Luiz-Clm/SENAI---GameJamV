@@ -74,6 +74,10 @@ namespace WitchShmup.Enemies
 
         private Transform playerTarget;
 
+        private float poolBaseFireRate;
+
+        private float poolBaseProjectileSpeed;
+
 
 
         // Dodge state
@@ -138,6 +142,8 @@ namespace WitchShmup.Enemies
 
         {
 
+            if (IsManagedByInfinitePool) return;
+
             spawnY = transform.position.y;
 
             fireTimer = Random.Range(0.8f, fireRate);
@@ -156,6 +162,34 @@ namespace WitchShmup.Enemies
 
             }
 
+        }
+
+        protected override void CaptureInfinitePoolStats()
+        {
+            poolBaseFireRate = fireRate;
+            poolBaseProjectileSpeed = projectileSpeed;
+        }
+
+        protected override void ResetInfinitePoolStats()
+        {
+            fireRate = poolBaseFireRate;
+            projectileSpeed = poolBaseProjectileSpeed;
+        }
+
+        protected override void OnInfinitePoolSpawned()
+        {
+            spawnY = transform.position.y;
+            fireTimer = Random.Range(0.8f, fireRate);
+            chargeCountdown = Random.Range(1.5f, chargeCooldown);
+            isCharging = false;
+            chargeTimer = 0f;
+            isDodging = false;
+            dodgeTimer = 0f;
+            dodgeCooldownTimer = 0f;
+            dodgeDirectionY = 0f;
+
+            var playerObj = GameObject.FindWithTag("Player");
+            playerTarget = playerObj != null ? playerObj.transform : null;
         }
 
 

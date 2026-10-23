@@ -82,6 +82,19 @@ namespace WitchShmup.UI
         [Tooltip("Habilita zoom suave com a roda do mouse.")]
         [SerializeField] public bool enableZoom = true;
 
+        [Header("Textos e cores dos cajados")]
+        public string basicStaffName = "Cajado de Gelo";
+        [TextArea(2, 4)] public string basicStaffDescription = "Canaliza energia pura de gelo. Seus projéteis desaceleram os monstros da masmorra.";
+        public string basicStaffStatText = "Dano Base: 1.0 (Orbe Glacial)";
+        public Color basicStaffStatColor = new Color(0.15f, 0.45f, 0.70f, 1f);
+        public string evolvedStaffName = "Cajado Arcano das Chamas";
+        [TextArea(2, 4)] public string evolvedStaffDescription = "Canaliza energia ígnea pura. Seus projéteis causam mais dano e queimam os monstros da masmorra.";
+        public string evolvedStaffStatText = "+60% de Dano (1.6 / Tiro) • Fogo";
+        public Color evolvedStaffStatColor = new Color(0.95f, 0.30f, 0.18f, 1f);
+        public string nextStaffName = "Cajado de Fogo";
+        public string nextStaffStatText = "+60% de Dano (1.6 / Tiro) • Fogo";
+        public Color nextStaffStatColor = new Color(0.95f, 0.30f, 0.18f, 1f);
+
         // ─── Cores Repaginadas da Paleta Arcana ──────────────────────────────────
         static readonly Color C_BG_OVERLAY   = new Color(0.04f, 0.03f, 0.08f, 0.96f);
         static readonly Color C_PANEL_BG     = new Color(0.09f, 0.06f, 0.16f, 1.00f);
@@ -227,11 +240,13 @@ namespace WitchShmup.UI
         TextMeshProUGUI buyBtnLabel;
 
         // Staff (Tab 2)
-        TextMeshProUGUI curStaffName, curStaffStat;
+        TextMeshProUGUI curStaffName, curStaffStat, curStaffDesc;
         Image           curStaffImg;
+        TextMeshProUGUI nxtStaffTag;
         TextMeshProUGUI nxtStaffName, nxtStaffStat;
         Image           nxtStaffImg;
         GameObject      nxtStaffBox;
+        GameObject      staffMaterialsPanel;
         TextMeshProUGUI needSummary, batCountTxt, coreCountTxt, staffMsg, evolveBtnLabel;
         Button          evolveBtn;
         Transform       batSegCont, coreSegCont;
@@ -260,15 +275,6 @@ namespace WitchShmup.UI
             EnsureBuilt();
             HookAll();
             RefreshUI();
-        }
-
-        void Update()
-        {
-            if (!Application.isPlaying) return;
-            if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.Escape))
-            {
-                OnClose();
-            }
         }
 
         /// <summary>
@@ -567,11 +573,13 @@ namespace WitchShmup.UI
                     curStaffImg = curBox.Find("Img")?.GetComponent<Image>();
                     curStaffName = curBox.Find("Name")?.GetComponent<TextMeshProUGUI>();
                     curStaffStat = curBox.Find("Stat")?.GetComponent<TextMeshProUGUI>();
+                    curStaffDesc = curBox.Find("CurDesc")?.GetComponent<TextMeshProUGUI>();
                 }
                 var nxtBox = tStaff.Find("BoxNxt_Border/Box_Nxt") ?? tStaff.Find("Box_Nxt");
                 if (nxtBox != null)
                 {
                     nxtStaffBox = nxtBox.gameObject;
+                    nxtStaffTag = nxtBox.Find("Tag")?.GetComponent<TextMeshProUGUI>();
                     nxtStaffImg = nxtBox.Find("Img")?.GetComponent<Image>();
                     nxtStaffName = nxtBox.Find("Name")?.GetComponent<TextMeshProUGUI>();
                     nxtStaffStat = nxtBox.Find("Stat")?.GetComponent<TextMeshProUGUI>();
@@ -579,6 +587,7 @@ namespace WitchShmup.UI
                 var matP = tStaff.Find("BoxNxt_Border/MatPanel") ?? tStaff.Find("MatPanel");
                 if (matP != null)
                 {
+                    staffMaterialsPanel = matP.gameObject;
                     needSummary = matP.Find("Need")?.GetComponent<TextMeshProUGUI>();
                     var mBat = matP.Find("Mat_Coração de Fogo");
                     if (mBat != null)
@@ -760,6 +769,7 @@ namespace WitchShmup.UI
             rBtn.onClick.AddListener(() => {
                 if (panController != null) panController.ResetView();
             });
+            ButtonClickSound.Bind(rBtn);
             var rTxt = Txt("Txt", resetGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero,
                            "⟲ Centralizar", 12, C_GOLD, FontStyles.Bold);
             rTxt.alignment = TextAlignmentOptions.Center;
@@ -922,17 +932,18 @@ namespace WitchShmup.UI
             curStaffImg.sprite = GetBasicStaffSprite();
 
             curStaffName = Txt("Name", boxCur.transform, new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 32),
-                "Cajado de Gelo", 22, C_CARD_DARK, FontStyles.Bold);
+                basicStaffName, 22, C_CARD_DARK, FontStyles.Bold);
             SetAnchoredPos(curStaffName.gameObject, new Vector2(0, -85));
             curStaffName.alignment = TextAlignmentOptions.Center;
 
             curStaffStat = Txt("Stat", boxCur.transform, new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 26),
-                "Dano Base: 1.0 (Orbe Glacial)", 15, new Color(0.15f, 0.45f, 0.70f, 1f), FontStyles.Bold);
+                basicStaffStatText, 15, basicStaffStatColor, FontStyles.Bold);
             SetAnchoredPos(curStaffStat.gameObject, new Vector2(0, -120));
             curStaffStat.alignment = TextAlignmentOptions.Center;
 
             var curDesc = Txt("CurDesc", boxCur.transform, new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-40, 60),
-                "Canaliza energia pura de gelo. Seus projéteis desaceleram os monstros da masmorra.", 14, new Color(0.35f, 0.28f, 0.22f, 0.9f), FontStyles.Italic);
+                basicStaffDescription, 14, new Color(0.35f, 0.28f, 0.22f, 0.9f), FontStyles.Italic);
+            curStaffDesc = curDesc;
             SetAnchoredPos(curDesc.gameObject, new Vector2(0, -175));
             curDesc.alignment = TextAlignmentOptions.Center;
 
@@ -946,6 +957,7 @@ namespace WitchShmup.UI
 
             var nxtTag = Txt("Tag", boxNxt.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0.5f, 1), new Vector2(0, 26),
                 "★ PRÓXIMO NÍVEL", 15, C_GOLD, FontStyles.Bold);
+            nxtStaffTag = nxtTag;
             SetAnchoredPos(nxtTag.gameObject, new Vector2(0, -10));
             nxtTag.alignment = TextAlignmentOptions.Center;
 
@@ -956,28 +968,31 @@ namespace WitchShmup.UI
             nxtStaffImg.sprite = GetEvolvedStaffSprite();
 
             nxtStaffName = Txt("Name", boxNxt.transform, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 0), new Vector2(0, 28),
-                "Cajado de Fogo", 20, C_CARD_DARK, FontStyles.Bold);
+                nextStaffName, 20, C_CARD_DARK, FontStyles.Bold);
             SetAnchoredPos(nxtStaffName.gameObject, new Vector2(0, 30));
             nxtStaffName.alignment = TextAlignmentOptions.Center;
 
             nxtStaffStat = Txt("Stat", boxNxt.transform, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0.5f, 0), new Vector2(0, 24),
-                "+60% de Dano (1.6 / Tiro) • Dano Contínuo", 14, C_FIRE_RED, FontStyles.Bold);
+                nextStaffStatText, 14, nextStaffStatColor, FontStyles.Bold);
             SetAnchoredPos(nxtStaffStat.gameObject, new Vector2(0, 6));
             nxtStaffStat.alignment = TextAlignmentOptions.Center;
 
             // Painel de Materiais dentro da página direita
             var matPanel = Rect("MatPanel", boxNxtBorder.transform, new Vector2(0, 0.16f), new Vector2(1, 0.56f), new Vector2(0.5f, 0.5f), Vector2.zero);
+            staffMaterialsPanel = matPanel;
             Img(matPanel, new Color(0.12f, 0.08f, 0.18f, 0.92f));
 
+            int requiredFireHearts = GameManager.Instance != null ? GameManager.Instance.FireHeartsRequired : 5;
+            int requiredBossCores = GameManager.Instance != null ? GameManager.Instance.BossCoresRequired : 1;
             needSummary = Txt("Need", matPanel.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0.5f, 1), new Vector2(-24, 28),
-                "MATERIAIS NECESSÁRIOS: <color=#ffc83a>7</color> Corações e <color=#ffc83a>1</color> Núcleo",
+                $"MATERIAIS NECESSÁRIOS: <color=#ffc83a>{requiredFireHearts}</color> Corações e <color=#ffc83a>{requiredBossCores}</color> Núcleo(s)",
                 15, Color.white, FontStyles.Bold);
             SetAnchoredPos(needSummary.gameObject, new Vector2(0, -8));
             needSummary.alignment = TextAlignmentOptions.Center;
             needSummary.richText  = true;
 
-            BuildMatRow(matPanel.transform, new Vector2(0, -40), "Coração de Fogo", GetFireHeartSprite(), 7, out batSegCont, out batCountTxt);
-            BuildMatRow(matPanel.transform, new Vector2(0, -100), "Núcleo do Boss",   GetBossCoreSprite(),  1, out coreSegCont, out coreCountTxt);
+            BuildMatRow(matPanel.transform, new Vector2(0, -40), "Coração de Fogo", GetFireHeartSprite(), requiredFireHearts, out batSegCont, out batCountTxt);
+            BuildMatRow(matPanel.transform, new Vector2(0, -100), "Núcleo do Boss",   GetBossCoreSprite(),  requiredBossCores, out coreSegCont, out coreCountTxt);
 
             var evGo = Rect("Btn_Evolve", boxNxtBorder.transform, new Vector2(0.04f, 0.05f), new Vector2(0.96f, 0.14f), new Vector2(0.5f, 0.5f), Vector2.zero);
             Img(evGo, C_BOUGHT);
@@ -1044,6 +1059,13 @@ namespace WitchShmup.UI
             if (tabTreeBtn  != null) { tabTreeBtn.onClick.RemoveAllListeners();  tabTreeBtn.onClick.AddListener(() => SwitchTab(false)); }
             if (tabStaffBtn != null) { tabStaffBtn.onClick.RemoveAllListeners(); tabStaffBtn.onClick.AddListener(() => SwitchTab(true));  }
             if (closeBtn    != null) { closeBtn.onClick.RemoveAllListeners();    closeBtn.onClick.AddListener(OnClose); }
+            if (evolveBtn   != null) { evolveBtn.onClick.RemoveListener(OnEvolveClicked); evolveBtn.onClick.AddListener(OnEvolveClicked); }
+
+            ButtonClickSound.Bind(tabTreeBtn);
+            ButtonClickSound.Bind(tabStaffBtn);
+            ButtonClickSound.Bind(closeBtn);
+            ButtonClickSound.Bind(buyBtn);
+            ButtonClickSound.Bind(evolveBtn);
         }
 
         public void SwitchTab(bool toStaff)
@@ -1222,6 +1244,9 @@ namespace WitchShmup.UI
             int  core    = GameManager.Instance.BossCoresCount;
             int  reqCore = GameManager.Instance.BossCoresRequired;
 
+            if (needSummary != null)
+                needSummary.text = $"MATERIAIS NECESSÁRIOS: <color=#ffc83a>{reqBat}</color> Corações e <color=#ffc83a>{reqCore}</color> Núcleo(s)";
+
             if (batCountTxt  != null) { batCountTxt.text  = $"{bat}/{reqBat}";   batCountTxt.color  = bat  >= reqBat  ? C_GOLD : Color.white; }
             if (coreCountTxt != null) { coreCountTxt.text = $"{core}/{reqCore}"; coreCountTxt.color = core >= reqCore ? C_GOLD : Color.white; }
 
@@ -1232,25 +1257,56 @@ namespace WitchShmup.UI
 
             if (evolved)
             {
-                if (curStaffName != null) curStaffName.text = "Cajado Arcano das Chamas";
-                if (curStaffStat != null) curStaffStat.text = "+60% de Dano (1.6 / Tiro) • Fogo";
+                if (curStaffName != null) curStaffName.text = evolvedStaffName;
+                if (curStaffStat != null) { curStaffStat.text = evolvedStaffStatText; curStaffStat.color = evolvedStaffStatColor; }
+                if (curStaffDesc != null) curStaffDesc.text = evolvedStaffDescription;
                 if (curStaffImg  != null) { curStaffImg.sprite = GetEvolvedStaffSprite(); curStaffImg.color = Color.white; }
-                if (nxtStaffBox  != null) nxtStaffBox.SetActive(false);
-                if (needSummary  != null) needSummary.text = "Cajado no ápice de poder!";
+                if (nxtStaffBox  != null) nxtStaffBox.SetActive(true);
+                if (nxtStaffTag != null)
+                {
+                    nxtStaffTag.text = "NÍVEL MÁXIMO";
+                    var tagRect = nxtStaffTag.rectTransform;
+                    tagRect.anchorMin = Vector2.zero;
+                    tagRect.anchorMax = Vector2.one;
+                    tagRect.offsetMin = Vector2.zero;
+                    tagRect.offsetMax = Vector2.zero;
+                    nxtStaffTag.fontSize = 24;
+                    nxtStaffTag.alignment = TextAlignmentOptions.Center;
+                }
+                if (nxtStaffImg  != null) nxtStaffImg.gameObject.SetActive(false);
+                if (nxtStaffName != null) nxtStaffName.gameObject.SetActive(false);
+                if (nxtStaffStat != null) nxtStaffStat.gameObject.SetActive(false);
+                if (staffMaterialsPanel != null) staffMaterialsPanel.SetActive(false);
                 if (staffMsg     != null) staffMsg.text = "Todas as evoluções do cajado foram concluídas.";
-                if (evolveBtn    != null) { evolveBtn.interactable = false; var bi = evolveBtn.GetComponent<Image>(); if (bi) bi.color = C_LINE; }
-                if (evolveBtnLabel != null) evolveBtnLabel.text = "NÍVEL MÁXIMO";
+                if (evolveBtn != null) evolveBtn.gameObject.SetActive(false);
             }
             else
             {
-                if (curStaffName != null) curStaffName.text = "Cajado de Gelo";
-                if (curStaffStat != null) curStaffStat.text = "Dano Base: 1.0 (Orbe Glacial)";
+                if (curStaffName != null) curStaffName.text = basicStaffName;
+                if (curStaffStat != null) { curStaffStat.text = basicStaffStatText; curStaffStat.color = basicStaffStatColor; }
+                if (curStaffDesc != null) curStaffDesc.text = basicStaffDescription;
                 if (curStaffImg  != null) { curStaffImg.sprite = GetBasicStaffSprite(); curStaffImg.color = Color.white; }
-                if (nxtStaffName != null) nxtStaffName.text = "Cajado de Fogo";
-                if (nxtStaffStat != null) nxtStaffStat.text = "+60% de Dano (1.6 / Tiro) • Fogo";
-                if (nxtStaffImg  != null) { nxtStaffImg.sprite = GetEvolvedStaffSprite(); nxtStaffImg.color = Color.white; }
+                if (nxtStaffTag != null)
+                {
+                    nxtStaffTag.text = "★ PRÓXIMO NÍVEL";
+                    var tagRect = nxtStaffTag.rectTransform;
+                    tagRect.anchorMin = new Vector2(0, 1);
+                    tagRect.anchorMax = new Vector2(1, 1);
+                    tagRect.pivot = new Vector2(0.5f, 1);
+                    tagRect.sizeDelta = new Vector2(0, 26);
+                    tagRect.anchoredPosition = new Vector2(0, -10);
+                    nxtStaffTag.fontSize = 15;
+                    nxtStaffTag.alignment = TextAlignmentOptions.Center;
+                }
+                if (nxtStaffName != null) nxtStaffName.text = nextStaffName;
+                if (nxtStaffStat != null) { nxtStaffStat.text = nextStaffStatText; nxtStaffStat.color = nextStaffStatColor; }
+                if (nxtStaffImg  != null) { nxtStaffImg.gameObject.SetActive(true); nxtStaffImg.sprite = GetEvolvedStaffSprite(); nxtStaffImg.color = Color.white; }
+                if (nxtStaffName != null) nxtStaffName.gameObject.SetActive(true);
+                if (nxtStaffStat != null) nxtStaffStat.gameObject.SetActive(true);
                 if (nxtStaffBox  != null) nxtStaffBox.SetActive(true);
+                if (staffMaterialsPanel != null) staffMaterialsPanel.SetActive(true);
                 if (evolveBtn    != null) { evolveBtn.interactable = canEvolve; var bi = evolveBtn.GetComponent<Image>(); if (bi) bi.color = canEvolve ? evolveButtonColor : new Color(0.35f, 0.28f, 0.48f, 1f); }
+                if (evolveBtn != null) evolveBtn.gameObject.SetActive(true);
                 if (evolveBtnLabel != null) evolveBtnLabel.text = canEvolve ? "★ EVOLUIR CAJADO ★" : "MATERIAIS INSUFICIENTES";
                 if (staffMsg     != null) staffMsg.text = canEvolve ? "Tudo pronto! Pressione o botão para evoluir." : "Derrote morcegos de fogo e chefes para recolher materiais.";
             }
@@ -1356,6 +1412,7 @@ namespace WitchShmup.UI
                 if (Vector2.Distance(pointer.position, pointerDownPos) < 10f)
                 {
                     SelectNode(n.id);
+                    ButtonClickSound.PlayClickSound();
                     TryBuy(n.id);
                 }
             });

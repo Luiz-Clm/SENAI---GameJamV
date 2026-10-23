@@ -1,4 +1,5 @@
 using UnityEngine;
+using SpellGlide;
 using WitchShmup.CameraSystem;
 using WitchShmup.Core;
 using WitchShmup.Player;
@@ -176,7 +177,7 @@ namespace WitchShmup.Drops
 
             if (collectSound != null)
             {
-                AudioSource.PlayClipAtPoint(collectSound, transform.position);
+                AudioSource.PlayClipAtPoint(collectSound, transform.position, PlayerPrefs.GetFloat(AudioManager.SfxVolumePrefsKey, 0.7f));
             }
 
             if (collectEffectPrefab != null)

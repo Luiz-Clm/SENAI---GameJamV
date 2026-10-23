@@ -117,6 +117,15 @@ namespace WitchShmup.Spawners
 
         private bool bossTriggered = false;
 
+        /// <summary>Phase 1 enemy choices reused by the endless mode (equal chance per prefab).</summary>
+        public GameObject[] GetInfiniteModeEnemyPrefabs()
+        {
+            var choices = new System.Collections.Generic.List<GameObject>(2);
+            if (rusherPrefab != null) choices.Add(rusherPrefab);
+            if (batPrefab != null) choices.Add(batPrefab);
+            return choices.ToArray();
+        }
+
 
 
         private void Start()

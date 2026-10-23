@@ -7,11 +7,12 @@ using WitchShmup.Combat;
 using WitchShmup.Core;
 using WitchShmup.UI;
 using WitchShmup.Utils;
+using WitchShmup.Endless;
 
 namespace WitchShmup.Boss
 {
     [RequireComponent(typeof(Collider2D), typeof(Rigidbody2D))]
-    public class GolemBoss : MonoBehaviour, IDamageable
+    public class GolemBoss : MonoBehaviour, IDamageable, IInfiniteModeBoss
     {
         public enum BossState
         {
@@ -77,6 +78,8 @@ namespace WitchShmup.Boss
         public event Action<float, float> OnHealthChanged;
         public event Action OnBossDefeated;
 
+        public event Action InfiniteBossDefeated;
+
         public static event Action OnAnyBossFightStarted;
         public static event Action OnAnyBossFightDefeated;
 
@@ -86,11 +89,18 @@ namespace WitchShmup.Boss
         private GameObject worldBarContainer;
         private Transform worldBarFillTransform;
         private float worldBarFullWidth = 0.55f;
+        private float baseHoverSpeed;
+        private float baseOrbitSpeed;
+        private float baseContactDamage;
+        private Color originalCoreGlowColor = Color.white;
 
         private void Awake()
         {
             currentHealth = maxHealth;
             hoverBaseY = transform.position.y;
+            baseHoverSpeed = hoverSpeed;
+            baseOrbitSpeed = orbitSpeed;
+            baseContactDamage = contactDamage;
 
             var rb = GetComponent<Rigidbody2D>();
             if (rb != null)
@@ -132,6 +142,7 @@ namespace WitchShmup.Boss
                 }
                 originalBodyColor = mainBodyRenderer.color;
             }
+            if (coreGlowRenderer != null) originalCoreGlowColor = coreGlowRenderer.color;
 
             if (bossAnimator == null)
             {
@@ -257,6 +268,34 @@ namespace WitchShmup.Boss
             PlayIdleAnim();
             attackRoutine = StartCoroutine(AttackLoop());
             OnAnyBossFightStarted?.Invoke();
+        }
+
+        public void StartInfiniteFight() => StartFight();
+
+        /// <summary>Restores the scene boss so it can appear again on each tenth wave.</summary>
+        public void PrepareForInfiniteFight()
+        {
+            StopAllCoroutines();
+            attackRoutine = null;
+            flashCoroutine = null;
+            currentHealth = maxHealth;
+            contactDamage = baseContactDamage;
+            hoverSpeed = baseHoverSpeed;
+            orbitSpeed = baseOrbitSpeed;
+            isEnraged = false;
+            state = BossState.WaitingForCutscene;
+            hoverBaseY = transform.position.y;
+
+            var collider = GetComponent<Collider2D>();
+            if (collider != null) collider.enabled = true;
+            if (mainBodyRenderer != null) mainBodyRenderer.color = originalBodyColor;
+            if (coreGlowRenderer != null) coreGlowRenderer.color = originalCoreGlowColor;
+            if (worldBarContainer != null) worldBarContainer.SetActive(false);
+
+            gameObject.SetActive(true);
+            SpawnOrbitingStones();
+            PlayIdleAnim();
+            OnHealthChanged?.Invoke(currentHealth, maxHealth);
         }
 
         // --- Helpers de animação ---
@@ -503,6 +542,13 @@ namespace WitchShmup.Boss
 
             OnBossDefeated?.Invoke();
             OnAnyBossFightDefeated?.Invoke();
+
+            if (InfiniteModeSession.IsActive)
+            {
+                InfiniteBossDefeated?.Invoke();
+                gameObject.SetActive(false);
+                yield break;
+            }
 
             if (GameManager.Instance != null)
             {

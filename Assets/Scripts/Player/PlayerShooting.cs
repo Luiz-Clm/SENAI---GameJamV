@@ -1,10 +1,13 @@
 using System;
 using UnityEngine;
+using SpellGlide;
 using UnityEngine.Rendering.Universal;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
 using WitchShmup.Combat;
+using WitchShmup.Core;
+using WitchShmup.UI;
 
 namespace WitchShmup.Player
 {
@@ -115,6 +118,7 @@ namespace WitchShmup.Player
 
         private float nextFireTime = 0f;
         private bool isFiring = false;
+        private bool inputWasBlocked = false;
 
         public bool IsFiring => isFiring;
         public bool IsFireUnlocked => isFireUnlocked;
@@ -216,8 +220,37 @@ namespace WitchShmup.Player
 
         private void Update()
         {
+            if (IsGameplayInputBlocked())
+            {
+                // Não deixa tiros serem criados/guardados enquanto o tempo está pausado.
+                isFiring = false;
+                inputWasBlocked = true;
+                return;
+            }
+
+            if (inputWasBlocked)
+            {
+                // Ao voltar, espera ao menos uma cadência antes de aceitar disparos.
+                inputWasBlocked = false;
+                isFiring = false;
+                float fireInterval = CurrentConfig != null ? CurrentConfig.fireRate : 0.16f;
+                nextFireTime = Mathf.Max(nextFireTime, Time.time + Mathf.Max(0.01f, fireInterval));
+                return;
+            }
+
             HandleElementSwitchInput();
             HandleFireInput();
+        }
+
+        private bool IsGameplayInputBlocked()
+        {
+            if (Time.timeScale <= 0f) return true;
+
+            GameManager gameManager = GameManager.Instance;
+            if (gameManager != null && (gameManager.IsEvolutionOpen || gameManager.IsGameOver || gameManager.IsVictory))
+                return true;
+
+            return PauseUI.Instance != null && PauseUI.Instance.IsPaused;
         }
 
         private void HandleElementSwitchInput()
@@ -483,7 +516,7 @@ namespace WitchShmup.Player
 
             if (config.shootSound != null && audioSource != null)
             {
-                audioSource.PlayOneShot(config.shootSound);
+                audioSource.PlayOneShot(config.shootSound, PlayerPrefs.GetFloat(AudioManager.SfxVolumePrefsKey, 0.7f));
             }
 
             OnShotFired?.Invoke();

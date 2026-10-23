@@ -61,6 +61,8 @@ namespace WitchShmup.Audio
                 return;
             }
 
+            musicVolume = PlayerPrefs.GetFloat(SpellGlide.AudioManager.MusicVolumePrefsKey, musicVolume);
+
             SetupAudioSources();
         }
 

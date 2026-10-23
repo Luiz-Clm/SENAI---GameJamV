@@ -51,12 +51,23 @@ namespace WitchShmup.Enemies
 
         private void Start()
         {
-            var playerObj = GameObject.FindWithTag("Player");
-            if (playerObj != null)
-            {
-                playerTarget = playerObj.transform;
-            }
+            FindPlayerTarget();
+            if (!IsManagedByInfinitePool) StartCoroutine(BehaviorSequence());
+        }
 
+        private void FindPlayerTarget()
+        {
+            var playerObj = GameObject.FindWithTag("Player");
+            playerTarget = playerObj != null ? playerObj.transform : null;
+        }
+
+        protected override void OnInfinitePoolSpawned()
+        {
+            FindPlayerTarget();
+            currentState = RusherState.Approaching;
+            chargeDirection = Vector2.left;
+            baseTelegraphPos = transform.position;
+            if (spriteRenderer != null) spriteRenderer.color = originalColor;
             StartCoroutine(BehaviorSequence());
         }
 

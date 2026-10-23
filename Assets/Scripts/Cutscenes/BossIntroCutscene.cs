@@ -37,6 +37,8 @@ namespace WitchShmup.Cutscenes
 
         public event Action OnCutsceneFinished;
 
+        public GolemBoss Boss => golemBoss;
+
         private void Start()
         {
             if (playerController == null)

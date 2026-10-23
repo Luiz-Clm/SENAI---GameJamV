@@ -5,6 +5,8 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using WitchShmup.Player;
 using WitchShmup.UI;
+using WitchShmup.Endless;
+using WitchShmup.Spawners;
 
 namespace WitchShmup.Core
 {
@@ -61,6 +63,7 @@ namespace WitchShmup.Core
 
         public bool IsGameOver { get; private set; } = false;
         public bool IsVictory { get; private set; } = false;
+        public bool IsInfiniteMode => InfiniteModeSession.IsActive;
         public bool IsEvolutionOpen => evolutionPanel != null && evolutionPanel.activeSelf;
         public int CurrentPhase => currentPhase;
         public int MaxUnlockedPhase => maxUnlockedPhase;
@@ -91,6 +94,7 @@ namespace WitchShmup.Core
             if (Instance == null)
             {
                 Instance = this;
+                Cursor.visible = false;
             }
             else
             {
@@ -98,13 +102,14 @@ namespace WitchShmup.Core
                 return;
             }
 
-            highScore = PlayerPrefs.GetInt("WitchShmup_HighScore", 0);
+            highScore = IsInfiniteMode ? 0 : PlayerPrefs.GetInt("WitchShmup_HighScore", 0);
 
             // Identifica a fase pela cena ativa
             DetectCurrentPhaseFromScene();
 
             // Carrega dados salvos
-            LoadSavedData();
+            if (IsInfiniteMode) ResetInfiniteRunData();
+            else LoadSavedData();
 
             // Garante que a cena possua um EventSystem ativo para cliques de botões funcionarem
             if (UnityEngine.EventSystems.EventSystem.current == null && FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
@@ -135,6 +140,46 @@ namespace WitchShmup.Core
                     bgmManager = bgmObj.AddComponent<WitchShmup.Audio.BGMManager>();
                 }
             }
+
+            if (IsInfiniteMode)
+            {
+                var campaignSpawner = FindFirstObjectByType<WaveSpawner>();
+                if (campaignSpawner != null) campaignSpawner.enabled = false;
+
+                if (FindFirstObjectByType<InfiniteWaveManager>() == null)
+                {
+                    var infiniteManagerObject = new GameObject("InfiniteWaveManager");
+                    infiniteManagerObject.AddComponent<InfiniteWaveManager>();
+                }
+            }
+        }
+
+        private void ResetInfiniteRunData()
+        {
+            currentPhase = 1;
+            maxUnlockedPhase = 1;
+            currentScore = 0;
+            skillPoints = 2;
+            fireHeartsCount = 0;
+            bossCoresCount = 0;
+            healthPotionsInInventory = 0;
+            isStaffEvolved = false;
+
+            LevelVitality = 0;
+            LevelVeloz = 0;
+            LevelFoco = 0;
+            LevelDespertar = 0;
+            LevelPele = 0;
+            LevelIma = 0;
+            LevelSegundoFolego = 0;
+            LevelRapido = 0;
+            LevelDuplo = 0;
+            LevelPerfurante = 0;
+            LevelVelTiro = 0;
+            LevelQtdTiro = 0;
+            LevelPodGelo = 0;
+            LevelPodFogo = 0;
+            customSkillLevels.Clear();
         }
 
         private void DetectCurrentPhaseFromScene()
@@ -212,7 +257,7 @@ namespace WitchShmup.Core
             {
                 hudController.SetScore(currentScore);
                 hudController.UpdatePotionCount(healthPotionsInInventory);
-                hudController.SetStageTitle($"FASE {currentPhase} - RUÍNAS DE PEDRA");
+                hudController.SetStageTitle(IsInfiniteMode ? "MODO INFINITO" : $"FASE {currentPhase} - RUÍNAS DE PEDRA");
             }
 
             var playerHealth = FindFirstObjectByType<PlayerHealth>();
@@ -302,20 +347,14 @@ namespace WitchShmup.Core
 
         private void Update()
         {
-            // Pressionar tecla 'Tab' ou 'E' abre/fecha a tela de evolução e árvore
-            if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.E))
+            // Pressionar 'T' abre/fecha a tela de evolução e árvore.
+            if (Input.GetKeyDown(KeyCode.T))
             {
                 ToggleEvolutionPanel();
             }
 
-            // Tecla ESC fecha a tela de evolução se estiver aberta
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                if (evolutionPanel != null && evolutionPanel.activeSelf)
-                {
-                    ToggleEvolutionPanel();
-                }
-            }
+            // O menu de pausa controla as outras teclas enquanto está aberto.
+            if ((PauseUI.Instance != null && PauseUI.Instance.IsPaused) || IsEvolutionOpen) return;
 
             // Tecla 'F' usa poção do inventário
             if (Input.GetKeyDown(KeyCode.F))
@@ -324,13 +363,99 @@ namespace WitchShmup.Core
             }
         }
 
+        private void LateUpdate()
+        {
+            RefreshSystemCursor();
+        }
+
+        public static bool ShouldSystemCursorBeVisible
+        {
+            get
+            {
+                // Deixa o ponteiro acessível ao voltar para o editor ou perder foco.
+                if (!Application.isFocused) return true;
+#if UNITY_EDITOR
+                var hoveredEditorWindow = UnityEditor.EditorWindow.mouseOverWindow;
+                if (hoveredEditorWindow == null || hoveredEditorWindow.GetType().Name != "GameView")
+                    return true;
+#endif
+                if (TravelBookGlobalClickCursor.IsAnimating) return false;
+                if (Instance == null) return true;
+
+                bool pausePanelOpen = PauseUI.Instance != null && PauseUI.Instance.IsPaused;
+                bool evolutionPanelOpen = Instance.IsEvolutionOpen;
+                bool endPanelOpen = Instance.IsGameOver || Instance.IsVictory;
+                bool animatedCursorActive = TravelBookSkillTreeEffects.HasAnimatedCursor;
+
+                // Combate esconde o cursor do sistema; painéis mostram o cursor normal,
+                // exceto a árvore, que desenha o próprio cursor animado.
+                return pausePanelOpen || endPanelOpen || (evolutionPanelOpen && !animatedCursorActive);
+            }
+        }
+
+        public static void RefreshSystemCursor()
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = ShouldSystemCursorBeVisible;
+        }
+
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            if (!hasFocus)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
+            else
+            {
+                RefreshSystemCursor();
+            }
+        }
+
+        private void OnApplicationPause(bool isPaused)
+        {
+            if (isPaused)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
+            else
+            {
+                RefreshSystemCursor();
+            }
+        }
+
+        private void OnApplicationQuit()
+        {
+            RestoreSystemCursor();
+        }
+
+        private void OnDisable()
+        {
+            if (Instance == this) RestoreSystemCursor();
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance != this) return;
+
+            RestoreSystemCursor();
+            Instance = null;
+        }
+
+        private static void RestoreSystemCursor()
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
+
         public void AddScore(int points)
         {
             currentScore += points;
             if (currentScore > highScore)
             {
                 highScore = currentScore;
-                PlayerPrefs.SetInt("WitchShmup_HighScore", highScore);
+                if (!IsInfiniteMode) PlayerPrefs.SetInt("WitchShmup_HighScore", highScore);
             }
 
             if (hudController != null)
@@ -580,9 +705,19 @@ namespace WitchShmup.Core
 
         public void ToggleEvolutionPanel()
         {
+            if (evolutionPanel == null)
+            {
+                var evoUi = FindFirstObjectByType<EvolutionUI>(FindObjectsInactive.Include);
+                if (evoUi != null) evolutionPanel = evoUi.gameObject;
+            }
+
             if (evolutionPanel == null) return;
+            if (IsInfiniteMode && (InfiniteWaveManager.Instance == null || !InfiniteWaveManager.Instance.IsIntermission)) return;
 
             bool isOpening = !evolutionPanel.activeSelf;
+            if (isOpening && PauseUI.Instance != null && PauseUI.Instance.IsPaused)
+                PauseUI.Instance.Resume();
+
             evolutionPanel.SetActive(isOpening);
 
             if (isOpening)
@@ -626,6 +761,7 @@ namespace WitchShmup.Core
 
         public void TriggerVictory()
         {
+            if (IsInfiniteMode) return;
             IsVictory = true;
             Time.timeScale = 0f;
 
@@ -650,6 +786,8 @@ namespace WitchShmup.Core
         /// </summary>
         public void SaveCurrentGame(bool advancePhase = false)
         {
+            if (IsInfiniteMode) return;
+
             var data = new SaveData
             {
                 currentPhase = currentPhase,
@@ -727,7 +865,8 @@ namespace WitchShmup.Core
         public void GoToMenu()
         {
             Time.timeScale = 1f;
-            SaveCurrentGame(advancePhase: false);
+            if (IsInfiniteMode) InfiniteModeSession.End();
+            else SaveCurrentGame(advancePhase: false);
 
             if (Application.CanStreamedLevelBeLoaded("Menu"))
             {

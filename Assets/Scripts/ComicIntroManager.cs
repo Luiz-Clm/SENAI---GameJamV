@@ -49,6 +49,7 @@ namespace SpellGlide
         [SerializeField] private Text storyUiText;
         [SerializeField] private TMP_Text skipPromptTmpText;
         [SerializeField] private Text skipPromptUiText;
+        [SerializeField] private Button skipAllButton;
         [SerializeField] private CanvasGroup screenFader;
         [Header("Estilo do Texto do Narrador (Opcional)")]
         [Tooltip("Fonte personalizada para o texto do narrador (se vazio, usa a fonte configurada no StoryText)")]
@@ -73,13 +74,15 @@ namespace SpellGlide
             }
 
             // Garante que o texto de pular esteja com o texto pedido
-            SetSkipPromptText("Aperte qualquer tecla para pular");
+            SetSkipPromptText("Clique ou aperte uma tecla para avançar");
 
             // Inicializa painel desativado ou transparente
             if (comicRootPanel != null)
             {
                 comicRootPanel.SetActive(false);
             }
+
+            EnsureSkipAllButton();
 
             if (comicContentCanvasGroup != null)
             {
@@ -281,6 +284,9 @@ namespace SpellGlide
 
         private bool CheckAnyInputDown()
         {
+            // O clique no botão de pular tudo não deve também avançar o quadrinho atual.
+            if (Input.GetMouseButtonDown(0) && IsPointerOverSkipAllButton()) return false;
+
             // Clique do mouse
             if (Input.GetMouseButtonDown(0)) return true;
 
@@ -303,6 +309,95 @@ namespace SpellGlide
             #endif
 
             return false;
+        }
+
+        private void EnsureSkipAllButton()
+        {
+            if (comicRootPanel == null) return;
+
+            if (skipAllButton == null)
+            {
+                Transform existingButton = comicRootPanel.transform.Find("Btn_SkipAll");
+                if (existingButton != null)
+                    skipAllButton = existingButton.GetComponent<Button>();
+            }
+
+            if (skipAllButton == null)
+            {
+                GameObject buttonObject = new GameObject("Btn_SkipAll", typeof(RectTransform), typeof(Image), typeof(Button));
+                buttonObject.transform.SetParent(comicRootPanel.transform, false);
+
+                RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
+                buttonRect.anchorMin = new Vector2(1f, 1f);
+                buttonRect.anchorMax = new Vector2(1f, 1f);
+                buttonRect.pivot = new Vector2(1f, 1f);
+                buttonRect.sizeDelta = new Vector2(190f, 52f);
+                buttonRect.anchoredPosition = new Vector2(-24f, -16f);
+
+                Image buttonImage = buttonObject.GetComponent<Image>();
+                buttonImage.color = new Color(0.13f, 0.09f, 0.22f, 0.92f);
+
+                skipAllButton = buttonObject.GetComponent<Button>();
+                skipAllButton.targetGraphic = buttonImage;
+
+                GameObject labelObject = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+                labelObject.transform.SetParent(buttonObject.transform, false);
+                RectTransform labelRect = labelObject.GetComponent<RectTransform>();
+                labelRect.anchorMin = Vector2.zero;
+                labelRect.anchorMax = Vector2.one;
+                labelRect.offsetMin = Vector2.zero;
+                labelRect.offsetMax = Vector2.zero;
+
+                TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
+                label.text = "PULAR TUDO";
+                label.fontSize = 20f;
+                label.fontStyle = FontStyles.Bold;
+                label.color = new Color(1f, 0.78f, 0.23f, 1f);
+                label.alignment = TextAlignmentOptions.Center;
+                label.raycastTarget = false;
+            }
+
+            if (skipAllButton != null)
+            {
+                skipAllButton.onClick.RemoveListener(SkipEntireStory);
+                skipAllButton.onClick.AddListener(SkipEntireStory);
+                WitchShmup.UI.ButtonClickSound.Bind(skipAllButton);
+            }
+        }
+
+        private bool IsPointerOverSkipAllButton()
+        {
+            if (skipAllButton == null || !skipAllButton.isActiveAndEnabled) return false;
+
+            RectTransform buttonRect = skipAllButton.transform as RectTransform;
+            Canvas canvas = skipAllButton.GetComponentInParent<Canvas>();
+            Camera eventCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? canvas.worldCamera
+                : null;
+
+            return buttonRect != null && RectTransformUtility.RectangleContainsScreenPoint(
+                buttonRect, Input.mousePosition, eventCamera);
+        }
+
+        private void SkipEntireStory()
+        {
+            if (!isStoryRunning) return;
+
+            StopAllCoroutines();
+            comicSequenceCoroutine = null;
+            isStoryRunning = false;
+            isTypewriterRunning = false;
+            requestSkipTypewriter = false;
+            requestAdvancePanel = false;
+
+            if (comicRootPanel != null) comicRootPanel.SetActive(false);
+            if (screenFader != null)
+            {
+                screenFader.alpha = 0f;
+                screenFader.blocksRaycasts = false;
+            }
+
+            LoadGameplayScene();
         }
 
         private void LoadGameplayScene()

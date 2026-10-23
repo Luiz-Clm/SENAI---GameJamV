@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using WitchShmup.Endless;
 
 namespace WitchShmup.Core
 {
@@ -135,6 +136,7 @@ namespace WitchShmup.Core
         {
             DeleteSave();
             PlayerPrefs.DeleteKey("WitchShmup_HighScore");
+            InfiniteModeSession.ResetBestWave();
             // Mantém o BUILD_ID_KEY para não re-limpar na próxima abertura
             PlayerPrefs.Save();
             Debug.Log("[SaveSystem] Todos os dados do jogo foram resetados pelo jogador.");

@@ -36,6 +36,7 @@ namespace WitchShmup.UI
             {
                 nextPhaseButton.onClick.RemoveAllListeners();
                 nextPhaseButton.onClick.AddListener(OnNextPhaseClicked);
+                ButtonClickSound.Bind(nextPhaseButton);
 
                 var txt = nextPhaseButton.GetComponentInChildren<TextMeshProUGUI>(true);
                 if (txt != null)
@@ -75,6 +76,7 @@ namespace WitchShmup.UI
             {
                 menuButton.onClick.RemoveAllListeners();
                 menuButton.onClick.AddListener(OnMenuClicked);
+                ButtonClickSound.Bind(menuButton);
 
                 var txt = menuButton.GetComponentInChildren<TextMeshProUGUI>(true);
                 if (txt != null)

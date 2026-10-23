@@ -391,7 +391,7 @@ namespace SpellGlide.Editor
             storyTMP.enableWordWrapping = true;
             storyTMP.text = "Coloque seu texto aqui";
 
-            // Texto "Aperte qualquer tecla para pular" no canto inferior
+            // Texto de ajuda para avançar entre os quadrinhos
             GameObject skipTextObj = new GameObject("SkipPromptText", typeof(RectTransform), typeof(TextMeshProUGUI));
             skipTextObj.transform.SetParent(comicPanelObj.transform, false);
             RectTransform skipRect = skipTextObj.GetComponent<RectTransform>();
@@ -403,7 +403,7 @@ namespace SpellGlide.Editor
             skipTMP.fontSize = 20;
             skipTMP.color = new Color(0.85f, 0.85f, 0.9f, 0.75f);
             skipTMP.alignment = TextAlignmentOptions.MidlineRight;
-            skipTMP.text = "Aperte qualquer tecla para pular";
+            skipTMP.text = "Clique ou aperte uma tecla para avançar";
 
             // Screen Fader (para transição final para a cena do jogo)
             GameObject faderObj = new GameObject("ScreenFader", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));

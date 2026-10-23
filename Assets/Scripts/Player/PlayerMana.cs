@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using SpellGlide;
 
 namespace WitchShmup.Player
 {
@@ -149,7 +150,7 @@ namespace WitchShmup.Player
 
             if (audioSource != null && dryFireSound != null)
             {
-                audioSource.PlayOneShot(dryFireSound, 0.7f);
+                audioSource.PlayOneShot(dryFireSound, 0.7f * PlayerPrefs.GetFloat(AudioManager.SfxVolumePrefsKey, 0.7f));
             }
 
             if (spriteRenderer != null)

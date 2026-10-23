@@ -35,6 +35,11 @@ namespace WitchShmup.Environment
             }
         }
 
+        private void OnDisable()
+        {
+            if (Instance == this) Instance = null;
+        }
+
         private void Update()
         {
             if (!isScrolling) return;

@@ -5,6 +5,7 @@ using WitchShmup.CameraSystem;
 using WitchShmup.Combat;
 using WitchShmup.Core;
 using WitchShmup.Drops;
+using WitchShmup.Endless;
 
 namespace WitchShmup.Enemies
 {
@@ -42,11 +43,16 @@ namespace WitchShmup.Enemies
         protected Color originalColor = Color.white;
         protected Coroutine flashCoroutine;
         protected Rigidbody2D rb;
+        private float poolBaseMaxHealth;
+        private float poolBaseContactDamage;
+        private bool hasPoolBaseline;
+        private bool isManagedByInfinitePool;
 
         public float SpeedMultiplier => speedMultiplier;
         public bool IsSlowed => slowCoroutine != null;
         public float CurrentHealth => currentHealth;
         public float MaxHealth => maxHealth;
+        public bool IsManagedByInfinitePool => isManagedByInfinitePool;
 
         public event Action<float, float> OnHealthChanged;
         public event Action OnDeath;
@@ -103,12 +109,79 @@ namespace WitchShmup.Enemies
         {
             if (CameraBounds.Instance != null && CameraBounds.Instance.IsOffscreenLeft(transform.position, 3f))
             {
-                Destroy(gameObject);
+                ReturnOrDestroy();
             }
             else if (transform.position.x < -16f)
             {
-                Destroy(gameObject);
+                ReturnOrDestroy();
             }
+        }
+
+        /// <summary>Captures authored stats after the concrete enemy's Awake has run.</summary>
+        public void InitializeInfinitePoolEntry()
+        {
+            if (hasPoolBaseline) return;
+            poolBaseMaxHealth = maxHealth;
+            poolBaseContactDamage = contactDamage;
+            hasPoolBaseline = true;
+            isManagedByInfinitePool = true;
+            CaptureInfinitePoolStats();
+        }
+
+        public void ActivateFromInfinitePool(Vector3 position, float healthMultiplier, float speedMultiplier)
+        {
+            InitializeInfinitePoolEntry();
+            StopAllCoroutines();
+            transform.position = position;
+            transform.rotation = Quaternion.identity;
+            isDead = false;
+            slowCoroutine = null;
+            flashCoroutine = null;
+            maxHealth = poolBaseMaxHealth;
+            currentHealth = poolBaseMaxHealth;
+            contactDamage = poolBaseContactDamage;
+            this.speedMultiplier = 1f;
+            ResetInfinitePoolStats();
+
+            var collider = GetComponent<Collider2D>();
+            if (collider != null) collider.enabled = true;
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector2.zero;
+                rb.angularVelocity = 0f;
+            }
+            if (spriteRenderer != null) spriteRenderer.color = originalColor;
+
+            ApplyInfiniteDifficultyMultipliers(healthMultiplier, speedMultiplier);
+            OnInfinitePoolSpawned();
+        }
+
+        private void ApplyInfiniteDifficultyMultipliers(float healthMultiplier, float speedMultiplier)
+        {
+            maxHealth = poolBaseMaxHealth * healthMultiplier;
+            currentHealth = maxHealth;
+            contactDamage = poolBaseContactDamage;
+            this.speedMultiplier = speedMultiplier;
+        }
+
+        public void PrepareForInfinitePoolReturn()
+        {
+            StopAllCoroutines();
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector2.zero;
+                rb.angularVelocity = 0f;
+            }
+        }
+
+        protected virtual void CaptureInfinitePoolStats() { }
+        protected virtual void ResetInfinitePoolStats() { }
+        protected virtual void OnInfinitePoolSpawned() { }
+
+        private void ReturnOrDestroy()
+        {
+            if (InfiniteWaveManager.Instance == null || !InfiniteWaveManager.Instance.ReturnEnemyToPool(this))
+                Destroy(gameObject);
         }
 
         protected bool isDead = false;
@@ -215,7 +288,7 @@ namespace WitchShmup.Enemies
             }
 
             OnDeath?.Invoke();
-            Destroy(gameObject);
+            ReturnOrDestroy();
         }
 
         protected virtual void DropItems()

@@ -17,6 +17,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Fase3.unity
     guid: 13429a2665974035a0adfb0ccfca4690
+  - enabled: 1
+    path: Assets/Scenes/InfiniteMode.unity
+    guid: 93daf043174044598380d38c6868affb
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0

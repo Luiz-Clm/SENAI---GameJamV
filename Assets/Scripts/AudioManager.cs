@@ -1,11 +1,14 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace SpellGlide
 {
     public class AudioManager : MonoBehaviour
     {
         public static AudioManager Instance { get; private set; }
+        public const string MusicVolumePrefsKey = "WitchShmup_MusicVolume";
+        public const string SfxVolumePrefsKey = "WitchShmup_SfxVolume";
 
         [Header("Áudio Clips (Opcional - se vazio, gera som procedural)")]
         [Tooltip("Música tema do Menu")]
@@ -35,6 +38,12 @@ namespace SpellGlide
                 return;
             }
             Instance = this;
+            DontDestroyOnLoad(gameObject);
+            SceneManager.sceneLoaded += OnSceneLoaded;
+
+            musicVolume = PlayerPrefs.GetFloat(MusicVolumePrefsKey, musicVolume);
+            sfxVolume = PlayerPrefs.GetFloat(SfxVolumePrefsKey, sfxVolume);
+            typewriterVolume = sfxVolume * 0.6f;
 
             EnsureAudioSources();
             EnsureClipsGenerated();
@@ -43,7 +52,19 @@ namespace SpellGlide
 
         private void Start()
         {
-            PlayMenuMusic();
+            if (SceneManager.GetActiveScene().name == "Menu") PlayMenuMusic();
+        }
+
+        private void OnDestroy()
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            if (Instance == this) Instance = null;
+        }
+
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (scene.name == "Menu") PlayMenuMusic();
+            else StopMenuMusic(0f);
         }
 
         private void EnsureAudioSources()
@@ -164,6 +185,10 @@ namespace SpellGlide
         {
             musicVolume = Mathf.Clamp01(val);
             if (musicSource != null) musicSource.volume = musicVolume;
+            PlayerPrefs.SetFloat(MusicVolumePrefsKey, musicVolume);
+            PlayerPrefs.Save();
+            if (WitchShmup.Audio.BGMManager.Instance != null)
+                WitchShmup.Audio.BGMManager.Instance.MusicVolume = musicVolume;
         }
 
         public void SetSFXVolume(float val)
@@ -172,6 +197,8 @@ namespace SpellGlide
             if (sfxSource != null) sfxSource.volume = sfxVolume;
             typewriterVolume = sfxVolume * 0.6f;
             if (typewriterSource != null) typewriterSource.volume = typewriterVolume;
+            PlayerPrefs.SetFloat(SfxVolumePrefsKey, sfxVolume);
+            PlayerPrefs.Save();
         }
 
         public float GetMusicVolume() => musicVolume;
