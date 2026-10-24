@@ -31,7 +31,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.8, y: 0.8, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -85,7 +85,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 8
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 1000001, guid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6, type: 3}
+  m_Sprite: {fileID: 2155525168549499287, guid: fdd119e83dcf4af408f7c74e50e77713, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -108,11 +108,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Utils.SimpleSpriteAnimator
   frames:
-  - {fileID: 1000001, guid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6, type: 3}
-  - {fileID: 1000002, guid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6, type: 3}
-  - {fileID: 1000003, guid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6, type: 3}
-  - {fileID: 1000004, guid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6, type: 3}
-  frameRate: 6
+  - {fileID: 2155525168549499287, guid: fdd119e83dcf4af408f7c74e50e77713, type: 3}
+  - {fileID: -663599949086206773, guid: fdd119e83dcf4af408f7c74e50e77713, type: 3}
+  - {fileID: 7133212246331857225, guid: fdd119e83dcf4af408f7c74e50e77713, type: 3}
+  frameRate: 8
   loop: 1
 --- !u!58 &1100004
 CircleCollider2D:
@@ -148,8 +147,8 @@ CircleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
-  m_Radius: 0.6
+  m_Offset: {x: -0.22593945, y: -0.017582737}
+  m_Radius: 0.39692968
 --- !u!50 &1100005
 Rigidbody2D:
   serializedVersion: 5
@@ -209,8 +208,11 @@ MonoBehaviour:
   skillPointDropPrefab: {fileID: 8771554972207094783, guid: aa5f32342019cda4bafec4220899e705, type: 3}
   skillPointDropChance: 0.35
   difficultyHealthMultiplier: 1
-  swimSpeed: 5.5
+  swimSpeed: 4
   patrolSpeed: 1.2
+  turnBehindDistance: 1.25
+  dodgeResetDistance: 1.5
+  lanternOffset: {x: -0.8, y: 0.3}
   lanternLight: {fileID: 0}
   lanternColor: {r: 1, g: 0.82, b: 0.32, a: 1}
   lanternIntensity: 1.1

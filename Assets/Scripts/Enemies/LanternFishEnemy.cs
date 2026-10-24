@@ -3,12 +3,15 @@ using UnityEngine.Rendering.Universal;
 
 namespace WitchShmup.Enemies
 {
-    /// <summary>Peixe-lanterna: vive abaixo da maré e persegue o jogador somente quando ele mergulha.</summary>
+    /// <summary>Peixe-lanterna que caça o jogador submerso e tenta alcançá-lo por trás.</summary>
     public class LanternFishEnemy : EnemyBase
     {
         [Header("Nado do Peixe-Lanterna")]
         [SerializeField] private float swimSpeed = 5.5f;
         [SerializeField] private float patrolSpeed = 1.2f;
+        [SerializeField] private float turnBehindDistance = 1.25f;
+        [SerializeField] private float dodgeResetDistance = 1.5f;
+        [SerializeField] private Vector2 lanternOffset = new Vector2(-0.8f, 0.3f);
         [Header("Luz da Lanterna")]
         [SerializeField] private Light2D lanternLight;
         [SerializeField] private Color lanternColor = new Color(1f, 0.82f, 0.32f, 1f);
@@ -16,20 +19,29 @@ namespace WitchShmup.Enemies
         [SerializeField] private float lanternRadius = 2.2f;
 
         private Transform player;
-        private Vector2 moveDirection = Vector2.left;
-        private bool hasLockedChargeDirection;
+        private bool isAttackingPlayer;
 
         protected override void Awake()
         {
             base.Awake();
             waterZone = EnemyWaterZone.UnderwaterOnly;
             waterZoneMargin = Mathf.Max(waterZoneMargin, 0.3f);
+            if (lanternLight == null) lanternLight = GetComponentInChildren<Light2D>();
+            if (lanternLight == null)
+            {
+                var lightObject = new GameObject("Lantern_Light");
+                lightObject.transform.SetParent(transform, false);
+                lanternLight = lightObject.AddComponent<Light2D>();
+                lanternLight.lightType = Light2D.LightType.Point;
+            }
             if (lanternLight != null)
             {
                 lanternLight.color = lanternColor;
                 lanternLight.intensity = lanternIntensity;
                 lanternLight.pointLightOuterRadius = lanternRadius;
+                lanternLight.pointLightInnerRadius = lanternRadius * 0.2f;
             }
+            UpdateLanternPosition();
         }
 
         private void Start()
@@ -42,21 +54,59 @@ namespace WitchShmup.Enemies
         {
             base.Update();
             var water = WitchShmup.Environment.PhaseTwoWaterSystem.Instance;
-            // Trava a direção uma única vez quando o jogador mergulha. O peixe
-            // continua nessa trajetória mesmo se o jogador desviar, como o fantasma.
-            if (!hasLockedChargeDirection && water != null && player != null && water.IsPlayerSubmerged)
+            if (water == null) return;
+            if (player == null || !water.IsPlayerSubmerged)
             {
-                float targetY = Mathf.Min(player.position.y, water.SurfaceY - waterZoneMargin);
-                Vector2 toPlayer = new Vector2(player.position.x - transform.position.x,
-                    targetY - transform.position.y);
-                // O peixe sempre avança para a esquerda; nunca corrige o curso para trás.
-                toPlayer.x = -Mathf.Max(Mathf.Abs(toPlayer.x), 0.1f);
-                moveDirection = toPlayer.normalized;
-                hasLockedChargeDirection = true;
+                if (spriteRenderer != null) spriteRenderer.flipX = false;
+                UpdateLanternPosition();
+                transform.position += Vector3.left * (patrolSpeed * speedMultiplier * Time.deltaTime);
+                return;
             }
 
-            float speed = hasLockedChargeDirection ? swimSpeed : patrolSpeed;
-            transform.position += (Vector3)(moveDirection * (speed * speedMultiplier * Time.deltaTime));
+            float safeY = water.SurfaceY - waterZoneMargin;
+            Vector2 playerPosition = player.position;
+            playerPosition.y = Mathf.Min(playerPosition.y, safeY);
+
+            // Se o jogador escapar durante a investida, o peixe recomeça pela retaguarda.
+            if (isAttackingPlayer && Vector2.Distance(transform.position, playerPosition) > dodgeResetDistance)
+                isAttackingPlayer = false;
+
+            float playerFacing = Mathf.Sign(player.localScale.x);
+            if (playerFacing == 0f) playerFacing = 1f;
+            Vector2 target;
+            if (isAttackingPlayer)
+            {
+                target = playerPosition;
+            }
+            else
+            {
+                target = new Vector2(playerPosition.x - playerFacing * turnBehindDistance, playerPosition.y);
+                if (Vector2.Distance(transform.position, target) < 0.35f)
+                    isAttackingPlayer = true;
+            }
+
+            Vector2 next = Vector2.MoveTowards(transform.position, target,
+                swimSpeed * speedMultiplier * Time.deltaTime);
+            next.y = Mathf.Min(next.y, safeY);
+            if (spriteRenderer != null && Mathf.Abs(next.x - transform.position.x) > 0.001f)
+                spriteRenderer.flipX = next.x > transform.position.x;
+            UpdateLanternPosition();
+            transform.position = new Vector3(next.x, next.y, transform.position.z);
+        }
+
+        private void UpdateLanternPosition()
+        {
+            if (lanternLight == null) return;
+            float side = spriteRenderer != null && spriteRenderer.flipX ? 1f : -1f;
+            lanternLight.transform.localPosition = new Vector3(Mathf.Abs(lanternOffset.x) * side, lanternOffset.y, 0f);
+        }
+
+        protected override void OnTriggerEnter2D(Collider2D other)
+        {
+            bool touchedPlayer = other.CompareTag("Player") ||
+                other.GetComponentInParent<WitchShmup.Player.PlayerController>() != null;
+            base.OnTriggerEnter2D(other);
+            if (touchedPlayer && !isDead) Die();
         }
     }
 }

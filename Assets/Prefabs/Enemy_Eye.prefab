@@ -31,7 +31,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.9, y: 0.9, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -147,8 +147,8 @@ CircleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
-  m_Radius: 0.55
+  m_Offset: {x: -0.08777237, y: -0.34345728}
+  m_Radius: 0.5996106
 --- !u!50 &5337472530964855739
 Rigidbody2D:
   serializedVersion: 5
@@ -214,9 +214,10 @@ MonoBehaviour:
   chargeRange: 5.5
   chargeSpeed: 7
   chargeCooldown: 3.5
-  fireballPrefab: {fileID: 4185825162384548282, guid: 0773c1cffeb0f204eac5b96306a99168, type: 3}
-  fireRate: 1.8
-  projectileSpeed: 12
+  canCharge: 0
+  fireballPrefab: {fileID: 5255424716095181313, guid: 449acf5696a4f344c860809c7ec27a87, type: 3}
+  fireRate: 1
+  projectileSpeed: 5
   fireOffset: {x: -0.5, y: 0}
   detectionRadius: 3.5
   dodgeSpeed: 9

@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using System.Collections;
 using WitchShmup.Player;
 
 namespace WitchShmup.Environment
@@ -25,7 +26,7 @@ namespace WitchShmup.Environment
         [SerializeField] private float headOffset = 0.45f;
 
         [Header("Visual")]
-        [SerializeField, Range(0f, 1f)] private float underwaterTintAlpha = 0.18f;
+        [SerializeField, Range(0f, 1f)] private float underwaterTintAlpha = 0.26f;
         [SerializeField] private Color waterColor = new Color(0.12f, 0.62f, 0.82f, 1f);
         [SerializeField] private Color warningColor = new Color(0.9f, 0.9f, 0.45f, 1f);
         [SerializeField] private Camera targetCamera;
@@ -45,11 +46,16 @@ namespace WitchShmup.Environment
         private float damageTimer;
         private bool transitioning;
         private bool warning;
+        private bool bossArenaTransitioning;
+        private bool bossFightActive;
+        private float bossWarningTimeLeft;
 
         public float SurfaceY => surfaceY;
         public float Oxygen01 => oxygenCapacity <= 0f ? 1f : oxygen / oxygenCapacity;
-        public bool IsPlayerSubmerged => IsSubmerged(GetPlayerHeadY());
+        public bool IsPlayerSubmerged => bossFightActive || IsSubmerged(GetPlayerHeadY());
         public bool IsWarning => warning;
+        public bool IsBossArenaTransitioning => bossArenaTransitioning;
+        public bool IsBossFightActive => bossFightActive;
 
         private void Awake()
         {
@@ -91,6 +97,63 @@ namespace WitchShmup.Environment
 
         public bool IsSubmerged(float worldY) => worldY < surfaceY;
 
+        public IEnumerator PrepareBossArena(float warningSeconds, float riseSeconds)
+        {
+            bossFightActive = false;
+            bossArenaTransitioning = true;
+            transitioning = false;
+            warning = true;
+            bossWarningTimeLeft = Mathf.Max(0f, warningSeconds);
+            while (bossWarningTimeLeft > 0f)
+            {
+                bossWarningTimeLeft -= Time.deltaTime;
+                yield return null;
+            }
+
+            warning = false;
+            transitionStart = surfaceY;
+            transitionTarget = GetScreenTopY() + 1.5f;
+            transitionElapsed = 0f;
+            riseSeconds = Mathf.Max(0.1f, riseSeconds);
+            while (transitionElapsed < riseSeconds)
+            {
+                transitionElapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, transitionElapsed / riseSeconds);
+                surfaceY = Mathf.Lerp(transitionStart, transitionTarget, t);
+                yield return null;
+            }
+
+            surfaceY = transitionTarget;
+            bossArenaTransitioning = false;
+            bossFightActive = true;
+            transitioning = false;
+            warning = false;
+            timer = Random.Range(holdDuration.x, holdDuration.y);
+            damageTimer = damageInterval;
+        }
+
+        public void EndBossFight()
+        {
+            bossArenaTransitioning = false;
+            bossFightActive = false;
+            warning = false;
+            transitioning = false;
+            timer = Random.Range(holdDuration.x, holdDuration.y);
+        }
+
+        public void AddOxygenFraction(float fraction)
+        {
+            oxygen = Mathf.Clamp(oxygen + oxygenCapacity * Mathf.Max(0f, fraction), 0f, oxygenCapacity);
+            damageTimer = damageInterval;
+        }
+
+        private float GetScreenTopY()
+        {
+            if (targetCamera == null) return surfaceY + 10f;
+            float halfHeight = targetCamera.orthographic ? targetCamera.orthographicSize : 5f;
+            return targetCamera.transform.position.y + halfHeight;
+        }
+
         public float GetPlayerHeadY()
         {
             if (playerHealth == null) return 0f;
@@ -105,6 +168,7 @@ namespace WitchShmup.Environment
 
         private void UpdateTide()
         {
+            if (bossArenaTransitioning || bossFightActive) return;
             timer -= Time.deltaTime;
             if (!transitioning)
             {
@@ -145,7 +209,7 @@ namespace WitchShmup.Environment
         private void UpdateOxygen()
         {
             if (playerHealth == null || playerHealth.CurrentHealth <= 0) return;
-            if (IsPlayerSubmerged)
+            if (bossFightActive || IsSubmerged(GetPlayerHeadY()))
             {
                 oxygen = Mathf.Max(0f, oxygen - Time.deltaTime);
                 if (oxygen <= 0f)
@@ -183,6 +247,11 @@ namespace WitchShmup.Environment
             waterSurfaceRenderer.size = new Vector2(width + 2f, surfaceLineThickness);
             waterSurfaceRenderer.color = warning ? warningColor : waterColor;
 
+            // A linha da superfície fica atrás do personagem; o filtro azul fica à frente
+            // para dar a sensação de que ele entrou na água sem esconder o sprite.
+            underwaterTintRenderer.sortingOrder = 11;
+            waterSurfaceRenderer.sortingOrder = 9;
+
         }
 
         private void UpdateHud()
@@ -199,6 +268,20 @@ namespace WitchShmup.Environment
 
             if (tideStatusText != null)
             {
+                if (bossArenaTransitioning)
+                {
+                    tideStatusText.text = warning
+                        ? $"ATENÇÃO: MARÉ EM {Mathf.CeilToInt(bossWarningTimeLeft)}..."
+                        : "MARÉ SUBINDO!";
+                    tideStatusText.color = warningColor;
+                    return;
+                }
+                if (bossFightActive)
+                {
+                    tideStatusText.text = "MARÉ PARADA";
+                    tideStatusText.color = waterColor;
+                    return;
+                }
                 string direction = transitioning
                     ? (transitionTarget > transitionStart ? "SUBINDO" : "DESCENDO")
                     : (warning ? "VAI MUDAR" : "ESTÁVEL");

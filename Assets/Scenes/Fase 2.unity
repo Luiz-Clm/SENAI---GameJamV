@@ -148,7 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3aa36ed70aa9bc04f81d66ca10875558, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Cutscenes.BossIntroCutscene
-  golemBoss: {fileID: 1159367622}
+  golemBoss: {fileID: 0}
   playerController: {fileID: 1537354906}
   playerShooting: {fileID: 1537354904}
   playerTransform: {fileID: 1537354903}
@@ -1005,7 +1005,9 @@ MonoBehaviour:
   minY: -3.5
   maxY: 3.5
   bossCutscene: {fileID: 187509}
-  delayBeforeBossIntro: 3
+  octopusBossPrefab: {fileID: 980000000000001, guid: c94e178f54fb4ba8b51b7c8aa9423a0e, type: 3}
+  enableDebugBossShortcut: 1
+  delayBeforeBossIntro: 0
 --- !u!4 &122176173
 Transform:
   m_ObjectHideFlags: 0
@@ -1193,7 +1195,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: -15
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -192906985781391278, guid: 7a3f4bade387c574494a649214baf592, type: 3}
+  m_Sprite: {fileID: -175520952676956400, guid: 004cb958b44bc74429fa10ca33e7c482, type: 3}
   m_Color: {r: 0.24, g: 0.2, b: 0.35, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -1683,7 +1685,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: -15
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -192906985781391278, guid: 7a3f4bade387c574494a649214baf592, type: 3}
+  m_Sprite: {fileID: -175520952676956400, guid: 004cb958b44bc74429fa10ca33e7c482, type: 3}
   m_Color: {r: 0.24, g: 0.2, b: 0.35, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -4238,7 +4240,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: -10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -192906985781391278, guid: 7a3f4bade387c574494a649214baf592, type: 3}
+  m_Sprite: {fileID: -175520952676956400, guid: 004cb958b44bc74429fa10ca33e7c482, type: 3}
   m_Color: {r: 0.55, g: 0.55, b: 0.72, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -4937,7 +4939,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: -10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -192906985781391278, guid: 7a3f4bade387c574494a649214baf592, type: 3}
+  m_Sprite: {fileID: -175520952676956400, guid: 004cb958b44bc74429fa10ca33e7c482, type: 3}
   m_Color: {r: 0.55, g: 0.55, b: 0.72, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -6185,7 +6187,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1159367622
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12040,7 +12042,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: -10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -192906985781391278, guid: 7a3f4bade387c574494a649214baf592, type: 3}
+  m_Sprite: {fileID: -175520952676956400, guid: 004cb958b44bc74429fa10ca33e7c482, type: 3}
   m_Color: {r: 0.55, g: 0.55, b: 0.72, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -12495,7 +12497,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: -15
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -192906985781391278, guid: 7a3f4bade387c574494a649214baf592, type: 3}
+  m_Sprite: {fileID: -175520952676956400, guid: 004cb958b44bc74429fa10ca33e7c482, type: 3}
   m_Color: {r: 0.24, g: 0.2, b: 0.35, a: 1}
   m_FlipX: 0
   m_FlipY: 0

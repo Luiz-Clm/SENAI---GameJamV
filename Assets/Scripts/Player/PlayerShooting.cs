@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 #if ENABLE_INPUT_SYSTEM
@@ -115,6 +116,8 @@ namespace WitchShmup.Player
 
         private float nextFireTime = 0f;
         private bool isFiring = false;
+        private float nextUnderwaterFizzTime;
+        private static Sprite underwaterFizzSprite;
 
         public bool IsFiring => isFiring;
         public bool IsFireUnlocked => isFireUnlocked;
@@ -311,6 +314,11 @@ namespace WitchShmup.Player
                 WitchShmup.Environment.PhaseTwoWaterSystem.Instance.IsSubmerged(
                     WitchShmup.Environment.PhaseTwoWaterSystem.Instance.GetPlayerHeadY()))
             {
+                if (Time.time >= nextUnderwaterFizzTime)
+                {
+                    nextUnderwaterFizzTime = Time.time + 0.35f;
+                    SpawnUnderwaterFizz();
+                }
                 return;
             }
 
@@ -486,6 +494,59 @@ namespace WitchShmup.Player
             }
 
             OnShotFired?.Invoke();
+        }
+
+        private void SpawnUnderwaterFizz()
+        {
+            if (underwaterFizzSprite == null)
+            {
+                var texture = new Texture2D(8, 8, TextureFormat.RGBA32, false);
+                texture.filterMode = FilterMode.Point;
+                var pixels = new Color[64];
+                for (int y = 0; y < 8; y++)
+                for (int x = 0; x < 8; x++)
+                {
+                    float dx = x - 3.5f;
+                    float dy = y - 3.5f;
+                    pixels[y * 8 + x] = dx * dx + dy * dy <= 12f ? Color.white : Color.clear;
+                }
+                texture.SetPixels(pixels);
+                texture.Apply();
+                underwaterFizzSprite = Sprite.Create(texture, new Rect(0, 0, 8, 8),
+                    new Vector2(0.5f, 0.5f), 8f);
+            }
+
+            var fizz = new GameObject("Underwater_Fire_Fizz");
+            Vector3 offset = (Vector3)defaultMuzzleOffset;
+            fizz.transform.position = transform.position + offset;
+            fizz.transform.localScale = Vector3.one * 0.25f;
+            var renderer = fizz.AddComponent<SpriteRenderer>();
+            renderer.sprite = underwaterFizzSprite;
+            renderer.color = new Color(1f, 0.48f, 0.12f, 0.9f);
+            renderer.sortingOrder = 11;
+            StartCoroutine(AnimateUnderwaterFizz(fizz.transform, renderer));
+        }
+
+        private IEnumerator AnimateUnderwaterFizz(Transform fizz, SpriteRenderer renderer)
+        {
+            const float duration = 0.35f;
+            float elapsed = 0f;
+            Vector3 start = fizz.position;
+            while (elapsed < duration && fizz != null)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                fizz.position = start + Vector3.up * (t * 0.35f);
+                fizz.localScale = Vector3.one * Mathf.Lerp(0.25f, 0.85f, t);
+                if (renderer != null)
+                {
+                    Color color = renderer.color;
+                    color.a = 0.9f * (1f - t);
+                    renderer.color = color;
+                }
+                yield return null;
+            }
+            if (fizz != null) Destroy(fizz.gameObject);
         }
 
         private void SpawnProjectile(Vector3 position, Vector2 direction, ElementWeaponConfig config, float dmg, int pierce, float speed)
