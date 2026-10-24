@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 #endif
 using WitchShmup.CameraSystem;
+using WitchShmup.Core;
 
 namespace WitchShmup.Player
 {
@@ -62,17 +63,9 @@ namespace WitchShmup.Player
 
         private void ReadInput()
         {
-            Vector2 input = Vector2.zero;
+            Vector2 input = ControlBindings.ReadMovement();
 
 #if ENABLE_INPUT_SYSTEM
-            if (Keyboard.current != null)
-            {
-                if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) input.y += 1f;
-                if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) input.y -= 1f;
-                if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) input.x -= 1f;
-                if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) input.x += 1f;
-            }
-
             if (Gamepad.current != null)
             {
                 Vector2 stick = Gamepad.current.leftStick.ReadValue();
@@ -84,13 +77,6 @@ namespace WitchShmup.Player
                 }
             }
 #endif
-
-            // Fallback for Legacy Input if active
-            if (input == Vector2.zero)
-            {
-                input.x = Input.GetAxisRaw("Horizontal");
-                input.y = Input.GetAxisRaw("Vertical");
-            }
 
             moveInput = Vector2.ClampMagnitude(input, 1f);
         }

@@ -44,6 +44,10 @@ namespace SpellGlide
 
             SetupButtons();
             SetupOptionsSliders();
+
+            var controlRebindingUI = GetComponent<ControlRebindingUI>();
+            if (controlRebindingUI == null) controlRebindingUI = gameObject.AddComponent<ControlRebindingUI>();
+            controlRebindingUI.Initialize(optionsPanel);
         }
 
         private void SetupButtons()

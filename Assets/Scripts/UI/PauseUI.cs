@@ -14,7 +14,7 @@ namespace WitchShmup.UI
         public static PauseUI Instance { get; private set; }
 
         [Header("Painel Principal")]
-        [SerializeField] private GameObject pausePanel;
+        public GameObject pausePanel;
 
         [Header("Botões")]
         [SerializeField] private Button resumeButton;
@@ -219,7 +219,11 @@ namespace WitchShmup.UI
 
         private void EnsureUIBuilt()
         {
-            if (pausePanel != null) return;
+            if (pausePanel != null)
+            {
+                BindExistingUI();
+                return;
+            }
 
             // Canvas overlay próprio: evita congelar o jogo com o painel dentro de um Canvas oculto.
             pausePanel = new GameObject("Canvas_Pause", typeof(RectTransform), typeof(Canvas),
@@ -338,6 +342,111 @@ namespace WitchShmup.UI
             pausePanel.SetActive(false);
         }
 
+        private void BindExistingUI()
+        {
+            if (pausePanel == null) return;
+
+            pauseCard = FindChild("Card");
+            settingsCard = FindChild("Panel_PauseSettings");
+            resumeButton = FindButton("Card/ButtonsContainer/Btn_Resume");
+            saveButton = FindButton("Card/ButtonsContainer/Btn_Save");
+            settingsButton = FindButton("Card/ButtonsContainer/Btn_Settings");
+            restartButton = FindButton("Card/ButtonsContainer/Btn_Restart");
+            menuButton = FindButton("Card/ButtonsContainer/Btn_Menu");
+            statusFeedbackText = FindText("Card/Txt_Feedback");
+            musicVolumeSlider = FindSlider("Panel_PauseSettings/MusicVolumeSlider");
+            sfxVolumeSlider = FindSlider("Panel_PauseSettings/SfxVolumeSlider");
+            autoWavesToggle = FindToggle("Panel_PauseSettings/AutoStartNextWaveToggle");
+
+            BindButton(resumeButton, Resume);
+            BindButton(saveButton, SaveGame);
+            BindButton(settingsButton, OpenSettings);
+            BindButton(restartButton, Restart);
+            BindButton(menuButton, GoToMenu);
+            BindButton(FindButton("Panel_PauseSettings/Btn_SettingsBack"), CloseSettings);
+
+            if (restartButton != null)
+            {
+                var label = restartButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (label != null) label.text = InfiniteModeSession.IsActive ? "REINICIAR PARTIDA" : "REINICIAR FASE";
+            }
+            if (saveButton != null) saveButton.gameObject.SetActive(!InfiniteModeSession.IsActive);
+
+            if (musicVolumeSlider != null)
+            {
+                musicVolumeSlider.onValueChanged.RemoveListener(SetMusicVolume);
+                musicVolumeSlider.onValueChanged.AddListener(SetMusicVolume);
+                float value = AudioManager.Instance != null
+                    ? AudioManager.Instance.GetMusicVolume()
+                    : PlayerPrefs.GetFloat(AudioManager.MusicVolumePrefsKey, 0.5f);
+                musicVolumeSlider.SetValueWithoutNotify(value);
+            }
+            if (sfxVolumeSlider != null)
+            {
+                sfxVolumeSlider.onValueChanged.RemoveListener(SetSfxVolume);
+                sfxVolumeSlider.onValueChanged.AddListener(SetSfxVolume);
+                float value = AudioManager.Instance != null
+                    ? AudioManager.Instance.GetSFXVolume()
+                    : PlayerPrefs.GetFloat(AudioManager.SfxVolumePrefsKey, 0.7f);
+                sfxVolumeSlider.SetValueWithoutNotify(value);
+            }
+            if (autoWavesToggle != null)
+            {
+                autoWavesToggle.gameObject.SetActive(InfiniteModeSession.IsActive);
+                autoWavesToggle.onValueChanged.RemoveListener(SetAutoStartNextWave);
+                autoWavesToggle.onValueChanged.RemoveListener(PlayToggleClickSound);
+                autoWavesToggle.onValueChanged.AddListener(SetAutoStartNextWave);
+                autoWavesToggle.onValueChanged.AddListener(PlayToggleClickSound);
+                autoWavesToggle.SetIsOnWithoutNotify(InfiniteModeSession.AutoStartNextWave);
+            }
+        }
+
+        private GameObject FindChild(string path)
+        {
+            Transform child = pausePanel != null ? pausePanel.transform.Find(path) : null;
+            return child != null ? child.gameObject : null;
+        }
+
+        private Button FindButton(string path)
+        {
+            GameObject child = FindChild(path);
+            return child != null ? child.GetComponent<Button>() : null;
+        }
+
+        private TextMeshProUGUI FindText(string path)
+        {
+            GameObject child = FindChild(path);
+            return child != null ? child.GetComponent<TextMeshProUGUI>() : null;
+        }
+
+        private Slider FindSlider(string path)
+        {
+            GameObject child = FindChild(path);
+            return child != null ? child.GetComponent<Slider>() : null;
+        }
+
+        private Toggle FindToggle(string path)
+        {
+            GameObject child = FindChild(path);
+            return child != null ? child.GetComponent<Toggle>() : null;
+        }
+
+        private static void BindButton(Button button, UnityEngine.Events.UnityAction action)
+        {
+            if (button == null) return;
+            button.onClick.RemoveListener(action);
+            button.onClick.AddListener(action);
+            ButtonClickSound.Bind(button);
+        }
+
+#if UNITY_EDITOR
+        public void BuildEditablePanelInEditor()
+        {
+            EnsureUIBuilt();
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
+#endif
+
         private void BuildSettingsCard(Transform parent)
         {
             settingsCard = new GameObject("Panel_PauseSettings", typeof(RectTransform), typeof(Image));
@@ -452,10 +561,13 @@ namespace WitchShmup.UI
             toggle.targetGraphic = boxImage;
             toggle.graphic = check.GetComponent<Image>();
             toggle.isOn = InfiniteModeSession.AutoStartNextWave;
-            toggle.onValueChanged.AddListener(value => InfiniteModeSession.AutoStartNextWave = value);
-            toggle.onValueChanged.AddListener(_ => ButtonClickSound.PlayClickSound());
+            toggle.onValueChanged.AddListener(SetAutoStartNextWave);
+            toggle.onValueChanged.AddListener(PlayToggleClickSound);
             return toggle;
         }
+
+        private void SetAutoStartNextWave(bool value) => InfiniteModeSession.AutoStartNextWave = value;
+        private void PlayToggleClickSound(bool _) => ButtonClickSound.PlayClickSound();
 
         private Button CreateButton(Transform parent, string name, string label, Color bgColor, Color textColor, UnityEngine.Events.UnityAction action)
         {

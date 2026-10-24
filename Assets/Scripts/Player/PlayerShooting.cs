@@ -255,85 +255,36 @@ namespace WitchShmup.Player
 
         private void HandleElementSwitchInput()
         {
-            bool switched = false;
+            bool switched = ControlBindings.WasSwitchWeaponPressedThisFrame();
 
 #if ENABLE_INPUT_SYSTEM
-            if (Keyboard.current != null)
-            {
-                if (Keyboard.current.qKey.wasPressedThisFrame ||
-                    Keyboard.current.eKey.wasPressedThisFrame ||
-                    Keyboard.current.tabKey.wasPressedThisFrame ||
-                    Keyboard.current.leftShiftKey.wasPressedThisFrame)
-                {
-                    ToggleElement();
-                    switched = true;
-                }
-                else if (Keyboard.current.digit1Key.wasPressedThisFrame)
-                {
-                    SetElement(ElementType.Ice);
-                    switched = true;
-                }
-                else if (Keyboard.current.digit2Key.wasPressedThisFrame)
-                {
-                    SetElement(ElementType.Fire);
-                    switched = true;
-                }
-            }
-
-            if (!switched && Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
-            {
-                ToggleElement();
-                switched = true;
-            }
-
             if (!switched && Gamepad.current != null)
             {
                 if (Gamepad.current.buttonNorth.wasPressedThisFrame ||
                     Gamepad.current.rightShoulder.wasPressedThisFrame ||
                     Gamepad.current.leftShoulder.wasPressedThisFrame)
                 {
-                    ToggleElement();
                     switched = true;
                 }
             }
 #endif
 
-            // Fallback for standard input
             if (!switched)
             {
-                if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.Tab) || Input.GetMouseButtonDown(1))
-                {
-                    ToggleElement();
-                }
-                else if (Input.GetKeyDown(KeyCode.Alpha1))
-                {
+                if (Input.GetKeyDown(KeyCode.Alpha1))
                     SetElement(ElementType.Ice);
-                }
                 else if (Input.GetKeyDown(KeyCode.Alpha2))
-                {
                     SetElement(ElementType.Fire);
-                }
             }
+
+            if (switched) ToggleElement();
         }
 
         private void HandleFireInput()
         {
-            isFiring = false;
+            isFiring = ControlBindings.IsFireHeld();
 
 #if ENABLE_INPUT_SYSTEM
-            if (Keyboard.current != null)
-            {
-                if (Keyboard.current.spaceKey.isPressed || Keyboard.current.jKey.isPressed || Keyboard.current.enterKey.isPressed)
-                {
-                    isFiring = true;
-                }
-            }
-
-            if (!isFiring && Mouse.current != null && Mouse.current.leftButton.isPressed)
-            {
-                isFiring = true;
-            }
-
             if (!isFiring && Gamepad.current != null)
             {
                 if (Gamepad.current.buttonSouth.isPressed || Gamepad.current.rightTrigger.isPressed)
@@ -342,11 +293,6 @@ namespace WitchShmup.Player
                 }
             }
 #endif
-
-            if (!isFiring)
-            {
-                isFiring = Input.GetKey(KeyCode.Space) || Input.GetMouseButton(0);
-            }
 
             if (isFiring && Time.time >= nextFireTime)
             {

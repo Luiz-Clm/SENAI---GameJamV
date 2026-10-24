@@ -35,6 +35,7 @@ namespace WitchShmup.Endless
         private GolemBoss sceneGolem;
         private HUDController hud;
         private TextMeshProUGUI waveStatusText;
+        private GameObject waveStatusCanvas;
         private IInfiniteModeBoss activeBoss;
         private MonoBehaviour activeBossBehaviour;
         private GameObject activeBackground;
@@ -77,6 +78,7 @@ namespace WitchShmup.Endless
 
         private void OnDestroy()
         {
+            if (waveStatusCanvas != null) Destroy(waveStatusCanvas);
             if (Instance == this) Instance = null;
         }
 
@@ -354,23 +356,12 @@ namespace WitchShmup.Endless
 
         private TextMeshProUGUI CreateWaveStatusText()
         {
-            Canvas canvas = null;
-            Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
-            foreach (Canvas candidate in canvases)
-            {
-                if (candidate != null && candidate.renderMode != RenderMode.WorldSpace)
-                {
-                    canvas = candidate;
-                    break;
-                }
-            }
-
-            if (canvas == null)
-            {
-                var canvasObject = new GameObject("InfiniteModeCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-                canvas = canvasObject.GetComponent<Canvas>();
-                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            }
+            // Keep this UI owned by the scene's wave manager. Reusing an arbitrary
+            // canvas can parent the label under a DontDestroyOnLoad overlay.
+            waveStatusCanvas = new GameObject("InfiniteModeCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            waveStatusCanvas.transform.SetParent(transform, false);
+            Canvas canvas = waveStatusCanvas.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
 
             var textObject = new GameObject("InfiniteWaveStatus", typeof(RectTransform), typeof(TextMeshProUGUI));
             textObject.transform.SetParent(canvas.transform, false);

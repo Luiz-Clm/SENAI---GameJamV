@@ -347,8 +347,8 @@ namespace WitchShmup.Core
 
         private void Update()
         {
-            // Pressionar 'T' abre/fecha a tela de evolução e árvore.
-            if (Input.GetKeyDown(KeyCode.T))
+            // O atalho configurado abre ou fecha a tela de evolução e árvore.
+            if (ControlBindings.WasSkillBookPressedThisFrame())
             {
                 ToggleEvolutionPanel();
             }
