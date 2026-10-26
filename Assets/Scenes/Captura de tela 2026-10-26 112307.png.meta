@@ -1,16 +1,10 @@
 fileFormatVersion: 2
-guid: fdd119e83dcf4af408f7c74e50e77713
+guid: fe22f76067788e34c96ec6481168f76e
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 2155525168549499287
-    second: peixe_lanterna_sheet_240x80_0
-  - first:
-      213: -663599949086206773
-    second: peixe_lanterna_sheet_240x80_1
-  - first:
-      213: 7133212246331857225
-    second: peixe_lanterna_sheet_240x80_2
+      213: 9070946463515092819
+    second: Captura de tela 2026-10-26 112307_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -43,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -57,7 +51,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 64
+  spritePixelsToUnits: 100
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -132,67 +126,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: peixe_lanterna_sheet_240x80_0
+      name: Captura de tela 2026-10-26 112307_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 80
-        height: 80
+        width: 645
+        height: 451
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 7919ec768b6f9ed10800000000000000
-      internalID: 2155525168549499287
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: peixe_lanterna_sheet_240x80_1
-      rect:
-        serializedVersion: 2
-        x: 80
-        y: 0
-        width: 80
-        height: 80
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: bc4dfb9bc5b6ac6f0800000000000000
-      internalID: -663599949086206773
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: peixe_lanterna_sheet_240x80_2
-      rect:
-        serializedVersion: 2
-        x: 160
-        y: 0
-        width: 80
-        height: 80
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 9499312aeb24ef260800000000000000
-      internalID: 7133212246331857225
+      spriteID: 3572766afb972ed70800000000000000
+      internalID: 9070946463515092819
       vertices: []
       indices: 
       edges: []
@@ -211,9 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      peixe_lanterna_sheet_240x80_0: 2155525168549499287
-      peixe_lanterna_sheet_240x80_1: -663599949086206773
-      peixe_lanterna_sheet_240x80_2: 7133212246331857225
+      Captura de tela 2026-10-26 112307_0: 9070946463515092819
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

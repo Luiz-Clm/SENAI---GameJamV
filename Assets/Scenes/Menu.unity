@@ -4132,14 +4132,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.19, g: 0.39, b: 0.43, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 7470423314570476574, guid: e72d5e2e3a984d5458373157d56f95c6, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -14366,7 +14366,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &835532645
 RectTransform:
   m_ObjectHideFlags: 0
@@ -22439,12 +22439,12 @@ MonoBehaviour:
   - phaseNumber: 1
     title: "Fase 1 \u2014 Masmorra"
     description: Explore a masmorra e enfrente seus inimigos.
-    previewImage: {fileID: 0}
+    previewImage: {fileID: 7470423314570476574, guid: e72d5e2e3a984d5458373157d56f95c6, type: 3}
     selectButton: {fileID: 677107902}
   - phaseNumber: 2
     title: "Fase 2 \u2014 Biblioteca Submersa"
     description: "Descubra o que est\xE1 escondido na biblioteca inundada."
-    previewImage: {fileID: 0}
+    previewImage: {fileID: 9070946463515092819, guid: fe22f76067788e34c96ec6481168f76e, type: 3}
     selectButton: {fileID: 40057615}
   - phaseNumber: 3
     title: "Fase 3 \u2014 Em breve"
