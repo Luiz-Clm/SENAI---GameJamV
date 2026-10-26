@@ -31,7 +31,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.8, y: 0.8, z: 1}
+  m_LocalScale: {x: 0.6, y: 0.6, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -85,7 +85,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 8
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 2155525168549499287, guid: fdd119e83dcf4af408f7c74e50e77713, type: 3}
+  m_Sprite: {fileID: -8346667246893509311, guid: 0ff00a7372667634fb84d0178ecd789f, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -108,9 +108,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Utils.SimpleSpriteAnimator
   frames:
-  - {fileID: 2155525168549499287, guid: fdd119e83dcf4af408f7c74e50e77713, type: 3}
-  - {fileID: -663599949086206773, guid: fdd119e83dcf4af408f7c74e50e77713, type: 3}
-  - {fileID: 7133212246331857225, guid: fdd119e83dcf4af408f7c74e50e77713, type: 3}
+  - {fileID: -8346667246893509311, guid: 0ff00a7372667634fb84d0178ecd789f, type: 3}
+  - {fileID: -8530484876851019119, guid: 0ff00a7372667634fb84d0178ecd789f, type: 3}
+  - {fileID: -6839004485745412799, guid: 0ff00a7372667634fb84d0178ecd789f, type: 3}
   frameRate: 8
   loop: 1
 --- !u!58 &1100004
@@ -147,8 +147,8 @@ CircleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: -0.22593945, y: -0.017582737}
-  m_Radius: 0.39692968
+  m_Offset: {x: -0.18556893, y: -0.12355365}
+  m_Radius: 0.52645
 --- !u!50 &1100005
 Rigidbody2D:
   serializedVersion: 5

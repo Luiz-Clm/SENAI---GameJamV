@@ -83,10 +83,7 @@ namespace WitchShmup.Boss
         public static event Action OnAnyBossFightDefeated;
 
         [Header("Floating Overhead Health Bar")]
-        [SerializeField] private GameObject overheadHealthBarPrefab;
-        [SerializeField] private Vector3 overheadBarLocalOffset = new Vector3(0f, 2.5f, 0f);
-        [SerializeField] private Sprite overheadBarBackgroundSprite;
-        [SerializeField] private Sprite overheadBarFillSprite;
+        [SerializeField] private GameObject overheadHealthBar;
         private GameObject worldBarContainer;
         private Transform worldBarFillTransform;
         private SpriteRenderer worldBarFillRenderer;
@@ -108,16 +105,6 @@ namespace WitchShmup.Boss
             if (mainBodyRenderer == null)
             {
                 mainBodyRenderer = GetComponentInChildren<SpriteRenderer>();
-            }
-
-            // Carrega os sprites oficiais da barra do Golem
-            if (overheadBarBackgroundSprite == null)
-            {
-                overheadBarBackgroundSprite = Resources.Load<Sprite>("Sprites/boss_barra_fundo_decorado_192x36");
-            }
-            if (overheadBarFillSprite == null)
-            {
-                overheadBarFillSprite = Resources.Load<Sprite>("Sprites/boss_barra_vida_148x12");
             }
 
             // Fallback: carrega os sprites de idle e ataque do Golem caso não estejam serializados
@@ -144,32 +131,27 @@ namespace WitchShmup.Boss
                 bossAnimator = GetComponentInChildren<SimpleSpriteAnimator>();
             }
 
-            CreateWorldHealthBar();
+            BindWorldHealthBar();
             PlayIdleAnim();
         }
 
-        private void CreateWorldHealthBar()
+        private void BindWorldHealthBar()
         {
-            if (overheadHealthBarPrefab == null)
-                overheadHealthBarPrefab = Resources.Load<GameObject>("Prefabs/BossOverheadHealthBar");
-            if (overheadHealthBarPrefab == null)
+            if (overheadHealthBar == null)
             {
-                Debug.LogWarning("GolemBoss: prefab da barra sobre a cabeça não encontrado em Resources/Prefabs.", this);
+                Transform child = transform.Find("OverheadHealthBar");
+                if (child != null) overheadHealthBar = child.gameObject;
+            }
+
+            if (overheadHealthBar == null)
+            {
+                Debug.LogWarning("GolemBoss: adicione OverheadHealthBar como filha no Inspector.", this);
                 return;
             }
 
-            worldBarContainer = Instantiate(overheadHealthBarPrefab, transform);
-            worldBarContainer.name = "OverheadHealthBar";
-            worldBarContainer.transform.localPosition = overheadBarLocalOffset;
-            Transform background = worldBarContainer.transform.Find("Background");
+            worldBarContainer = overheadHealthBar;
             Transform fill = worldBarContainer.transform.Find("Fill");
-            SpriteRenderer backgroundRenderer = background != null ? background.GetComponent<SpriteRenderer>() : null;
             worldBarFillRenderer = fill != null ? fill.GetComponent<SpriteRenderer>() : null;
-
-            if (overheadBarBackgroundSprite != null && backgroundRenderer != null)
-                backgroundRenderer.sprite = overheadBarBackgroundSprite;
-            if (overheadBarFillSprite != null && worldBarFillRenderer != null)
-                worldBarFillRenderer.sprite = overheadBarFillSprite;
 
             worldBarFillTransform = fill;
             if (worldBarFillTransform != null)
@@ -216,9 +198,9 @@ namespace WitchShmup.Boss
 
             hud = FindFirstObjectByType<HUDController>();
 
-            if (orbitingStonePrefab != null)
-                SpawnOrbitingStones();
-            else
+            // As pedras não devem existir enquanto o Golem aguarda fora da tela:
+            // tiros disparados antes da cutscene poderiam destruí-las.
+            if (orbitingStonePrefab == null)
                 Debug.LogWarning("GolemBoss: atribua o prefab de pedra orbital no Inspector.", this);
         }
 
@@ -247,6 +229,10 @@ namespace WitchShmup.Boss
 
         public void StartFight()
         {
+            // Só materializa a defesa orbital quando a luta realmente começa.
+            if (activeOrbitingStones.Count == 0 && orbitingStonePrefab != null)
+                SpawnOrbitingStones();
+
             state = BossState.Active;
             if (hud == null) hud = FindFirstObjectByType<HUDController>();
             if (hud != null)

@@ -13,6 +13,9 @@ namespace WitchShmup.Boss
     {
         [Header("Vida e entrada")]
         [SerializeField, Min(1f)] private float maxHealth = 300f;
+        [SerializeField] private string bossDisplayName = "POLVO DAS PROFUNDEZAS";
+        [SerializeField] private GameObject overheadHealthBar;
+        [SerializeField, Min(0f)] private float overheadBarFullWidth = 2f;
         [SerializeField] private float contactDamage = 2f;
         [SerializeField] private float arenaXOffset = 5.2f;
         [SerializeField] private float entranceDuration = 1.1f;
@@ -54,10 +57,13 @@ namespace WitchShmup.Boss
         [SerializeField] private float undertowDownwardSpeed = 4f;
         [SerializeField, Range(0f, 1f)] private float undertowChance = 0.28f;
 
-        [Header("Visual")]
+        [Header("Visual e Animações")]
         [SerializeField] private SpriteRenderer bodyRenderer;
         [SerializeField] private SpriteRenderer bookRendererSource;
-        [SerializeField] private Color normalColor = new Color(0.88f, 0.56f, 1f, 1f);
+        [SerializeField] private Color normalColor = Color.white;
+        [SerializeField] private Sprite[] idleFrames;
+        [SerializeField] private float animationFps = 6f;
+        [SerializeField] private WitchShmup.Utils.SimpleSpriteAnimator bossAnimator;
 
         private float currentHealth;
         private float bobSeed;
@@ -76,6 +82,9 @@ namespace WitchShmup.Boss
         private bool phaseOneFanNext = true;
         private int phaseTwoAttackIndex;
         private int phaseThreeAttackIndex;
+        private Transform overheadFillTransform;
+        private SpriteRenderer overheadFillRenderer;
+        private Vector3 overheadFillBasePosition;
 
         public float CurrentHealth => currentHealth;
         public float MaxHealth => maxHealth;
@@ -88,9 +97,21 @@ namespace WitchShmup.Boss
             currentHealth = maxHealth;
             bobSeed = Random.Range(0f, 100f);
             if (bodyRenderer == null) bodyRenderer = GetComponent<SpriteRenderer>();
+
+            if (bossAnimator == null) bossAnimator = GetComponent<WitchShmup.Utils.SimpleSpriteAnimator>();
+            if (bossAnimator == null) bossAnimator = gameObject.AddComponent<WitchShmup.Utils.SimpleSpriteAnimator>();
+
+            if (bossAnimator != null && idleFrames != null && idleFrames.Length > 0)
+            {
+                bossAnimator.SetFrames(idleFrames, animationFps);
+            }
+
+            BindOverheadHealthBar();
+
             if (bodyRenderer != null)
             {
-                if (bodyRenderer.sprite == null) bodyRenderer.sprite = CreateOctopusSprite();
+                if (bodyRenderer.sprite == null && (idleFrames == null || idleFrames.Length == 0))
+                    bodyRenderer.sprite = CreateOctopusSprite();
                 bodyRenderer.color = normalColor;
                 bodyRenderer.sortingOrder = 8;
             }
@@ -122,6 +143,62 @@ namespace WitchShmup.Boss
             encounterRoutine = StartCoroutine(EnterArena());
         }
 
+        public void BeginEncounter(string displayName)
+        {
+            if (!string.IsNullOrWhiteSpace(displayName))
+                bossDisplayName = displayName;
+            BeginEncounter();
+        }
+
+        public void UseSceneOverheadHealthBar(GameObject sceneBar)
+        {
+            if (sceneBar == null) return;
+            if (overheadHealthBar != null && overheadHealthBar != sceneBar)
+                overheadHealthBar.SetActive(false);
+
+            overheadHealthBar = sceneBar;
+            overheadHealthBar.transform.SetParent(transform, false);
+            overheadHealthBar.transform.localPosition = new Vector3(0f, 2.5f, 0f);
+            Transform fill = overheadHealthBar.transform.Find("Fill");
+            overheadFillTransform = fill;
+            overheadFillRenderer = fill != null ? fill.GetComponent<SpriteRenderer>() : null;
+            if (fill != null) overheadFillBasePosition = fill.localPosition;
+            overheadHealthBar.SetActive(false);
+        }
+
+        private void BindOverheadHealthBar()
+        {
+            if (overheadHealthBar == null)
+            {
+                Transform child = transform.Find("OverheadHealthBar");
+                if (child != null) overheadHealthBar = child.gameObject;
+            }
+
+            if (overheadHealthBar == null) return;
+
+            Transform fill = overheadHealthBar.transform.Find("Fill");
+            overheadFillTransform = fill;
+            overheadFillRenderer = fill != null ? fill.GetComponent<SpriteRenderer>() : null;
+            if (fill != null) overheadFillBasePosition = fill.localPosition;
+            overheadHealthBar.SetActive(false);
+        }
+
+        private void UpdateOverheadHealthBar(float normalizedHealth)
+        {
+            if (overheadFillTransform == null) return;
+            normalizedHealth = Mathf.Clamp01(normalizedHealth);
+            Vector3 scale = overheadFillTransform.localScale;
+            scale.x = overheadBarFullWidth * normalizedHealth;
+            overheadFillTransform.localScale = scale;
+
+            float spriteWidth = overheadFillRenderer != null && overheadFillRenderer.sprite != null
+                ? overheadFillRenderer.sprite.bounds.size.x
+                : 1f;
+            Vector3 position = overheadFillBasePosition;
+            position.x -= spriteWidth * overheadBarFullWidth * (1f - normalizedHealth) * 0.5f;
+            overheadFillTransform.localPosition = position;
+        }
+
         private IEnumerator EnterArena()
         {
             water = PhaseTwoWaterSystem.Instance;
@@ -151,8 +228,14 @@ namespace WitchShmup.Boss
             hud = FindFirstObjectByType<HUDController>();
             if (hud != null)
             {
-                hud.ShowBossBar("POLVO DAS PROFUNDEZAS");
+                hud.ShowBossBar(bossDisplayName);
                 hud.SetBossHealth(1f);
+            }
+
+            if (overheadHealthBar != null)
+            {
+                overheadHealthBar.SetActive(true);
+                UpdateOverheadHealthBar(1f);
             }
 
             fightActive = true;
@@ -421,13 +504,14 @@ namespace WitchShmup.Boss
             if (bodyRenderer != null)
                 StartCoroutine(DamageFlash());
             if (hud != null) hud.SetBossHealth(maxHealth <= 0f ? 0f : currentHealth / maxHealth);
+            UpdateOverheadHealthBar(maxHealth <= 0f ? 0f : currentHealth / maxHealth);
             if (currentHealth <= 0f) Die();
         }
 
         private IEnumerator DamageFlash()
         {
             if (bodyRenderer == null) yield break;
-            bodyRenderer.color = Color.white;
+            bodyRenderer.color = new Color(1f, 0.4f, 0.4f, 1f);
             yield return new WaitForSeconds(0.08f);
             if (bodyRenderer != null && !isDead) bodyRenderer.color = normalColor;
         }
@@ -439,6 +523,7 @@ namespace WitchShmup.Boss
             fightActive = false;
             if (attackRoutine != null) StopCoroutine(attackRoutine);
             if (hud != null) hud.HideBossBar();
+            if (overheadHealthBar != null) overheadHealthBar.SetActive(false);
             if (water != null) water.EndBossFight();
             if (ParallaxBackgroundController.Instance != null)
                 ParallaxBackgroundController.Instance.ResumeScrolling();
@@ -448,6 +533,12 @@ namespace WitchShmup.Boss
                 if (bubble != null) Destroy(bubble.gameObject);
             foreach (var projectile in FindObjectsByType<OctopusProjectile>(FindObjectsSortMode.None))
                 if (projectile != null) Destroy(projectile.gameObject);
+
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.StartCoroutine(GameManager.Instance.WaitAndTriggerVictory(1.8f));
+            }
+
             gameObject.SetActive(false);
         }
 

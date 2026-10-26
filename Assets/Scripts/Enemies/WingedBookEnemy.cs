@@ -11,11 +11,30 @@ namespace WitchShmup.Enemies
         [SerializeField] private float bobFrequency = 2f;
         private float baseY;
 
+        [Header("Animação do Livro")]
+        [SerializeField] private Sprite[] flapFrames;
+        [SerializeField] private float animationFps = 8f;
+        [SerializeField] private WitchShmup.Utils.SimpleSpriteAnimator bookAnimator;
+
         protected override void Awake()
         {
             base.Awake();
             waterZone = EnemyWaterZone.SurfaceOnly;
             waterZoneMargin = Mathf.Max(waterZoneMargin, 0.25f);
+
+            if (bookAnimator == null)
+            {
+                bookAnimator = GetComponent<WitchShmup.Utils.SimpleSpriteAnimator>();
+                if (bookAnimator == null)
+                {
+                    bookAnimator = gameObject.AddComponent<WitchShmup.Utils.SimpleSpriteAnimator>();
+                }
+            }
+
+            if (bookAnimator != null && flapFrames != null && flapFrames.Length > 0)
+            {
+                bookAnimator.SetFrames(flapFrames, animationFps);
+            }
         }
 
         private void Start() => baseY = transform.position.y;
