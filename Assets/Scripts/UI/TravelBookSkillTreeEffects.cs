@@ -112,7 +112,7 @@ namespace WitchShmup.UI
             yield return new WaitForEndOfFrame();
 
             evolutionUI = GetComponent<EvolutionUI>();
-            if (evolutionUI == null) evolutionUI = FindObjectOfType<EvolutionUI>();
+            if (evolutionUI == null) evolutionUI = FindFirstObjectByType<EvolutionUI>();
             ownerCanvas = GetComponent<Canvas>();
             if (ownerCanvas == null) ownerCanvas = GetComponentInParent<Canvas>();
             ownerRect = ownerCanvas != null ? ownerCanvas.transform as RectTransform : transform as RectTransform;

@@ -37,6 +37,11 @@ namespace SpellGlide.UI
         [SerializeField] private TMP_Text phaseDescriptionText;
         [SerializeField] private Button phasePlayButton;
         [SerializeField] private Button storyButton;
+        [SerializeField] private Button newGameResetButton;
+
+        [Header("Posição do botão de jogo/save")]
+        [SerializeField] private Vector2 newGameButtonPosition = Vector2.zero;
+        [SerializeField] private Vector2 resetSaveButtonPosition = new Vector2(790f, -450f);
 
         [Header("Modo infinito")]
         [SerializeField] private Image infinitePreviewImage;
@@ -104,21 +109,56 @@ namespace SpellGlide.UI
                     if (buttonLabel != null) buttonLabel.text = phase.title;
                     ButtonClickSound.Bind(phase.selectButton);
                     int number = phase.phaseNumber;
-                    phase.selectButton.onClick.AddListener(() => SelectPhase(number));
+                    if (IsPhaseAvailable(number))
+                        phase.selectButton.onClick.AddListener(() => SelectPhase(number));
                 }
             }
 
             initialized = true;
-            RefreshBestWave();
-            ShowPhasesPage();
+            RefreshMenuState();
         }
 
         private void OnEnable()
         {
             RemoveOldButtonBackgrounds();
             if (!initialized) return;
+            RefreshMenuState();
+        }
+
+        public void RefreshMenuState()
+        {
+            bool hasStartedGame = WitchShmup.Core.SaveSystem.HasStartedGame();
+
+            if (phasesTabButton != null) phasesTabButton.gameObject.SetActive(hasStartedGame);
+            if (infiniteTabButton != null) infiniteTabButton.gameObject.SetActive(hasStartedGame);
+            if (phasesPage != null) phasesPage.SetActive(hasStartedGame);
+            if (infinitePage != null) infinitePage.SetActive(false);
+            if (storyButton != null) storyButton.gameObject.SetActive(hasStartedGame);
+            if (phaseDetailsRoot != null) phaseDetailsRoot.SetActive(false);
+
+            if (newGameResetButton != null)
+            {
+                newGameResetButton.gameObject.SetActive(true);
+                TMP_Text label = newGameResetButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null)
+                    label.text = hasStartedGame ? "Reiniciar save" : "Novo jogo";
+
+                RectTransform buttonRect = newGameResetButton.GetComponent<RectTransform>();
+                if (buttonRect != null)
+                {
+                    buttonRect.anchorMin = new Vector2(0.5f, 0.5f);
+                    buttonRect.anchorMax = buttonRect.anchorMin;
+                    buttonRect.pivot = new Vector2(0.5f, 0.5f);
+                    buttonRect.anchoredPosition = hasStartedGame ? resetSaveButtonPosition : newGameButtonPosition;
+                }
+
+                newGameResetButton.transform.SetAsLastSibling();
+            }
+
+            RefreshPhaseAvailability();
             RefreshBestWave();
-            ShowPhasesPage();
+            if (hasStartedGame)
+                ShowPhasesPage();
         }
 
         private void RemoveOldButtonBackgrounds()
@@ -137,6 +177,8 @@ namespace SpellGlide.UI
 
         public void ShowPhasesPage()
         {
+            if (newGameResetButton != null)
+                newGameResetButton.gameObject.SetActive(WitchShmup.Core.SaveSystem.HasStartedGame());
             if (phasesPage != null) phasesPage.SetActive(true);
             if (infinitePage != null) infinitePage.SetActive(false);
             if (phaseDetailsRoot != null) phaseDetailsRoot.SetActive(false);
@@ -146,6 +188,8 @@ namespace SpellGlide.UI
 
         public void ShowInfinitePage()
         {
+            if (newGameResetButton != null)
+                newGameResetButton.gameObject.SetActive(false);
             if (phasesPage != null) phasesPage.SetActive(false);
             if (infinitePage != null) infinitePage.SetActive(true);
             RefreshBestWave();
@@ -155,7 +199,7 @@ namespace SpellGlide.UI
 
         public void SelectPhase(int phaseNumber)
         {
-            if (phases == null) return;
+            if (phases == null || !IsPhaseAvailable(phaseNumber) || !IsPhaseUnlocked(phaseNumber)) return;
             foreach (PhaseOption phase in phases)
             {
                 if (phase == null || phase.phaseNumber != phaseNumber) continue;
@@ -170,6 +214,28 @@ namespace SpellGlide.UI
                     phasePreviewImage.enabled = true;
                 }
                 return;
+            }
+        }
+
+        private static bool IsPhaseAvailable(int phaseNumber)
+        {
+            string sceneName = phaseNumber == 1 ? "Fase" : phaseNumber == 2 ? "Fase 2" : null;
+            return !string.IsNullOrEmpty(sceneName) && Application.CanStreamedLevelBeLoaded(sceneName);
+        }
+
+        private static bool IsPhaseUnlocked(int phaseNumber)
+        {
+            return phaseNumber != 2 || WitchShmup.Core.SaveSystem.HasCompletedPhase1();
+        }
+
+        private void RefreshPhaseAvailability()
+        {
+            if (phases == null) return;
+
+            foreach (PhaseOption phase in phases)
+            {
+                if (phase == null || phase.selectButton == null) continue;
+                phase.selectButton.interactable = IsPhaseAvailable(phase.phaseNumber) && IsPhaseUnlocked(phase.phaseNumber);
             }
         }
 

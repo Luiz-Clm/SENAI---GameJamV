@@ -1,10 +1,10 @@
-using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using WitchShmup.Core;
 using WitchShmup.Endless;
 using WitchShmup.UI;
+using SpellGlide.UI;
 
 namespace SpellGlide
 {
@@ -65,7 +65,17 @@ namespace SpellGlide
                 closeOptionsButton.onClick.AddListener(OnCloseOptionsClicked);
 
             if (resetDataButton != null)
-                resetDataButton.onClick.AddListener(OnResetDataClicked);
+            {
+                resetDataButton.onClick.RemoveListener(OnNewGameOrResetClicked);
+                resetDataButton.onClick.AddListener(OnNewGameOrResetClicked);
+            }
+        }
+
+        private void RefreshPhaseSelectionUI()
+        {
+            if (phaseSelectPanel == null) return;
+            PhaseSelectionPanelUI panelUI = phaseSelectPanel.GetComponent<PhaseSelectionPanelUI>();
+            if (panelUI != null) panelUI.RefreshMenuState();
         }
 
         private void SetupOptionsSliders()
@@ -102,13 +112,22 @@ namespace SpellGlide
                 menuRootPanel.SetActive(false);
             }
 
-            // Oculta o botão de reset (está fora do MenuPanel)
-            if (resetDataButton != null)
+            OpenPhaseSelectPanel();
+        }
+
+        private void OnNewGameOrResetClicked()
+        {
+            if (SaveSystem.HasStartedGame())
             {
-                resetDataButton.gameObject.SetActive(false);
+                OnResetDataClicked();
+                return;
             }
 
-            OpenPhaseSelectPanel();
+            if (audioManager != null)
+                audioManager.PlayButtonClick();
+
+            SaveSystem.MarkGameStarted();
+            RefreshPhaseSelectionUI();
         }
 
         private void OpenPhaseSelectPanel()
@@ -125,12 +144,28 @@ namespace SpellGlide
 
         public void OnPhaseSelected(int phaseNumber)
         {
+            if (phaseNumber == 2 && !SaveSystem.HasCompletedPhase1())
+            {
+                Debug.LogWarning("[MainMenuManager] Vença a Fase 1 para liberar a Fase 2.");
+                return;
+            }
+
             if (audioManager != null)
             {
                 audioManager.PlayButtonClick();
             }
 
-            string sceneName = (phaseNumber == 1) ? "Fase" : $"Fase{phaseNumber}";
+            string sceneName;
+            if (phaseNumber == 1)
+                sceneName = "Fase";
+            else if (phaseNumber == 2)
+                sceneName = "Fase 2";
+            else
+            {
+                Debug.LogWarning($"[MainMenuManager] Fase {phaseNumber} não está disponível.");
+                return;
+            }
+
             InfiniteModeSession.End();
             if (Application.CanStreamedLevelBeLoaded(sceneName))
             {
@@ -138,8 +173,7 @@ namespace SpellGlide
             }
             else
             {
-                Debug.LogWarning($"[MainMenuManager] Cena '{sceneName}' não encontrada na build! Carregando Fase padrão.");
-                SceneManager.LoadScene(1);
+                Debug.LogError($"[MainMenuManager] Cena '{sceneName}' não encontrada ou não habilitada nas Build Settings.");
             }
         }
 
@@ -193,10 +227,7 @@ namespace SpellGlide
                 menuRootPanel.SetActive(true);
             }
 
-            if (resetDataButton != null)
-            {
-                resetDataButton.gameObject.SetActive(true);
-            }
+            RefreshPhaseSelectionUI();
         }
 
         public void OnOptionsClicked()
@@ -276,10 +307,7 @@ namespace SpellGlide
                 menuRootPanel.SetActive(true);
             }
 
-            if (resetDataButton != null)
-            {
-                resetDataButton.gameObject.SetActive(true);
-            }
+            RefreshPhaseSelectionUI();
 
             Debug.Log("[MainMenuManager] Dados do jogo resetados pelo jogador.");
         }

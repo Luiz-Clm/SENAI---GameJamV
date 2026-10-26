@@ -253,6 +253,7 @@ namespace WitchShmup.UI
 
         string selectedId   = "vit";
         bool   staffTabOpen = false;
+        GameManager subscribedGameManager;
 
         // ─── Lifecycle ────────────────────────────────────────────────────────
         void Awake()
@@ -266,6 +267,7 @@ namespace WitchShmup.UI
             EnsureDefaultNodes();
             EnsureBuilt();
             HookAll();
+            SubscribeToGameManager();
             RefreshUI();
         }
 
@@ -274,8 +276,40 @@ namespace WitchShmup.UI
             EnsureDefaultNodes();
             EnsureBuilt();
             HookAll();
+            SubscribeToGameManager();
             RefreshUI();
         }
+
+        void OnDisable()
+        {
+            if (subscribedGameManager == null) return;
+            subscribedGameManager.OnSkillPointsChanged -= HandleSkillPointsChanged;
+            subscribedGameManager.OnSkillUpgraded -= HandleSkillUpgraded;
+            subscribedGameManager = null;
+        }
+
+        void SubscribeToGameManager()
+        {
+            if (!Application.isPlaying) return;
+
+            var currentManager = GameManager.Instance;
+            if (subscribedGameManager == currentManager) return;
+
+            if (subscribedGameManager != null)
+            {
+                subscribedGameManager.OnSkillPointsChanged -= HandleSkillPointsChanged;
+                subscribedGameManager.OnSkillUpgraded -= HandleSkillUpgraded;
+            }
+
+            subscribedGameManager = currentManager;
+            if (subscribedGameManager == null) return;
+
+            subscribedGameManager.OnSkillPointsChanged += HandleSkillPointsChanged;
+            subscribedGameManager.OnSkillUpgraded += HandleSkillUpgraded;
+        }
+
+        void HandleSkillPointsChanged(int _) => RefreshUI();
+        void HandleSkillUpgraded(string _, int __) => RefreshUI();
 
         /// <summary>
         /// Se os elementos já existirem na cena, vincula as referências sem destruir nada!
@@ -456,6 +490,7 @@ namespace WitchShmup.UI
 
             EnsureBookVisualsApplied(frameBorder, frame);
 
+            var tTree = frame.Find("Tab_Tree");
             var hdr = frame.Find("Header");
             if (hdr != null)
             {
@@ -478,13 +513,13 @@ namespace WitchShmup.UI
                 }
 
                 var spBx = hdr.Find("SP_Border/SP_Box");
+                if (spBx == null) spBx = tTree?.Find("SP_Border/SP_Box");
                 if (spBx != null) spText = spBx.Find("SP")?.GetComponent<TextMeshProUGUI>();
 
                 var clo = hdr.Find("Btn_Close");
                 if (clo != null) closeBtn = clo.GetComponent<Button>();
             }
 
-            var tTree = frame.Find("Tab_Tree");
             if (tTree != null)
             {
                 tabTreeContent = tTree.gameObject;
@@ -907,7 +942,7 @@ namespace WitchShmup.UI
             buyBtnLabel = Txt("Label", btnGo.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero,
                 "DESBLOQUEAR", 19, Color.white, FontStyles.Bold);
             buyBtnLabel.alignment = TextAlignmentOptions.Center;
-            buyBtn.onClick.AddListener(() => TryBuy(selectedId));
+            buyBtn.onClick.AddListener(OnBuyClicked);
         }
 
         // ─── Tab 2: Evolução do Cajado (Página Esquerda = Atual; Página Direita = Próximo + Materiais) ──
@@ -1059,6 +1094,7 @@ namespace WitchShmup.UI
             if (tabTreeBtn  != null) { tabTreeBtn.onClick.RemoveAllListeners();  tabTreeBtn.onClick.AddListener(() => SwitchTab(false)); }
             if (tabStaffBtn != null) { tabStaffBtn.onClick.RemoveAllListeners(); tabStaffBtn.onClick.AddListener(() => SwitchTab(true));  }
             if (closeBtn    != null) { closeBtn.onClick.RemoveAllListeners();    closeBtn.onClick.AddListener(OnClose); }
+            if (buyBtn      != null) { buyBtn.onClick.RemoveListener(OnBuyClicked); buyBtn.onClick.AddListener(OnBuyClicked); }
             if (evolveBtn   != null) { evolveBtn.onClick.RemoveListener(OnEvolveClicked); evolveBtn.onClick.AddListener(OnEvolveClicked); }
 
             ButtonClickSound.Bind(tabTreeBtn);
@@ -1091,6 +1127,7 @@ namespace WitchShmup.UI
 
         public void RefreshUI()
         {
+            EnsureSkillPointsTextBound();
             if (GameManager.Instance == null) return;
             int sp = GameManager.Instance.SkillPoints;
             if (spText != null) spText.text = $"★ SP: {sp}";
@@ -1098,6 +1135,13 @@ namespace WitchShmup.UI
             RefreshNodes();
             if (!staffTabOpen) RefreshDetailCard();
             else               RefreshStaffTab();
+        }
+
+        void EnsureSkillPointsTextBound()
+        {
+            if (spText != null) return;
+            var spTextTransform = transform.Find("FrameBorder/Frame/Tab_Tree/SP_Border/SP_Box/SP");
+            if (spTextTransform != null) spText = spTextTransform.GetComponent<TextMeshProUGUI>();
         }
 
         void RefreshNodes()
@@ -1122,13 +1166,13 @@ namespace WitchShmup.UI
                 if (n.nodeRing != null)
                 {
                     Color rc = maxed ? nodeMaxedColor : canBuy ? nodeAvailableColor : nodeBoughtColor;
-                    float a  = n.nodeRing.color.a;
+                    float a  = maxed ? 0.85f : n.nodeRing.color.a;
                     n.nodeRing.color = new Color(rc.r, rc.g, rc.b, a);
                 }
 
                 if (n.nodeIcon != null)
                 {
-                    if (maxed) n.nodeIcon.color = new Color(1f, 0.95f, 0.8f, 1f);
+                    if (maxed) n.nodeIcon.color = nodeMaxedColor;
                     else if (lvl > 0 || canBuy) n.nodeIcon.color = Color.white;
                     else n.nodeIcon.color = new Color(0.6f, 0.55f, 0.7f, 0.40f);
                 }
@@ -1341,11 +1385,16 @@ namespace WitchShmup.UI
         {
             if (GameManager.Instance == null) return;
             NodeData n = GetNode(id);
-            if (n == null) return;
-            int lvl = GameManager.Instance.GetSkillLevel(n.id);
-            int cost = GetNodeCost(n, lvl);
-            if (!IsReachable(n) || lvl >= n.maxLevel || GameManager.Instance.SkillPoints < cost) return;
-            if (GameManager.Instance.UpgradeSkill(n.id, cost)) RefreshUI();
+            if (n != null)
+            {
+                int lvl = GameManager.Instance.GetSkillLevel(n.id);
+                int cost = GetNodeCost(n, lvl);
+                if (cost > 0 && IsReachable(n) && lvl < n.maxLevel && GameManager.Instance.SkillPoints >= cost)
+                    GameManager.Instance.UpgradeSkill(n.id, cost);
+            }
+
+            // Revalida a árvore mesmo quando a compra falha, para não deixar o botão em estado antigo.
+            RefreshUI();
         }
 
         int GetNodeCost(NodeData node, int currentLevel)
@@ -1356,6 +1405,11 @@ namespace WitchShmup.UI
         void OnEvolveClicked()
         {
             if (GameManager.Instance != null && GameManager.Instance.TryEvolveStaff()) RefreshUI();
+        }
+
+        void OnBuyClicked()
+        {
+            TryBuy(selectedId);
         }
 
         void OnClose()
@@ -1497,7 +1551,8 @@ namespace WitchShmup.UI
         {
             if (n.nodeRing == null) return;
             var c = n.nodeRing.color;
-            n.nodeRing.color = new Color(c.r, c.g, c.b, on ? 0.9f : 0f);
+            bool maxed = GameManager.Instance != null && GameManager.Instance.GetSkillLevel(n.id) >= n.maxLevel;
+            n.nodeRing.color = new Color(c.r, c.g, c.b, maxed ? 0.85f : on ? 0.9f : 0f);
         }
 
         GameObject Rect(string name, Transform parent,

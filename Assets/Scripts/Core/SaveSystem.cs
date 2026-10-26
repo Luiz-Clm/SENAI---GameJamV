@@ -20,13 +20,15 @@ namespace WitchShmup.Core
         public int currentPhase = 1;
         public int maxUnlockedPhase = 1;
         public bool hasSeenStory = false;
+        public bool hasStartedGame = false;
+        public bool hasCompletedPhase1 = false;
 
         [Header("Pontuação")]
         public int currentScore = 0;
         public int highScore = 0;
 
         [Header("Materiais e Moedas")]
-        public int skillPoints = 2;
+        public int skillPoints = 0;
         public int fireHeartsCount = 0;
         public int bossCoresCount = 0;
         public int healthPotionsInInventory = 0;
@@ -219,6 +221,24 @@ namespace WitchShmup.Core
         public static bool HasSave()
         {
             return File.Exists(SaveFilePath) || PlayerPrefs.HasKey(PREFS_KEY);
+        }
+
+        public static bool HasStartedGame()
+        {
+            // Qualquer save existente, inclusive de uma versão anterior, significa que o jogador já iniciou.
+            return HasSave();
+        }
+
+        public static void MarkGameStarted()
+        {
+            SaveData data = LoadGame();
+            data.hasStartedGame = true;
+            SaveGame(data);
+        }
+
+        public static bool HasCompletedPhase1()
+        {
+            return HasSave() && LoadGame().hasCompletedPhase1;
         }
 
         public static void DeleteSave()

@@ -185,5 +185,25 @@ namespace WitchShmup.Player
             currentMana = Mathf.Min(currentMana + amount, maxMana);
             OnManaChanged?.Invoke(currentMana, maxMana);
         }
+
+        public void IncreaseManaRechargeRate(float amount)
+        {
+            manaRechargeRate = Mathf.Max(0f, manaRechargeRate + amount);
+        }
+
+        public void ReduceRechargeDelay(float amount)
+        {
+            rechargeDelayAfterShot = Mathf.Max(0f, rechargeDelayAfterShot - amount);
+        }
+
+        public void SetFatigueRecoveryThreshold(float threshold)
+        {
+            fatigueRecoveryThreshold = Mathf.Clamp(threshold, 0.1f, 0.9f);
+        }
+
+        public void SetManaCostPerShot(float cost)
+        {
+            manaCostPerShot = Mathf.Max(0f, cost);
+        }
     }
 }

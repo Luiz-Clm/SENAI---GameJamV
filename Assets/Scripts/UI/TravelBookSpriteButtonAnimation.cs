@@ -12,7 +12,7 @@ namespace WitchShmup.UI
         private Button button;
         private Image targetImage;
         private Sprite[] frames;
-        private Coroutine animation;
+        private Coroutine animationRoutine;
         private bool loopWhileSelected;
         private bool selected;
         private float frameDuration = 0.055f;
@@ -39,23 +39,23 @@ namespace WitchShmup.UI
         {
             selected = value;
             if (!loopWhileSelected || frames == null || frames.Length == 0 || targetImage == null) return;
-            if (animation != null) StopCoroutine(animation);
+            if (animationRoutine != null) StopCoroutine(animationRoutine);
             if (selected)
             {
                 targetImage.enabled = true;
-                animation = StartCoroutine(AnimateLoop());
+                animationRoutine = StartCoroutine(AnimateLoop());
             }
             else
             {
-                animation = null;
+                animationRoutine = null;
                 targetImage.enabled = false;
             }
         }
 
         private void OnDisable()
         {
-            if (animation != null) StopCoroutine(animation);
-            animation = null;
+            if (animationRoutine != null) StopCoroutine(animationRoutine);
+            animationRoutine = null;
         }
 
         private void PlayClickAnimation()
@@ -66,8 +66,8 @@ namespace WitchShmup.UI
                 return;
             }
             if (frames == null || frames.Length == 0 || targetImage == null) return;
-            if (animation != null) StopCoroutine(animation);
-            animation = StartCoroutine(AnimateOnce());
+            if (animationRoutine != null) StopCoroutine(animationRoutine);
+            animationRoutine = StartCoroutine(AnimateOnce());
         }
 
         public void OnPointerEnter(PointerEventData eventData)
@@ -84,7 +84,7 @@ namespace WitchShmup.UI
                 yield return new WaitForSecondsRealtime(frameDuration);
             }
             if (targetImage != null) targetImage.sprite = frames[0];
-            animation = null;
+            animationRoutine = null;
         }
 
         private IEnumerator AnimateLoop()
@@ -96,7 +96,7 @@ namespace WitchShmup.UI
                 index = (index + 1) % frames.Length;
                 yield return new WaitForSecondsRealtime(frameDuration * 4f);
             }
-            animation = null;
+            animationRoutine = null;
         }
     }
 }

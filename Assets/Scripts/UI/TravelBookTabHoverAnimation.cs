@@ -12,7 +12,7 @@ namespace WitchShmup.UI
         private Sprite[][] frameSets;
         private Image[] corners;
         private GameObject frameRoot;
-        private Coroutine animation;
+        private Coroutine animationRoutine;
         private float frameDuration = 0.055f;
 
         public void Configure(Sprite[][] spriteFrameSets, float cornerSize = 14f, float margin = 5f, float duration = 0.055f)
@@ -28,21 +28,21 @@ namespace WitchShmup.UI
         {
             if (frameRoot == null || frameSets == null || frameSets.Length == 0) return;
             frameRoot.SetActive(true);
-            if (animation != null) StopCoroutine(animation);
-            animation = StartCoroutine(AnimateFrame());
+            if (animationRoutine != null) StopCoroutine(animationRoutine);
+            animationRoutine = StartCoroutine(AnimateFrame());
         }
 
         public void OnPointerExit(PointerEventData eventData)
         {
-            if (animation != null) StopCoroutine(animation);
-            animation = null;
+            if (animationRoutine != null) StopCoroutine(animationRoutine);
+            animationRoutine = null;
             if (frameRoot != null) frameRoot.SetActive(false);
         }
 
         private void OnDisable()
         {
-            if (animation != null) StopCoroutine(animation);
-            animation = null;
+            if (animationRoutine != null) StopCoroutine(animationRoutine);
+            animationRoutine = null;
             if (frameRoot != null) frameRoot.SetActive(false);
         }
 
@@ -95,7 +95,7 @@ namespace WitchShmup.UI
                 yield return new WaitForSecondsRealtime(frameDuration);
             }
 
-            animation = null;
+            animationRoutine = null;
         }
 
         private static Vector2 GetAnchor(int corner)

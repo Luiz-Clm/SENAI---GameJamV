@@ -7,11 +7,12 @@ using WitchShmup.Combat;
 using WitchShmup.Core;
 using WitchShmup.UI;
 using WitchShmup.Utils;
+using WitchShmup.Endless;
 
 namespace WitchShmup.Boss
 {
     [RequireComponent(typeof(Collider2D), typeof(Rigidbody2D))]
-    public class GolemBoss : MonoBehaviour, IDamageable
+    public class GolemBoss : MonoBehaviour, IDamageable, IInfiniteModeBoss
     {
         public enum BossState
         {
@@ -76,6 +77,7 @@ namespace WitchShmup.Boss
 
         public event Action<float, float> OnHealthChanged;
         public event Action OnBossDefeated;
+        public event Action InfiniteBossDefeated;
 
         public static event Action OnAnyBossFightStarted;
         public static event Action OnAnyBossFightDefeated;
@@ -260,6 +262,23 @@ namespace WitchShmup.Boss
             PlayIdleAnim();
             attackRoutine = StartCoroutine(AttackLoop());
             OnAnyBossFightStarted?.Invoke();
+        }
+
+        public void PrepareForInfiniteFight()
+        {
+            if (attackRoutine != null) StopCoroutine(attackRoutine);
+            attackRoutine = null;
+            currentHealth = maxHealth;
+            isEnraged = false;
+            state = BossState.WaitingForCutscene;
+            if (coreGlowRenderer != null) coreGlowRenderer.color = Color.white;
+            if (worldBarContainer != null) worldBarContainer.SetActive(false);
+            UpdateOverheadBar(1f);
+        }
+
+        public void StartInfiniteFight()
+        {
+            StartFight();
         }
 
         // --- Helpers de animação ---
@@ -500,6 +519,7 @@ namespace WitchShmup.Boss
             }
 
             OnBossDefeated?.Invoke();
+            InfiniteBossDefeated?.Invoke();
             OnAnyBossFightDefeated?.Invoke();
 
             if (GameManager.Instance != null)

@@ -21,7 +21,7 @@ namespace WitchShmup.Core
         [Header("Evolution Materials")]
         [SerializeField] private int fireHeartsCount = 0;
         [SerializeField] private int bossCoresCount = 0;
-        [SerializeField] private int skillPoints = 2; // Começa com 2 pontos como no esboço HTML
+        [SerializeField] private int skillPoints = 0;
         [SerializeField] private bool isStaffEvolved = false;
 
         [Header("Inventário")]
@@ -60,6 +60,7 @@ namespace WitchShmup.Core
         [Header("Phase Progression")]
         [SerializeField] private int currentPhase = 1;
         [SerializeField] private int maxUnlockedPhase = 1;
+        private bool hasCompletedPhase1;
 
         public bool IsGameOver { get; private set; } = false;
         public bool IsVictory { get; private set; } = false;
@@ -158,8 +159,9 @@ namespace WitchShmup.Core
         {
             currentPhase = 1;
             maxUnlockedPhase = 1;
+            hasCompletedPhase1 = false;
             currentScore = 0;
-            skillPoints = 2;
+            skillPoints = 0;
             fireHeartsCount = 0;
             bossCoresCount = 0;
             healthPotionsInInventory = 0;
@@ -209,7 +211,10 @@ namespace WitchShmup.Core
                 bossCoresCount = data.bossCoresCount;
                 healthPotionsInInventory = data.healthPotionsInInventory;
                 isStaffEvolved = data.isStaffEvolved;
-                maxUnlockedPhase = Mathf.Max(currentPhase, data.maxUnlockedPhase);
+                hasCompletedPhase1 = data.hasCompletedPhase1;
+                maxUnlockedPhase = hasCompletedPhase1
+                    ? Mathf.Max(currentPhase, data.maxUnlockedPhase)
+                    : 1;
 
                 // Carrega níveis da árvore
                 LevelVitality = Mathf.Clamp(data.levelVit, 0, 5);
@@ -480,8 +485,10 @@ namespace WitchShmup.Core
 
         public void AddSkillPoints(int amount = 1)
         {
+            if (amount <= 0) return;
             skillPoints += amount;
             OnSkillPointsChanged?.Invoke(skillPoints);
+            SaveCurrentGame(advancePhase: false);
         }
 
         /// <summary>
@@ -532,7 +539,7 @@ namespace WitchShmup.Core
 
         public bool SpendSkillPoints(int amount)
         {
-            if (skillPoints >= amount)
+            if (amount > 0 && skillPoints >= amount)
             {
                 skillPoints -= amount;
                 OnSkillPointsChanged?.Invoke(skillPoints);
@@ -568,6 +575,7 @@ namespace WitchShmup.Core
 
         public bool UpgradeSkill(string id, int cost)
         {
+            if (string.IsNullOrEmpty(id) || cost <= 0) return false;
             if (id == "vit" && LevelVitality >= 5) return false;
             if (!SpendSkillPoints(cost)) return false;
 
@@ -788,10 +796,13 @@ namespace WitchShmup.Core
         {
             if (IsInfiniteMode) return;
 
+            if (advancePhase && currentPhase == 1)
+                hasCompletedPhase1 = true;
+
             var data = new SaveData
             {
                 currentPhase = currentPhase,
-                maxUnlockedPhase = maxUnlockedPhase,
+                maxUnlockedPhase = hasCompletedPhase1 ? Mathf.Max(maxUnlockedPhase, 2) : 1,
                 currentScore = currentScore,
                 highScore = highScore,
                 skillPoints = skillPoints,
@@ -810,7 +821,9 @@ namespace WitchShmup.Core
                 levelDup = LevelDuplo,
                 levelPer = LevelPerfurante,
                 customSkillLevels = new List<SavedSkillLevel>(),
-                hasSeenStory = true
+                hasSeenStory = true,
+                hasStartedGame = true,
+                hasCompletedPhase1 = hasCompletedPhase1
             };
 
             foreach (var skill in customSkillLevels)
@@ -823,7 +836,7 @@ namespace WitchShmup.Core
             {
                 int next = currentPhase + 1;
                 data.currentPhase = next;
-                if (next > data.maxUnlockedPhase)
+                if (hasCompletedPhase1 && next > data.maxUnlockedPhase)
                 {
                     data.maxUnlockedPhase = next;
                 }
