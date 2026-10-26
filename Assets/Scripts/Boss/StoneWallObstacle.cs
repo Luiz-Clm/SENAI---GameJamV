@@ -6,260 +6,171 @@ using WitchShmup.Player;
 
 namespace WitchShmup.Boss
 {
+    /// <summary>
+    /// Add this component to the wall prefab root and to each stone segment.
+    /// The root moves the complete wall. Segment components handle damage,
+    /// pushing and projectile blocking using the collider configured on the prefab.
+    /// </summary>
     public class StoneWallObstacle : MonoBehaviour
     {
         [Header("Movement")]
-        [SerializeField] private float advanceSpeed = 2.5f;
+        [Tooltip("Speed at which the root wall advances toward the player.")]
+        [SerializeField] private float advanceSpeed = 3f;
 
-        public float AdvanceSpeed => advanceSpeed;
+        [Header("Segment health")]
+        [Tooltip("Health of this segment. Set to 0 to make it indestructible.")]
+        [SerializeField] private float maxHealth = 8f;
 
-        private void Update()
-        {
-            transform.Translate(Vector3.left * (advanceSpeed * Time.deltaTime), Space.World);
-
-            if (CameraBounds.Instance != null && CameraBounds.Instance.IsOffscreenLeft(transform.position, 4f))
-            {
-                Destroy(gameObject);
-            }
-            else if (transform.position.x < -18f)
-            {
-                Destroy(gameObject);
-            }
-        }
-    }
-
-    [RequireComponent(typeof(Collider2D))]
-    public class StoneWallSegment : MonoBehaviour, IDamageable
-    {
-        [Header("Stats")]
-        [SerializeField] private float maxHealth = 6f;
-        [SerializeField] private float currentHealth;
+        [Header("Player contact")]
+        [Tooltip("Damage dealt when a segment first touches the player.")]
         [SerializeField] private float contactDamage = 2f;
-
-        [Header("Push & Crush Settings")]
+        [Tooltip("Repeat damage interval while the player is pinned against the arena edge.")]
         [SerializeField] private float crushInterval = 0.65f;
-        [SerializeField] private int crushDamage = 1;
+        [SerializeField] private float playerHalfWidth = 0.55f;
+        [SerializeField] private float playerHalfHeight = 0.4f;
 
-        [Header("Visual Feedback")]
-        [SerializeField] private SpriteRenderer spriteRenderer;
-        [SerializeField] private Color damageFlashColor = new Color(1f, 0.4f, 0.4f, 1f);
-        [SerializeField] private GameObject breakEffectPrefab;
+        [Header("Visual feedback")]
+        [SerializeField] private Color damageFlashColor = new Color(1f, 0.35f, 0.35f, 1f);
 
+        private float currentHealth;
+        private float nextCrushTime;
+        private bool isDead;
+        private SpriteRenderer spriteRenderer;
         private Color originalColor = Color.white;
         private Coroutine flashCoroutine;
-        private Collider2D col;
+        private Collider2D wallCollider;
         private Transform playerTransform;
         private PlayerHealth playerHealth;
-        private Rigidbody2D playerRb;
-        private float nextCrushTime = 0f;
+        private Rigidbody2D playerRigidbody;
 
-        private const float PlayerHalfWidth = 0.55f;
-        private const float PlayerHalfHeight = 0.40f;
+        private bool IsRoot => transform.parent == null || transform.parent.GetComponent<StoneWallObstacle>() == null;
 
         private void Awake()
         {
             currentHealth = maxHealth;
-            col = GetComponent<Collider2D>();
-            if (spriteRenderer == null)
-            {
-                spriteRenderer = GetComponent<SpriteRenderer>();
-            }
-            if (spriteRenderer != null)
-            {
-                var wallSpr = Resources.Load<Sprite>("Sprites/ATAQUEboss");
-                if (wallSpr == null)
-                {
-                    var all = Resources.LoadAll<Sprite>("Sprites/ATAQUEboss");
-                    if (all != null && all.Length > 0) wallSpr = all[0];
-                }
-                if (wallSpr != null)
-                {
-                    spriteRenderer.sprite = wallSpr;
-                    spriteRenderer.color = Color.white;
-                    spriteRenderer.sortingOrder = 7;
-                }
-                originalColor = spriteRenderer.color;
+            spriteRenderer = GetComponent<SpriteRenderer>();
+            if (spriteRenderer != null) originalColor = spriteRenderer.color;
+            wallCollider = GetComponent<Collider2D>();
 
-                if (col is BoxCollider2D boxCol && spriteRenderer.sprite != null)
-                {
-                    boxCol.size = spriteRenderer.sprite.bounds.size;
-                }
+            Rigidbody2D body = GetComponent<Rigidbody2D>();
+            if (body != null)
+            {
+                body.bodyType = RigidbodyType2D.Kinematic;
+                body.gravityScale = 0f;
             }
-        }
 
-        private void Start()
-        {
+            if (wallCollider != null) wallCollider.isTrigger = true;
             FindPlayer();
         }
 
-        private void FindPlayer()
+        private void Update()
         {
-            if (playerTransform == null)
+            if (isDead || !IsRoot) return;
+
+            transform.Translate(Vector3.left * (advanceSpeed * Time.deltaTime), Space.World);
+            if ((CameraBounds.Instance != null && CameraBounds.Instance.IsOffscreenLeft(transform.position, 5f)) ||
+                transform.position.x < -20f)
             {
-                var pObj = GameObject.FindWithTag("Player");
-                if (pObj != null)
-                {
-                    playerTransform = pObj.transform;
-                    playerHealth = pObj.GetComponent<PlayerHealth>();
-                    playerRb = pObj.GetComponent<Rigidbody2D>();
-                }
+                Destroy(gameObject);
             }
         }
 
         private void FixedUpdate()
         {
-            HandlePushAndCrush();
+            if (isDead || IsRoot) return;
+            PushAndCrushPlayer();
         }
 
-        private void HandlePushAndCrush()
+        private void FindPlayer()
         {
-            if (currentHealth <= 0) return;
-            if (playerTransform == null || playerHealth == null || !playerTransform.gameObject.activeInHierarchy)
+            if (playerHealth != null) return;
+            GameObject player = GameObject.FindWithTag("Player");
+            if (player == null) return;
+
+            playerTransform = player.transform;
+            playerHealth = player.GetComponent<PlayerHealth>();
+            playerRigidbody = player.GetComponent<Rigidbody2D>();
+        }
+
+        private void PushAndCrushPlayer()
+        {
+            if (playerTransform == null || playerHealth == null)
             {
                 FindPlayer();
-                if (playerTransform == null) return;
+                if (playerTransform == null || playerHealth == null) return;
             }
 
-            if (col == null) col = GetComponent<Collider2D>();
-            if (col == null) return;
+            if (wallCollider == null) return;
+            Bounds bounds = wallCollider.bounds;
+            Vector3 playerPosition = playerTransform.position;
+            bool overlapsVertically = playerPosition.y + playerHalfHeight >= bounds.min.y &&
+                                      playerPosition.y - playerHalfHeight <= bounds.max.y;
+            bool overlapsHorizontally = playerPosition.x + playerHalfWidth >= bounds.min.x - 0.1f &&
+                                        playerPosition.x - playerHalfWidth <= bounds.max.x;
+            if (!overlapsVertically || !overlapsHorizontally) return;
 
-            Bounds segBounds = col.bounds;
-            Vector3 playerPos = playerTransform.position;
-
-            // Checa sobreposição vertical no corredor desta pedra
-            bool inVerticalSpan = (playerPos.y + PlayerHalfHeight >= segBounds.min.y) &&
-                                  (playerPos.y - PlayerHalfHeight <= segBounds.max.y);
-
-            if (!inVerticalSpan) return;
-
-            // A parede avança da direita para a esquerda.
-            // Se o player está na frente ou sendo empurrado pela face frontal da pedra
-            float wallFrontX = segBounds.min.x;
-            float wallBackX = segBounds.max.x;
-
-            if (playerPos.x + PlayerHalfWidth >= wallFrontX - 0.1f && playerPos.x - PlayerHalfWidth <= wallBackX)
+            float backWallX = CameraBounds.Instance != null ? CameraBounds.Instance.MinX + 0.6f : -8.2f;
+            float pushedX = Mathf.Max(bounds.min.x - playerHalfWidth, backWallX);
+            if (pushedX < playerPosition.x)
             {
-                // Limite traseiro da tela (parede de trás da masmorra)
-                float backWallX = (CameraBounds.Instance != null) ? (CameraBounds.Instance.MinX + 0.6f) : -8.2f;
-
-                // Empurra o player para a esquerda acompanhando o avanço da pedra
-                float pushedX = wallFrontX - PlayerHalfWidth;
-
-                if (pushedX <= backWallX + 0.2f)
-                {
-                    // O jogador chegou na parede de trás e a barreira continua empurrando: ESMAGA!
-                    playerPos.x = backWallX;
-                    playerTransform.position = playerPos;
-                    if (playerRb != null) playerRb.position = new Vector2(backWallX, playerPos.y);
-
-                    if (Time.time >= nextCrushTime)
-                    {
-                        nextCrushTime = Time.time + crushInterval;
-                        playerHealth.TakeDamage(crushDamage, ElementType.Enemy);
-
-                        if (ScreenShake.Instance != null)
-                        {
-                            ScreenShake.Instance.Shake(0.35f, 0.25f);
-                        }
-                    }
-                }
-                else
-                {
-                    // Empurra suavemente o jogador para a esquerda
-                    if (pushedX < playerPos.x)
-                    {
-                        playerPos.x = pushedX;
-                        playerTransform.position = playerPos;
-                        if (playerRb != null) playerRb.position = new Vector2(pushedX, playerPos.y);
-                    }
-                }
+                playerPosition.x = pushedX;
+                playerTransform.position = playerPosition;
+                if (playerRigidbody != null) playerRigidbody.position = new Vector2(pushedX, playerPosition.y);
             }
-        }
 
-        public void TakeDamage(float amount, ElementType element)
-        {
-            if (currentHealth <= 0) return;
-
-            // Fogo quebra pedra mais rápido!
-            float mult = (element == ElementType.Fire) ? 1.5f : 1.0f;
-            currentHealth -= amount * mult;
-
-            if (gameObject.activeInHierarchy)
+            if (pushedX <= backWallX + 0.01f && Time.time >= nextCrushTime)
             {
-                Flash();
+                nextCrushTime = Time.time + crushInterval;
+                playerHealth.TakeDamage(contactDamage, ElementType.Enemy);
             }
-
-            if (currentHealth <= 0)
-            {
-                Break();
-            }
-        }
-
-        private void Flash()
-        {
-            if (flashCoroutine != null) StopCoroutine(flashCoroutine);
-            flashCoroutine = StartCoroutine(FlashRoutine());
-        }
-
-        private IEnumerator FlashRoutine()
-        {
-            if (spriteRenderer != null)
-            {
-                spriteRenderer.color = damageFlashColor;
-                yield return new WaitForSeconds(0.06f);
-                spriteRenderer.color = originalColor;
-            }
-            flashCoroutine = null;
-        }
-
-        private void Break()
-        {
-            if (breakEffectPrefab != null)
-            {
-                Instantiate(breakEffectPrefab, transform.position, Quaternion.identity);
-            }
-
-            if (ScreenShake.Instance != null)
-            {
-                ScreenShake.Instance.Shake(0.2f, 0.15f);
-            }
-
-            // Destrói este bloco da parede, abrindo passagem segura para o player passar!
-            Destroy(gameObject);
         }
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (other.CompareTag("Player"))
+            if (isDead || IsRoot) return;
+
+            PlayerHealth health = other.GetComponent<PlayerHealth>() ?? other.GetComponentInParent<PlayerHealth>();
+            if (health != null)
             {
-                var damageable = other.GetComponent<IDamageable>();
-                if (damageable != null)
-                {
-                    damageable.TakeDamage(contactDamage, ElementType.Enemy);
-                }
+                health.TakeDamage(contactDamage, ElementType.Enemy);
+                nextCrushTime = Time.time + crushInterval;
+                return;
             }
-            else
+
+            Projectile projectile = other.GetComponent<Projectile>();
+            if (projectile == null || !projectile.IsPlayerProjectile) return;
+
+            if (maxHealth > 0f) TakeDamage(projectile.Damage, projectile.Element);
+            Destroy(projectile.gameObject);
+        }
+
+        public void TakeDamage(float amount, ElementType element = ElementType.None)
+        {
+            if (isDead || maxHealth <= 0f) return;
+
+            float multiplier = element == ElementType.Fire ? 1.5f : 1f;
+            currentHealth -= amount * multiplier;
+
+            if (spriteRenderer != null && gameObject.activeInHierarchy)
             {
-                var proj = other.GetComponent<Projectile>();
-                if (proj != null && proj.IsPlayerProjectile)
-                {
-                    TakeDamage(proj.Damage, proj.Element);
-                    Destroy(proj.gameObject); // Bloqueia e absorve o tiro, impedindo de acertar o boss!
-                }
+                if (flashCoroutine != null) StopCoroutine(flashCoroutine);
+                flashCoroutine = StartCoroutine(FlashRoutine());
+            }
+
+            if (currentHealth <= 0f)
+            {
+                isDead = true;
+                if (wallCollider != null) wallCollider.enabled = false;
+                Destroy(gameObject, 0.08f);
             }
         }
 
-        private void OnTriggerStay2D(Collider2D other)
+        private IEnumerator FlashRoutine()
         {
-            if (other.CompareTag("Player"))
-            {
-                float speed = 2.5f;
-                var parentWall = GetComponentInParent<StoneWallObstacle>();
-                if (parentWall != null) speed = parentWall.AdvanceSpeed;
-
-                // Empurra o jogador suavemente para tras
-                other.transform.position += Vector3.left * (speed * Time.deltaTime);
-            }
+            spriteRenderer.color = damageFlashColor;
+            yield return new WaitForSeconds(0.06f);
+            if (spriteRenderer != null && !isDead) spriteRenderer.color = originalColor;
+            flashCoroutine = null;
         }
     }
 }

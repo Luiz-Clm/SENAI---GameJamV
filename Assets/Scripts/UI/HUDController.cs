@@ -31,6 +31,8 @@ namespace WitchShmup.UI
 
         [Header("Hearts (Health)")]
         [SerializeField] private Image[] heartImages;
+        [Tooltip("Image used as the template when a health upgrade adds more heart slots.")]
+        [SerializeField] private Image heartTemplate;
         [SerializeField] private Color fullHeartColor = new Color(1f, 0.35f, 0.45f, 1f);
         [SerializeField] private Color emptyHeartColor = new Color(0.25f, 0.2f, 0.25f, 0.5f);
         [Header("Heart Custom Sprites")]
@@ -89,6 +91,7 @@ namespace WitchShmup.UI
 
         private void AutoFindReferences()
         {
+            // ── Barra do Boss ──
             if (bossBarContainer == null)
             {
                 var t = transform.Find("TopBar/BossBar_Wrapper");
@@ -139,39 +142,28 @@ namespace WitchShmup.UI
                 bossNameText = bossBarContainer.GetComponentInChildren<TextMeshProUGUI>(true);
             }
 
+            // Sprites: carrega automaticamente APENAS se nao foram atribuidos no Inspector
             if (customBossBarBackgroundSprite == null)
-            {
                 customBossBarBackgroundSprite = LoadSpriteResourceOrAsset("boss_barra_fundo_decorado_192x36");
-            }
             if (customBossBarFillSprite == null)
-            {
                 customBossBarFillSprite = LoadSpriteResourceOrAsset("boss_barra_vida_148x12");
-            }
-            if (fullHeartSprite == null)
-            {
-                fullHeartSprite = LoadSpriteResourceOrAsset("coracao_cheio_20x20");
-            }
-            if (emptyHeartSprite == null)
-            {
-                emptyHeartSprite = LoadSpriteResourceOrAsset("coracao_vazio_20x20");
-            }
 
+            // Sprites de coracao: carrega se nao atribuido no inspector
+            if (fullHeartSprite == null)
+                fullHeartSprite = LoadSpriteResourceOrAsset("coracao_cheio_20x20");
+            if (emptyHeartSprite == null)
+                emptyHeartSprite = LoadSpriteResourceOrAsset("coracao_vazio_20x20");
+
+            // Sprites dos slots de elemento:
+            // NAO sobrescreve se ja foram atribuidos no inspector!
             if (slotIceActiveSprite == null)
-            {
                 slotIceActiveSprite = LoadSpriteResourceOrAsset("slot_gelo_ativo_nativo");
-            }
             if (slotIceInactiveSprite == null)
-            {
                 slotIceInactiveSprite = LoadSpriteResourceOrAsset("slot_gelo_apagado_nativo");
-            }
             if (slotFireActiveSprite == null)
-            {
                 slotFireActiveSprite = LoadSpriteResourceOrAsset("slot_fogo_ativo_nativo");
-            }
             if (slotFireInactiveSprite == null)
-            {
                 slotFireInactiveSprite = LoadSpriteResourceOrAsset("slot_fogo_apagado_nativo");
-            }
 
             ApplyCustomBossBarSprites();
 
@@ -289,18 +281,20 @@ namespace WitchShmup.UI
         {
             if (heartImages == null || heartImages.Length == 0) return;
 
-            // Suporta expansão dinâmica de corações caso o player compre upgrades de vida
-            if (maxHealth > heartImages.Length && heartImages[0] != null)
+            if (heartTemplate == null) heartTemplate = heartImages[0];
+            if (heartTemplate != null && maxHealth > heartImages.Length)
             {
+                // The template can be a prefab asset, so its Transform has no scene parent.
+                // Put every new icon beside the existing hearts in the HUD layout.
                 var parent = heartImages[0].transform.parent;
-                var list = new System.Collections.Generic.List<Image>(heartImages);
-                while (list.Count < maxHealth)
+                var expandedHearts = new System.Collections.Generic.List<Image>(heartImages);
+                while (expandedHearts.Count < maxHealth)
                 {
-                    var newHeart = Instantiate(heartImages[0].gameObject, parent);
-                    newHeart.name = $"Heart_{list.Count}";
-                    list.Add(newHeart.GetComponent<Image>());
+                    GameObject newHeart = Instantiate(heartTemplate.gameObject, parent);
+                    newHeart.name = $"Heart_{expandedHearts.Count}";
+                    expandedHearts.Add(newHeart.GetComponent<Image>());
                 }
-                heartImages = list.ToArray();
+                heartImages = expandedHearts.ToArray();
             }
 
             for (int i = 0; i < heartImages.Length; i++)
@@ -344,18 +338,15 @@ namespace WitchShmup.UI
 
         public void UpdateElementUI(ElementType activeElement)
         {
-            bool isFireUnlocked = (playerShooting != null) ? playerShooting.IsFireUnlocked : false;
+            bool isFireUnlocked = (playerShooting != null) ? playerShooting.IsFireUnlocked : true;
 
-            // O quadrado de fogo fica COMPLETAMENTE OCULTO até ser desbloqueado no jogo
-            if (fireBadge != null)
+            // ── GELO ──
+            if (iceBadge != null)
             {
-                fireBadge.gameObject.SetActive(isFireUnlocked);
-            }
-
-            if (activeElement == ElementType.Ice)
-            {
-                if (iceBadge != null)
+                iceBadge.gameObject.SetActive(true);
+                if (activeElement == ElementType.Ice)
                 {
+                    // Slot Ativo: usa sprite do inspector, se nao tiver usa cor solida
                     if (slotIceActiveSprite != null)
                     {
                         iceBadge.sprite = slotIceActiveSprite;
@@ -365,33 +356,10 @@ namespace WitchShmup.UI
                     {
                         iceBadge.color = activeIceColor;
                     }
-                    iceBadge.preserveAspect = true;
                 }
-                if (iceText != null) iceText.color = Color.white;
-
-                if (fireBadge != null && isFireUnlocked)
+                else
                 {
-                    if (slotFireInactiveSprite != null)
-                    {
-                        fireBadge.sprite = slotFireInactiveSprite;
-                        fireBadge.color = Color.white;
-                    }
-                    else
-                    {
-                        fireBadge.color = inactiveFireColor;
-                    }
-                    fireBadge.preserveAspect = true;
-                }
-                if (fireText != null && isFireUnlocked)
-                {
-                    fireText.text = "2: FOGO";
-                    fireText.color = new Color(0.7f, 0.7f, 0.7f, 0.6f);
-                }
-            }
-            else if (activeElement == ElementType.Fire && isFireUnlocked)
-            {
-                if (iceBadge != null)
-                {
+                    // Slot Inativo (cinzinha)
                     if (slotIceInactiveSprite != null)
                     {
                         iceBadge.sprite = slotIceInactiveSprite;
@@ -401,11 +369,19 @@ namespace WitchShmup.UI
                     {
                         iceBadge.color = inactiveIceColor;
                     }
-                    iceBadge.preserveAspect = true;
                 }
-                if (iceText != null) iceText.color = new Color(0.7f, 0.7f, 0.7f, 0.6f);
+                iceBadge.type = Image.Type.Simple;
+                iceBadge.preserveAspect = true;
+            }
+            // Limpa o texto TMP para nao sobrepor pixel art
+            if (iceText != null) iceText.text = "";
 
-                if (fireBadge != null)
+            // ── FOGO ──
+            if (fireBadge != null)
+            {
+                fireBadge.gameObject.SetActive(true);
+
+                if (isFireUnlocked && activeElement == ElementType.Fire)
                 {
                     if (slotFireActiveSprite != null)
                     {
@@ -416,14 +392,22 @@ namespace WitchShmup.UI
                     {
                         fireBadge.color = activeFireColor;
                     }
-                    fireBadge.preserveAspect = true;
                 }
-                if (fireText != null)
+                else if (slotFireInactiveSprite != null)
                 {
-                    fireText.text = "2: FOGO";
-                    fireText.color = Color.white;
+                    fireBadge.sprite = slotFireInactiveSprite;
+                    fireBadge.color = Color.white;
                 }
+                else
+                {
+                    fireBadge.color = inactiveFireColor;
+                }
+
+                fireBadge.type = Image.Type.Simple;
+                fireBadge.preserveAspect = true;
             }
+            // Limpa o texto TMP para nao sobrepor pixel art
+            if (fireText != null) fireText.text = "";
         }
 
         public void SetScore(int score)
@@ -455,6 +439,9 @@ namespace WitchShmup.UI
 
             if (bossHealthFill != null)
             {
+                bossHealthFill.type = Image.Type.Filled;
+                bossHealthFill.fillMethod = Image.FillMethod.Horizontal;
+                bossHealthFill.fillOrigin = (int)Image.OriginHorizontal.Left;
                 bossHealthFill.fillAmount = Mathf.Clamp01(normalizedHealth);
             }
         }
@@ -501,89 +488,51 @@ namespace WitchShmup.UI
             }
         }
 
+        /// <summary>
+        /// Busca a barra de mana existente na hierarquia do Canvas.
+        /// NAO cria objetos dinamicamente para nao baguncar o que foi configurado no Inspector.
+        /// Use o Context Menu "★ Criar Barra de Mana no Canvas ★" para gerar uma vez.
+        /// </summary>
         public void EnsureManaBarSetup()
         {
+            // Ja esta configurada no inspector
             if (manaBarContainer != null && manaBarFill != null) return;
 
+            // Busca na hierarquia
             var existing = transform.Find("TopBar/ManaBar_Container");
             if (existing == null) existing = transform.Find("ManaBar_Container");
-            if (existing != null)
+
+            // Busca em toda a hierarquia pelo nome
+            if (existing == null)
             {
-                manaBarContainer = existing.gameObject;
-                var fillT = existing.Find("Fill");
-                if (fillT != null) manaBarFill = fillT.GetComponent<Image>();
-                var bgT = existing.Find("Background");
-                if (bgT != null) manaBarBackground = bgT.GetComponent<Image>();
-                var txtT = existing.Find("ManaText");
-                if (txtT != null) manaText = txtT.GetComponent<TextMeshProUGUI>();
-                if (manaBarContainer != null && manaBarFill != null) return;
+                foreach (var t in GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name == "ManaBar_Container") { existing = t; break; }
+                }
             }
 
-            Transform parent = transform.Find("TopBar");
-            if (parent == null) parent = transform;
-
-            GameObject root = new GameObject("ManaBar_Container", typeof(RectTransform));
-            root.transform.SetParent(parent, false);
-            manaBarContainer = root;
-
-            RectTransform rootRt = root.GetComponent<RectTransform>();
-            rootRt.anchorMin = new Vector2(0f, 1f);
-            rootRt.anchorMax = new Vector2(0f, 1f);
-            rootRt.pivot = new Vector2(0f, 1f);
-            rootRt.anchoredPosition = new Vector2(24f, -48f);
-            rootRt.sizeDelta = new Vector2(170f, 14f);
-
-            GameObject borderGo = new GameObject("Border", typeof(RectTransform), typeof(Image));
-            borderGo.transform.SetParent(root.transform, false);
-            RectTransform borderRt = borderGo.GetComponent<RectTransform>();
-            borderRt.anchorMin = Vector2.zero;
-            borderRt.anchorMax = Vector2.one;
-            borderRt.sizeDelta = new Vector2(4f, 4f);
-            borderRt.anchoredPosition = Vector2.zero;
-            Image borderImg = borderGo.GetComponent<Image>();
-            borderImg.color = new Color(0.05f, 0.03f, 0.10f, 0.95f);
-            borderImg.raycastTarget = false;
-
-            GameObject bgGo = new GameObject("Background", typeof(RectTransform), typeof(Image));
-            bgGo.transform.SetParent(root.transform, false);
-            RectTransform bgRt = bgGo.GetComponent<RectTransform>();
-            bgRt.anchorMin = Vector2.zero;
-            bgRt.anchorMax = Vector2.one;
-            bgRt.sizeDelta = Vector2.zero;
-            bgRt.anchoredPosition = Vector2.zero;
-            manaBarBackground = bgGo.GetComponent<Image>();
-            manaBarBackground.color = new Color(0.12f, 0.08f, 0.20f, 0.88f);
-            manaBarBackground.raycastTarget = false;
-
-            GameObject fillGo = new GameObject("Fill", typeof(RectTransform), typeof(Image));
-            fillGo.transform.SetParent(root.transform, false);
-            RectTransform fillRt = fillGo.GetComponent<RectTransform>();
-            fillRt.anchorMin = Vector2.zero;
-            fillRt.anchorMax = Vector2.one;
-            fillRt.sizeDelta = Vector2.zero;
-            fillRt.anchoredPosition = Vector2.zero;
-            manaBarFill = fillGo.GetComponent<Image>();
-            manaBarFill.type = Image.Type.Filled;
-            manaBarFill.fillMethod = Image.FillMethod.Horizontal;
-            manaBarFill.fillOrigin = (int)Image.OriginHorizontal.Left;
-            manaBarFill.color = normalManaColor;
-            manaBarFill.raycastTarget = false;
-
-            GameObject txtGo = new GameObject("ManaText", typeof(RectTransform), typeof(TextMeshProUGUI));
-            txtGo.transform.SetParent(root.transform, false);
-            RectTransform txtRt = txtGo.GetComponent<RectTransform>();
-            txtRt.anchorMin = Vector2.zero;
-            txtRt.anchorMax = Vector2.one;
-            txtRt.sizeDelta = Vector2.zero;
-            txtRt.anchoredPosition = new Vector2(0f, 0.5f);
-            manaText = txtGo.GetComponent<TextMeshProUGUI>();
-            manaText.text = "MANA";
-            manaText.fontSize = 9.5f;
-            manaText.fontStyle = FontStyles.Bold;
-            manaText.alignment = TextAlignmentOptions.Center;
-            manaText.color = Color.white;
-            manaText.raycastTarget = false;
+            if (existing != null)
+            {
+                if (manaBarContainer == null) manaBarContainer = existing.gameObject;
+                if (manaBarFill == null)
+                {
+                    var fillT = existing.Find("Fill");
+                    if (fillT != null) manaBarFill = fillT.GetComponent<Image>();
+                }
+                if (manaBarBackground == null)
+                {
+                    var bgT = existing.Find("Background");
+                    if (bgT != null) manaBarBackground = bgT.GetComponent<Image>();
+                }
+                if (manaText == null)
+                {
+                    var txtT = existing.Find("ManaText");
+                    if (txtT != null) manaText = txtT.GetComponent<TextMeshProUGUI>();
+                }
+            }
+            // Se nao encontrou, nao faz nada (sem gerar objetos no play)
         }
+
 
         public void UpdateManaUI(float current, float max)
         {
@@ -648,12 +597,76 @@ namespace WitchShmup.UI
         }
 
 #if UNITY_EDITOR
-        [ContextMenu("★ Gerar Barra de Mana no Canvas ★")]
+        [ContextMenu("★ Criar Barra de Mana no Canvas (salva na cena) ★")]
         public void EditorCreateManaBar()
         {
-            EnsureManaBarSetup();
+            // Remove barra anterior se existir
+            var existing = transform.Find("TopBar/ManaBar_Container");
+            if (existing == null) existing = transform.Find("ManaBar_Container");
+            foreach (Transform t in GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == "ManaBar_Container") { existing = t; break; }
+            }
+            if (existing != null)
+            {
+                UnityEditor.Undo.DestroyObjectImmediate(existing.gameObject);
+            }
+
+            Transform parent = transform.Find("TopBar") ?? transform;
+
+            var root = new GameObject("ManaBar_Container");
+            UnityEditor.Undo.RegisterCreatedObjectUndo(root, "Criar ManaBar");
+            root.transform.SetParent(parent, false);
+            manaBarContainer = root;
+
+            var rt = root.AddComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            rt.anchoredPosition = new Vector2(24f, -48f);
+            rt.sizeDelta = new Vector2(170f, 14f);
+
+            // Fundo
+            var bgGo = new GameObject("Background");
+            bgGo.transform.SetParent(root.transform, false);
+            var bgRt = bgGo.AddComponent<RectTransform>();
+            bgRt.anchorMin = Vector2.zero; bgRt.anchorMax = Vector2.one;
+            bgRt.sizeDelta = Vector2.zero; bgRt.anchoredPosition = Vector2.zero;
+            manaBarBackground = bgGo.AddComponent<Image>();
+            manaBarBackground.color = new Color(0.12f, 0.08f, 0.20f, 0.88f);
+            manaBarBackground.raycastTarget = false;
+
+            // Fill
+            var fillGo = new GameObject("Fill");
+            fillGo.transform.SetParent(root.transform, false);
+            var fillRt = fillGo.AddComponent<RectTransform>();
+            fillRt.anchorMin = Vector2.zero; fillRt.anchorMax = Vector2.one;
+            fillRt.sizeDelta = Vector2.zero; fillRt.anchoredPosition = Vector2.zero;
+            manaBarFill = fillGo.AddComponent<Image>();
+            manaBarFill.type = Image.Type.Filled;
+            manaBarFill.fillMethod = Image.FillMethod.Horizontal;
+            manaBarFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            manaBarFill.color = normalManaColor;
+            manaBarFill.raycastTarget = false;
+
+            // Texto
+            var txtGo = new GameObject("ManaText");
+            txtGo.transform.SetParent(root.transform, false);
+            var txtRt = txtGo.AddComponent<RectTransform>();
+            txtRt.anchorMin = Vector2.zero; txtRt.anchorMax = Vector2.one;
+            txtRt.sizeDelta = Vector2.zero; txtRt.anchoredPosition = new Vector2(0f, 0.5f);
+            manaText = txtGo.AddComponent<TMPro.TextMeshProUGUI>();
+            manaText.text = "MANA";
+            manaText.fontSize = 9.5f;
+            manaText.fontStyle = FontStyles.Bold;
+            manaText.alignment = TMPro.TextAlignmentOptions.Center;
+            manaText.color = Color.white;
+            manaText.raycastTarget = false;
+
             UnityEditor.EditorUtility.SetDirty(gameObject);
-            Debug.Log("<color=cyan>[HUDController] Barra de Mana gerada no Canvas com sucesso!</color>");
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
+                UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
+            Debug.Log("<color=cyan>[HUDController] ManaBar_Container criado e salvo na cena com sucesso!</color>");
         }
 #endif
 
@@ -673,32 +686,6 @@ namespace WitchShmup.UI
                 bossBarBackground.sprite = customBossBarBackgroundSprite;
                 bossBarBackground.color = Color.white;
                 bossBarBackground.preserveAspect = true;
-
-                // Ajusta proporção exata para pixel art 192x36 (escala de 1.5x = 288x54) evitando qualquer esticamento
-                var bgRt = bossBarBackground.rectTransform;
-                if (bgRt != null)
-                {
-                    bgRt.anchorMin = new Vector2(0.5f, 0.5f);
-                    bgRt.anchorMax = new Vector2(0.5f, 0.5f);
-                    bgRt.pivot = new Vector2(0.5f, 0.5f);
-                    bgRt.sizeDelta = new Vector2(288f, 54f);
-                    bgRt.anchoredPosition = new Vector2(0f, -6f);
-                }
-            }
-
-            if (bossNameText != null)
-            {
-                var nameRt = bossNameText.rectTransform;
-                if (nameRt != null)
-                {
-                    nameRt.anchorMin = new Vector2(0.5f, 1f);
-                    nameRt.anchorMax = new Vector2(0.5f, 1f);
-                    nameRt.pivot = new Vector2(0.5f, 1f);
-                    nameRt.anchoredPosition = new Vector2(0f, 0f);
-                    nameRt.sizeDelta = new Vector2(300f, 20f);
-                    bossNameText.alignment = TextAlignmentOptions.Center;
-                    bossNameText.fontSize = 18f;
-                }
             }
 
             if (customBossBarFillSprite != null && bossHealthFill != null)
@@ -708,16 +695,6 @@ namespace WitchShmup.UI
                 bossHealthFill.fillMethod = Image.FillMethod.Horizontal;
                 bossHealthFill.fillOrigin = (int)Image.OriginHorizontal.Left;
                 bossHealthFill.color = Color.white;
-
-                // Encaixe milimétrico do miolo de vida dentro da moldura decorada (192x36 com área útil 148x12)
-                var fillRt = bossHealthFill.rectTransform;
-                if (fillRt != null)
-                {
-                    fillRt.anchorMin = new Vector2(22f / 192f, 12f / 36f);
-                    fillRt.anchorMax = new Vector2((192f - 22f) / 192f, (36f - 12f) / 36f);
-                    fillRt.offsetMin = Vector2.zero;
-                    fillRt.offsetMax = Vector2.zero;
-                }
             }
         }
     }

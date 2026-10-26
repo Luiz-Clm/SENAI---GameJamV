@@ -1,6 +1,7 @@
 using System.Collections;
 
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 using WitchShmup.Cutscenes;
 
@@ -21,6 +22,14 @@ namespace WitchShmup.Spawners
         [SerializeField] private GameObject rusherPrefab;
 
         [SerializeField] private GameObject batPrefab;
+
+        [Header("Inimigos da Biblioteca Submersa")]
+        [Tooltip("Zóio: nasce acima da maré.")]
+        [SerializeField] private GameObject eyePrefab;
+        [Tooltip("Livro alado: nasce acima da maré.")]
+        [SerializeField] private GameObject wingedBookPrefab;
+        [Tooltip("Peixe-lanterna: nasce abaixo da maré.")]
+        [SerializeField] private GameObject lanternFishPrefab;
 
 
 
@@ -107,6 +116,11 @@ namespace WitchShmup.Spawners
 
         [SerializeField] private BossIntroCutscene bossCutscene;
 
+        [SerializeField] private GameObject octopusBossPrefab;
+
+        [Tooltip("Ative durante desenvolvimento para chamar o boss pela tecla B. Desative no Inspector antes de criar a build.")]
+        [SerializeField] private bool enableDebugBossShortcut;
+
         [SerializeField] private float delayBeforeBossIntro = 3f;
 
 
@@ -176,7 +190,7 @@ namespace WitchShmup.Spawners
 
             // Cheat Code estilo GTA: Digitar 'B' - 'O' - 'S' - 'S' em sequência durante a gameplay
 
-            if (!bossTriggered && Input.anyKeyDown)
+            if (enableDebugBossShortcut && !bossTriggered && Input.anyKeyDown)
 
             {
 
@@ -208,8 +222,6 @@ namespace WitchShmup.Spawners
 
                             cheatBuffer = "";
 
-                            ClearAllActiveEnemies();
-
                             TriggerBossSequence();
 
                             return;
@@ -226,13 +238,11 @@ namespace WitchShmup.Spawners
 
             // Atalho rápido adicional: Pressionar a tecla 'B'
 
-            if (Input.GetKeyDown(KeyCode.B) && !bossTriggered)
+            if (enableDebugBossShortcut && Input.GetKeyDown(KeyCode.B) && !bossTriggered)
 
             {
 
                 Debug.Log("[WaveSpawner] Atalho tecla 'B': Invocando Boss imediatamente!");
-
-                ClearAllActiveEnemies();
 
                 TriggerBossSequence();
 
@@ -372,43 +382,45 @@ namespace WitchShmup.Spawners
 
         {
 
-            // Progressão: início mais Rushers simples, depois mais Morcegos e formações mistas
-
             float batChance = (stageTimer < 25f) ? 0.35f : (stageTimer < 60f) ? 0.55f : 0.70f;
-
             bool spawnRusher = (Random.value > batChance);
-
-
-
+            var water = WitchShmup.Environment.PhaseTwoWaterSystem.Instance;
             GameObject enemyObj = null;
-            if (spawnRusher)
+
+            if (water != null)
             {
-                if (rusherPrefab != null)
+                bool underwater = water.IsSubmerged(spawnPos.y);
+                if (underwater)
                 {
-                    enemyObj = Instantiate(rusherPrefab, spawnPos, Quaternion.identity);
+                    GameObject prefab = lanternFishPrefab != null ? lanternFishPrefab : rusherPrefab;
+                    enemyObj = prefab != null ? Instantiate(prefab, spawnPos, Quaternion.identity) : CreateFallbackRusher(spawnPos);
                 }
                 else
                 {
-                    enemyObj = CreateFallbackRusher(spawnPos);
+                    GameObject prefab = Random.value < 0.5f ? eyePrefab : wingedBookPrefab;
+                    if (prefab == null) prefab = eyePrefab != null ? eyePrefab : (wingedBookPrefab != null ? wingedBookPrefab : batPrefab);
+                    enemyObj = prefab != null ? Instantiate(prefab, spawnPos, Quaternion.identity) : CreateFallbackBat(spawnPos);
                 }
+            }
+            else if (spawnRusher)
+            {
+                enemyObj = rusherPrefab != null ? Instantiate(rusherPrefab, spawnPos, Quaternion.identity) : CreateFallbackRusher(spawnPos);
             }
             else
             {
-                if (batPrefab != null)
-                {
-                    enemyObj = Instantiate(batPrefab, spawnPos, Quaternion.identity);
-                }
-                else
-                {
-                    enemyObj = CreateFallbackBat(spawnPos);
-                }
+                enemyObj = batPrefab != null ? Instantiate(batPrefab, spawnPos, Quaternion.identity) : CreateFallbackBat(spawnPos);
             }
-
             if (enemyObj != null)
             {
                 var enemy = enemyObj.GetComponent<EnemyBase>();
                 if (enemy != null)
                 {
+                    if (water != null)
+                    {
+                        enemy.SetWaterZone(water.IsSubmerged(spawnPos.y)
+                            ? WitchShmup.Enemies.EnemyWaterZone.UnderwaterOnly
+                            : WitchShmup.Enemies.EnemyWaterZone.SurfaceOnly);
+                    }
                     enemy.ApplyDifficultyMultipliers(
                         enemyHealthMultiplier,
                         enemySpeedMultiplier,
@@ -431,6 +443,9 @@ namespace WitchShmup.Spawners
 
             isSpawning = false;
 
+            ClearAllActiveEnemies();
+            ClearAllProjectiles();
+
             StartCoroutine(WaitAndTriggerBoss());
 
         }
@@ -443,16 +458,76 @@ namespace WitchShmup.Spawners
 
             yield return new WaitForSeconds(delayBeforeBossIntro);
 
+            ClearAllActiveEnemies();
+            ClearAllProjectiles();
+
 
 
             if (bossCutscene != null)
 
             {
-
-                bossCutscene.PlayCutscene();
+                if (ShouldUseOctopusBoss())
+                {
+                    GameObject bossObject = octopusBossPrefab != null
+                        ? Instantiate(octopusBossPrefab, GetBossSpawnPosition(), Quaternion.identity)
+                        : CreateFallbackOctopus(GetBossSpawnPosition());
+                    var octopus = bossObject.GetComponent<WitchShmup.Boss.OctopusBoss>();
+                    if (octopus != null) octopus.BeginEncounter();
+                    else Debug.LogError("O prefab do polvo precisa ter o componente OctopusBoss.", bossObject);
+                }
+                else
+                {
+                    bossCutscene.PlayCutscene();
+                }
 
             }
+            else if (ShouldUseOctopusBoss())
+            {
+                GameObject bossObject = octopusBossPrefab != null
+                    ? Instantiate(octopusBossPrefab, GetBossSpawnPosition(), Quaternion.identity)
+                    : CreateFallbackOctopus(GetBossSpawnPosition());
+                var octopus = bossObject.GetComponent<WitchShmup.Boss.OctopusBoss>();
+                if (octopus != null) octopus.BeginEncounter();
+            }
 
+        }
+
+        private bool ShouldUseOctopusBoss()
+        {
+            if (phaseOverride == 2) return true;
+            return phaseOverride == 0 && SceneManager.GetActiveScene().name.Contains("2");
+        }
+
+        private Vector3 GetBossSpawnPosition()
+        {
+            var camera = Camera.main;
+            return camera != null
+                ? new Vector3(camera.transform.position.x + 12f, camera.transform.position.y, 0f)
+                : new Vector3(12f, 0f, 0f);
+        }
+
+        private GameObject CreateFallbackOctopus(Vector3 position)
+        {
+            var boss = new GameObject("Boss_Octopus");
+            boss.tag = "Boss";
+            boss.transform.position = position;
+            var renderer = boss.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = 8;
+            var collider = boss.AddComponent<CircleCollider2D>();
+            collider.radius = 1.1f;
+            collider.isTrigger = true;
+            var body = boss.AddComponent<Rigidbody2D>();
+            body.bodyType = RigidbodyType2D.Kinematic;
+            body.gravityScale = 0f;
+            boss.AddComponent<WitchShmup.Boss.OctopusBoss>();
+            return boss;
+        }
+
+        private void ClearAllProjectiles()
+        {
+            var projectiles = FindObjectsByType<WitchShmup.Combat.Projectile>(FindObjectsSortMode.None);
+            foreach (var projectile in projectiles)
+                if (projectile != null) Destroy(projectile.gameObject);
         }
 
 
@@ -573,31 +648,31 @@ namespace WitchShmup.Spawners
             {
                 if (phase == 2)
                 {
-                    if (enemyHealthMultiplier <= 1f) enemyHealthMultiplier = 1.4f;
-                    if (enemySpeedMultiplier <= 1f) enemySpeedMultiplier = 1.2f;
-                    if (enemyFireRateMultiplier <= 1f) enemyFireRateMultiplier = 1.25f;
-                    if (enemyProjectileSpeedMultiplier <= 1f) enemyProjectileSpeedMultiplier = 1.2f;
+                    if (enemyHealthMultiplier <= 1f) enemyHealthMultiplier = 1.15f;
+                    if (enemySpeedMultiplier <= 1f) enemySpeedMultiplier = 1.08f;
+                    if (enemyFireRateMultiplier <= 1f) enemyFireRateMultiplier = 1.10f;
+                    if (enemyProjectileSpeedMultiplier <= 1f) enemyProjectileSpeedMultiplier = 1.08f;
                     if (enemyContactDamageMultiplier <= 1f) enemyContactDamageMultiplier = 1.0f;
 
-                    spawnIntervalMin = Mathf.Min(spawnIntervalMin, 0.5f);
-                    spawnIntervalMax = Mathf.Min(spawnIntervalMax, 1.1f);
-                    minEnemiesPerWave = Mathf.Max(minEnemiesPerWave, 2);
-                    maxEnemiesPerWave = Mathf.Max(maxEnemiesPerWave, 5);
-                    swarmChance = Mathf.Max(swarmChance, 0.50f);
+                    endSpawnIntervalMin = Mathf.Max(endSpawnIntervalMin, 0.55f);
+                    endSpawnIntervalMax = Mathf.Max(endSpawnIntervalMax, 1.0f);
+                    minEnemiesPerWave = Mathf.Min(minEnemiesPerWave, 1);
+                    maxEnemiesPerWave = Mathf.Min(maxEnemiesPerWave, 4);
+                    swarmChance = Mathf.Min(swarmChance, 0.30f);
                 }
                 else if (phase >= 3)
                 {
-                    if (enemyHealthMultiplier <= 1f) enemyHealthMultiplier = 1.9f;
-                    if (enemySpeedMultiplier <= 1f) enemySpeedMultiplier = 1.35f;
-                    if (enemyFireRateMultiplier <= 1f) enemyFireRateMultiplier = 1.5f;
-                    if (enemyProjectileSpeedMultiplier <= 1f) enemyProjectileSpeedMultiplier = 1.4f;
-                    if (enemyContactDamageMultiplier <= 1f) enemyContactDamageMultiplier = 1.5f;
+                    if (enemyHealthMultiplier <= 1f) enemyHealthMultiplier = 1.30f;
+                    if (enemySpeedMultiplier <= 1f) enemySpeedMultiplier = 1.15f;
+                    if (enemyFireRateMultiplier <= 1f) enemyFireRateMultiplier = 1.20f;
+                    if (enemyProjectileSpeedMultiplier <= 1f) enemyProjectileSpeedMultiplier = 1.12f;
+                    if (enemyContactDamageMultiplier <= 1f) enemyContactDamageMultiplier = 1.15f;
 
-                    spawnIntervalMin = Mathf.Min(spawnIntervalMin, 0.35f);
-                    spawnIntervalMax = Mathf.Min(spawnIntervalMax, 0.85f);
-                    minEnemiesPerWave = Mathf.Max(minEnemiesPerWave, 2);
-                    maxEnemiesPerWave = Mathf.Max(maxEnemiesPerWave, 6);
-                    swarmChance = Mathf.Max(swarmChance, 0.65f);
+                    endSpawnIntervalMin = Mathf.Max(endSpawnIntervalMin, 0.45f);
+                    endSpawnIntervalMax = Mathf.Max(endSpawnIntervalMax, 0.90f);
+                    minEnemiesPerWave = Mathf.Min(minEnemiesPerWave, 1);
+                    maxEnemiesPerWave = Mathf.Min(maxEnemiesPerWave, 5);
+                    swarmChance = Mathf.Min(swarmChance, 0.40f);
                 }
             }
         }

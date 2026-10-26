@@ -844,7 +844,8 @@ namespace WitchShmup.Core
             // Salva o avanço
             SaveCurrentGame(advancePhase: true);
 
-            string nextSceneName = $"Fase{nextPhaseNum}";
+            // Os arquivos de fase usam espaço no nome ("Fase 2", "Fase 3").
+            string nextSceneName = nextPhaseNum == 1 ? "Fase" : $"Fase {nextPhaseNum}";
 
             // Se a cena existir nas Build Settings, carrega
             if (Application.CanStreamedLevelBeLoaded(nextSceneName))
@@ -854,8 +855,7 @@ namespace WitchShmup.Core
             else
             {
                 // Se não houver mais fases além da 3, recarrega Fase 1 ou reinicia
-                Debug.Log($"[GameManager] Fase '{nextSceneName}' não encontrada ou atingiu o fim das fases configuradas. Reiniciando na última fase.");
-                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                Debug.LogError($"[GameManager] Cena '{nextSceneName}' não está nas Build Settings. Verifique Assets/Scenes e EditorBuildSettings.asset.");
             }
         }
 

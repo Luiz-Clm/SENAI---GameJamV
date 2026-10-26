@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using UnityEngine;
-using SpellGlide;
 
 namespace WitchShmup.Player
 {
@@ -15,24 +14,24 @@ namespace WitchShmup.Player
     {
         [Header("Status de Mana (Inspector)")]
         [Tooltip("Mana maxima do mago")]
-        [SerializeField] private float maxMana = 100f;
+        public float maxMana = 200f;
 
         [Tooltip("Mana atual do mago (somente leitura / debug)")]
-        [SerializeField] private float currentMana = 100f;
+        public float currentMana = 200f;
 
         [Tooltip("Custo base de mana por disparo")]
-        [SerializeField] private float manaCostPerShot = 5f;
+        public float manaCostPerShot = 5f;
 
         [Tooltip("Taxa de regeneracao de mana por segundo")]
-        [SerializeField] private float manaRechargeRate = 22f;
+        public float manaRechargeRate = 25f;
 
         [Tooltip("Tempo de espera (em segundos) apos o disparo para a mana comecar a recarregar")]
-        [SerializeField] private float rechargeDelayAfterShot = 0.45f;
+        public float rechargeDelayAfterShot = 0.45f;
 
         [Header("Mecanica de Cansaco (Fadiga)")]
         [Tooltip("Porcentagem minima de mana (0.1 = 10%, 0.30 = 30%) para o mago deixar de ficar cansado e voltar a atirar")]
         [Range(0.1f, 0.9f)]
-        [SerializeField] private float fatigueRecoveryThreshold = 0.30f;
+        public float fatigueRecoveryThreshold = 0.30f;
 
         [Tooltip("Indica se o mago esta cansado e incapaz de atirar")]
         [SerializeField] private bool isExhausted = false;
@@ -150,7 +149,7 @@ namespace WitchShmup.Player
 
             if (audioSource != null && dryFireSound != null)
             {
-                audioSource.PlayOneShot(dryFireSound, 0.7f * PlayerPrefs.GetFloat(AudioManager.SfxVolumePrefsKey, 0.7f));
+                audioSource.PlayOneShot(dryFireSound, 0.7f);
             }
 
             if (spriteRenderer != null)
@@ -185,36 +184,6 @@ namespace WitchShmup.Player
             maxMana += amount;
             currentMana = Mathf.Min(currentMana + amount, maxMana);
             OnManaChanged?.Invoke(currentMana, maxMana);
-        }
-
-        public void IncreaseManaRechargeRate(float amount)
-        {
-            manaRechargeRate = Mathf.Max(0f, manaRechargeRate + amount);
-        }
-
-        public void ReduceRechargeDelay(float amount)
-        {
-            rechargeDelayAfterShot = Mathf.Max(0f, rechargeDelayAfterShot - amount);
-        }
-
-        public void SetFatigueRecoveryThreshold(float threshold)
-        {
-            fatigueRecoveryThreshold = Mathf.Clamp(threshold, 0.1f, 0.9f);
-            if (isExhausted && currentMana >= maxMana * fatigueRecoveryThreshold)
-            {
-                isExhausted = false;
-                OnExhaustionChanged?.Invoke(false);
-            }
-        }
-
-        public void SetManaCostPerShot(float amount)
-        {
-            manaCostPerShot = Mathf.Max(0f, amount);
-            if (isExhausted && currentMana >= manaCostPerShot)
-            {
-                isExhausted = false;
-                OnExhaustionChanged?.Invoke(false);
-            }
         }
     }
 }

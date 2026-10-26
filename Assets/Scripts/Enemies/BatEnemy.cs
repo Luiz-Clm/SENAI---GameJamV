@@ -29,6 +29,7 @@ namespace WitchShmup.Enemies
         [SerializeField] private float chargeSpeed = 7f;
 
         [SerializeField] private float chargeCooldown = 3.5f;
+        [SerializeField] private bool canCharge = true;
 
         private bool isCharging = false;
 
@@ -217,6 +218,14 @@ namespace WitchShmup.Enemies
         private void HandleChargeAI()
 
         {
+
+            if (!canCharge)
+            {
+                isCharging = false;
+                if (spriteRenderer != null && flashCoroutine == null && slowCoroutine == null)
+                    spriteRenderer.color = originalColor;
+                return;
+            }
 
             if (isCharging)
 

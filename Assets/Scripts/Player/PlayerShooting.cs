@@ -1,13 +1,11 @@
 using System;
+using System.Collections;
 using UnityEngine;
-using SpellGlide;
 using UnityEngine.Rendering.Universal;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
 using WitchShmup.Combat;
-using WitchShmup.Core;
-using WitchShmup.UI;
 
 namespace WitchShmup.Player
 {
@@ -118,7 +116,8 @@ namespace WitchShmup.Player
 
         private float nextFireTime = 0f;
         private bool isFiring = false;
-        private bool inputWasBlocked = false;
+        private float nextUnderwaterFizzTime;
+        private static Sprite underwaterFizzSprite;
 
         public bool IsFiring => isFiring;
         public bool IsFireUnlocked => isFireUnlocked;
@@ -140,15 +139,18 @@ namespace WitchShmup.Player
         {
             if (playerMana == null)
             {
-                playerMana = GetComponent<PlayerMana>() ?? gameObject.AddComponent<PlayerMana>();
+                playerMana = GetComponent<PlayerMana>();
             }
             if (audioSource == null)
             {
-                audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
+                audioSource = GetComponent<AudioSource>();
             }
 
-            audioSource.playOnAwake = false;
-            audioSource.spatialBlend = 0f; // 2D Sound
+            if (audioSource != null)
+            {
+                audioSource.playOnAwake = false;
+                audioSource.spatialBlend = 0f; // 2D Sound
+            }
 
             // Auto-carrega os sons dos tiros caso não estejam assinalados no Inspector
             if (iceConfig.shootSound == null)
@@ -177,19 +179,6 @@ namespace WitchShmup.Player
                 if (lightChild != null)
                 {
                     staffLight = lightChild.GetComponent<Light2D>();
-                }
-                else
-                {
-                    GameObject lObj = new GameObject("Staff_NaturalLight");
-                    lObj.transform.SetParent(transform, false);
-                    lObj.transform.localPosition = new Vector3(0.5f, 0.1f, 0f);
-                    staffLight = lObj.AddComponent<Light2D>();
-                    staffLight.lightType = Light2D.LightType.Point;
-                    staffLight.pointLightOuterRadius = 4.5f;
-                    staffLight.pointLightInnerRadius = 0.4f;
-                    staffLight.falloffIntensity = 0.55f;
-                    staffLight.intensity = 1.05f;
-                    staffLight.shadowsEnabled = false;
                 }
             }
 
@@ -220,71 +209,91 @@ namespace WitchShmup.Player
 
         private void Update()
         {
-            if (IsGameplayInputBlocked())
-            {
-                // Não deixa tiros serem criados/guardados enquanto o tempo está pausado.
-                isFiring = false;
-                inputWasBlocked = true;
-                return;
-            }
-
-            if (inputWasBlocked)
-            {
-                // Ao voltar, espera ao menos uma cadência antes de aceitar disparos.
-                inputWasBlocked = false;
-                isFiring = false;
-                float fireInterval = CurrentConfig != null ? CurrentConfig.fireRate : 0.16f;
-                nextFireTime = Mathf.Max(nextFireTime, Time.time + Mathf.Max(0.01f, fireInterval));
-                return;
-            }
-
             HandleElementSwitchInput();
             HandleFireInput();
         }
 
-        private bool IsGameplayInputBlocked()
-        {
-            if (Time.timeScale <= 0f) return true;
-
-            GameManager gameManager = GameManager.Instance;
-            if (gameManager != null && (gameManager.IsEvolutionOpen || gameManager.IsGameOver || gameManager.IsVictory))
-                return true;
-
-            return PauseUI.Instance != null && PauseUI.Instance.IsPaused;
-        }
-
         private void HandleElementSwitchInput()
         {
-            bool switched = ControlBindings.WasSwitchWeaponPressedThisFrame();
+            bool switched = false;
 
 #if ENABLE_INPUT_SYSTEM
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.qKey.wasPressedThisFrame ||
+                    Keyboard.current.eKey.wasPressedThisFrame ||
+                    Keyboard.current.tabKey.wasPressedThisFrame ||
+                    Keyboard.current.leftShiftKey.wasPressedThisFrame)
+                {
+                    ToggleElement();
+                    switched = true;
+                }
+                else if (Keyboard.current.digit1Key.wasPressedThisFrame)
+                {
+                    SetElement(ElementType.Ice);
+                    switched = true;
+                }
+                else if (Keyboard.current.digit2Key.wasPressedThisFrame)
+                {
+                    SetElement(ElementType.Fire);
+                    switched = true;
+                }
+            }
+
+            if (!switched && Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                ToggleElement();
+                switched = true;
+            }
+
             if (!switched && Gamepad.current != null)
             {
                 if (Gamepad.current.buttonNorth.wasPressedThisFrame ||
                     Gamepad.current.rightShoulder.wasPressedThisFrame ||
                     Gamepad.current.leftShoulder.wasPressedThisFrame)
                 {
+                    ToggleElement();
                     switched = true;
                 }
             }
 #endif
 
+            // Fallback for standard input
             if (!switched)
             {
-                if (Input.GetKeyDown(KeyCode.Alpha1))
+                if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.Tab) || Input.GetMouseButtonDown(1))
+                {
+                    ToggleElement();
+                }
+                else if (Input.GetKeyDown(KeyCode.Alpha1))
+                {
                     SetElement(ElementType.Ice);
+                }
                 else if (Input.GetKeyDown(KeyCode.Alpha2))
+                {
                     SetElement(ElementType.Fire);
+                }
             }
-
-            if (switched) ToggleElement();
         }
 
         private void HandleFireInput()
         {
-            isFiring = ControlBindings.IsFireHeld();
+            isFiring = false;
 
 #if ENABLE_INPUT_SYSTEM
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.spaceKey.isPressed || Keyboard.current.jKey.isPressed || Keyboard.current.enterKey.isPressed)
+                {
+                    isFiring = true;
+                }
+            }
+
+            if (!isFiring && Mouse.current != null && Mouse.current.leftButton.isPressed)
+            {
+                isFiring = true;
+            }
+
             if (!isFiring && Gamepad.current != null)
             {
                 if (Gamepad.current.buttonSouth.isPressed || Gamepad.current.rightTrigger.isPressed)
@@ -293,6 +302,25 @@ namespace WitchShmup.Player
                 }
             }
 #endif
+
+            if (!isFiring)
+            {
+                isFiring = Input.GetKey(KeyCode.Space) || Input.GetMouseButton(0);
+            }
+
+            // Na Biblioteca Submersa, o fogo apaga ao atravessar a superfície.
+            if (isFiring && currentElement == ElementType.Fire &&
+                WitchShmup.Environment.PhaseTwoWaterSystem.Instance != null &&
+                WitchShmup.Environment.PhaseTwoWaterSystem.Instance.IsSubmerged(
+                    WitchShmup.Environment.PhaseTwoWaterSystem.Instance.GetPlayerHeadY()))
+            {
+                if (Time.time >= nextUnderwaterFizzTime)
+                {
+                    nextUnderwaterFizzTime = Time.time + 0.35f;
+                    SpawnUnderwaterFizz();
+                }
+                return;
+            }
 
             if (isFiring && Time.time >= nextFireTime)
             {
@@ -462,87 +490,76 @@ namespace WitchShmup.Player
 
             if (config.shootSound != null && audioSource != null)
             {
-                audioSource.PlayOneShot(config.shootSound, PlayerPrefs.GetFloat(AudioManager.SfxVolumePrefsKey, 0.7f));
+                audioSource.PlayOneShot(config.shootSound);
             }
 
             OnShotFired?.Invoke();
         }
 
+        private void SpawnUnderwaterFizz()
+        {
+            if (underwaterFizzSprite == null)
+            {
+                var texture = new Texture2D(8, 8, TextureFormat.RGBA32, false);
+                texture.filterMode = FilterMode.Point;
+                var pixels = new Color[64];
+                for (int y = 0; y < 8; y++)
+                for (int x = 0; x < 8; x++)
+                {
+                    float dx = x - 3.5f;
+                    float dy = y - 3.5f;
+                    pixels[y * 8 + x] = dx * dx + dy * dy <= 12f ? Color.white : Color.clear;
+                }
+                texture.SetPixels(pixels);
+                texture.Apply();
+                underwaterFizzSprite = Sprite.Create(texture, new Rect(0, 0, 8, 8),
+                    new Vector2(0.5f, 0.5f), 8f);
+            }
+
+            var fizz = new GameObject("Underwater_Fire_Fizz");
+            Vector3 offset = (Vector3)defaultMuzzleOffset;
+            fizz.transform.position = transform.position + offset;
+            fizz.transform.localScale = Vector3.one * 0.25f;
+            var renderer = fizz.AddComponent<SpriteRenderer>();
+            renderer.sprite = underwaterFizzSprite;
+            renderer.color = new Color(1f, 0.48f, 0.12f, 0.9f);
+            renderer.sortingOrder = 11;
+            StartCoroutine(AnimateUnderwaterFizz(fizz.transform, renderer));
+        }
+
+        private IEnumerator AnimateUnderwaterFizz(Transform fizz, SpriteRenderer renderer)
+        {
+            const float duration = 0.35f;
+            float elapsed = 0f;
+            Vector3 start = fizz.position;
+            while (elapsed < duration && fizz != null)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                fizz.position = start + Vector3.up * (t * 0.35f);
+                fizz.localScale = Vector3.one * Mathf.Lerp(0.25f, 0.85f, t);
+                if (renderer != null)
+                {
+                    Color color = renderer.color;
+                    color.a = 0.9f * (1f - t);
+                    renderer.color = color;
+                }
+                yield return null;
+            }
+            if (fizz != null) Destroy(fizz.gameObject);
+        }
+
         private void SpawnProjectile(Vector3 position, Vector2 direction, ElementWeaponConfig config, float dmg, int pierce, float speed)
         {
-            GameObject projObj;
-            if (config.projectilePrefab != null)
-            {
-                projObj = Instantiate(config.projectilePrefab, position, Quaternion.identity);
-                var sr = projObj.GetComponent<SpriteRenderer>();
-                if (sr != null)
-                {
-                    if (config.element == ElementType.Ice)
-                    {
-                        var iceSpr = Resources.Load<Sprite>("Sprites/ataqueMAgo");
-                        if (iceSpr != null) { sr.sprite = iceSpr; sr.color = Color.white; }
-                    }
-                    else if (config.element == ElementType.Fire)
-                    {
-                        var fireSpr = Resources.Load<Sprite>("Sprites/bola de Fogo");
-                        if (fireSpr != null) { sr.sprite = fireSpr; sr.color = Color.white; }
-                    }
-                }
-            }
-            else
-            {
-                // Runtime fallback projectile if prefab is not yet assigned
-                projObj = CreateFallbackProjectile(position, config);
-            }
+            if (config.projectilePrefab == null) return;
+
+            GameObject projObj = Instantiate(config.projectilePrefab, position, Quaternion.identity);
 
             var proj = projObj.GetComponent<Projectile>();
             if (proj != null)
             {
                 proj.Initialize(direction, speed, dmg, config.element, true, pierce);
             }
-        }
-
-        private GameObject CreateFallbackProjectile(Vector3 position, ElementWeaponConfig config)
-        {
-            GameObject obj = new GameObject($"Projectile_{config.element}");
-            obj.transform.position = position;
-
-            var sr = obj.AddComponent<SpriteRenderer>();
-            sr.sortingOrder = 5;
-
-            Sprite customSprite = null;
-            if (config.element == ElementType.Ice)
-            {
-                customSprite = Resources.Load<Sprite>("Sprites/ataqueMAgo");
-            }
-            else if (config.element == ElementType.Fire)
-            {
-                customSprite = Resources.Load<Sprite>("Sprites/bola de Fogo");
-            }
-
-            if (customSprite != null)
-            {
-                sr.sprite = customSprite;
-                sr.color = Color.white;
-            }
-            else
-            {
-                sr.color = config.elementColor;
-                Texture2D tex = new Texture2D(16, 6, TextureFormat.RGBA32, false);
-                tex.filterMode = FilterMode.Point;
-                Color[] pixels = new Color[16 * 6];
-                for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.white;
-                tex.SetPixels(pixels);
-                tex.Apply();
-                sr.sprite = Sprite.Create(tex, new Rect(0, 0, 16, 6), new Vector2(0.5f, 0.5f), 16f);
-            }
-
-            var col = obj.AddComponent<BoxCollider2D>();
-            col.isTrigger = true;
-            col.size = new Vector2(1f, 0.35f);
-
-            obj.AddComponent<Projectile>();
-            return obj;
         }
     }
 }

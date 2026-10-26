@@ -171,7 +171,8 @@ namespace WitchShmup.Player
             // Contact damage with enemy or hazard
             if (other.CompareTag("Enemy") || other.CompareTag("Boss") || other.CompareTag("Hazard"))
             {
-                TakeDamage(1, ElementType.Enemy);
+                var octopus = other.GetComponentInParent<WitchShmup.Boss.OctopusBoss>();
+                TakeDamage(octopus != null ? octopus.ContactDamage : 1f, ElementType.Enemy);
             }
         }
 
@@ -179,7 +180,8 @@ namespace WitchShmup.Player
         {
             if (collision.gameObject.CompareTag("Enemy") || collision.gameObject.CompareTag("Boss") || collision.gameObject.CompareTag("Hazard"))
             {
-                TakeDamage(1, ElementType.Enemy);
+                var octopus = collision.gameObject.GetComponentInParent<WitchShmup.Boss.OctopusBoss>();
+                TakeDamage(octopus != null ? octopus.ContactDamage : 1f, ElementType.Enemy);
             }
         }
     }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -28,8 +29,24 @@ namespace WitchShmup.Player
         private Vector2 moveInput;
         private Vector2 currentVelocity;
         private float currentTiltZ = 0f;
+        private float undertowSpeed;
+        private Coroutine undertowRoutine;
 
         public Vector2 MoveInput => moveInput;
+
+        public void ApplyUndertow(float duration, float downwardSpeed)
+        {
+            if (undertowRoutine != null) StopCoroutine(undertowRoutine);
+            undertowSpeed = Mathf.Max(0f, downwardSpeed);
+            undertowRoutine = StartCoroutine(UndertowRoutine(duration));
+        }
+
+        private IEnumerator UndertowRoutine(float duration)
+        {
+            yield return new WaitForSeconds(Mathf.Max(0f, duration));
+            undertowSpeed = 0f;
+            undertowRoutine = null;
+        }
 
         public void MultiplySpeed(float mult)
         {
@@ -84,6 +101,8 @@ namespace WitchShmup.Player
         private void ApplyMovement()
         {
             Vector2 targetVelocity = moveInput * moveSpeed;
+            if (undertowSpeed > 0f)
+                targetVelocity.y = Mathf.Min(targetVelocity.y, -undertowSpeed);
             float accelRate = (moveInput.sqrMagnitude > 0.01f) ? acceleration : deceleration;
 
             currentVelocity = Vector2.MoveTowards(currentVelocity, targetVelocity, accelRate * Time.fixedDeltaTime);

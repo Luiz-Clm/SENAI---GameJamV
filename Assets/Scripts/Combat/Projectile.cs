@@ -26,6 +26,7 @@ namespace WitchShmup.Combat
         private int currentHits = 0;
         private float timer = 0f;
         private Rigidbody2D rb;
+        private bool consumedByOrbitingStone;
 
         private void Awake()
         {
@@ -48,6 +49,7 @@ namespace WitchShmup.Combat
             pierceCount = Mathf.Max(1, pierce);
             currentHits = 0;
             timer = 0f;
+            consumedByOrbitingStone = false;
 
             // Rotate projectile towards movement direction
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
@@ -67,6 +69,8 @@ namespace WitchShmup.Combat
 
         private void OnTriggerEnter2D(Collider2D other)
         {
+            if (consumedByOrbitingStone) return;
+
             // If player projectile, do not hit player
             if (isPlayerProjectile)
             {
@@ -87,6 +91,13 @@ namespace WitchShmup.Combat
             var damageable = other.GetComponentInParent<IDamageable>();
             if (damageable != null)
             {
+                // A pedra orbital tem prioridade se o tiro tocar nela e no boss no mesmo instante.
+                if (isPlayerProjectile && damageable is WitchShmup.Boss.GolemBoss bossToCheck &&
+                    bossToCheck.TryInterceptProjectile(this))
+                {
+                    return;
+                }
+
                 damageable.TakeDamage(damage, element);
                 currentHits++;
 
@@ -119,6 +130,18 @@ namespace WitchShmup.Combat
                 SpawnHitEffect();
                 Destroy(gameObject);
             }
+        }
+
+        /// <summary>Consome este tiro ao atingir uma pedra orbital.</summary>
+        public bool HitOrbitingStone(WitchShmup.Boss.OrbitingStone stone)
+        {
+            if (consumedByOrbitingStone || !isPlayerProjectile || stone == null) return false;
+
+            consumedByOrbitingStone = true;
+            stone.TakeDamage(damage, element);
+            SpawnHitEffect();
+            Destroy(gameObject);
+            return true;
         }
 
         private void SpawnHitEffect()

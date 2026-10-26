@@ -22,6 +22,7 @@ namespace WitchShmup.Environment
 
         private float randomSeed;
         private Vector3 flameBaseScale;
+        private bool isExtinguished;
 
         private void Awake()
         {
@@ -35,6 +36,18 @@ namespace WitchShmup.Environment
 
         private void Update()
         {
+            var water = PhaseTwoWaterSystem.Instance;
+            bool underwater = water != null && water.IsSubmerged(flameRenderer != null
+                ? flameRenderer.transform.position.y
+                : transform.position.y + 0.45f);
+            if (underwater != isExtinguished)
+            {
+                isExtinguished = underwater;
+                if (flameRenderer != null) flameRenderer.enabled = !isExtinguished;
+                if (torchLight != null) torchLight.enabled = !isExtinguished;
+            }
+            if (isExtinguished) return;
+
             float time = Time.time * flickerSpeed + randomSeed;
             // Perlin noise para oscilação suave e orgânica
             float flicker = (Mathf.PerlinNoise(time * 0.8f, randomSeed) - 0.5f) * 2f; // -1 a 1

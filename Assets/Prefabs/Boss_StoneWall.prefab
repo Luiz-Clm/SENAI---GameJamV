@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 3602435809522366446}
   - component: {fileID: 3963536052173233477}
   - component: {fileID: 7294289912761704074}
+  - component: {fileID: 7000000000000000002}
   m_Layer: 0
   m_Name: StoneSegment_0
   m_TagString: Untagged
@@ -166,6 +167,25 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
+--- !u!114 &7000000000000000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5504277002212274273}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eacbe3957b486624ca4b6959af7803ba, type: 3}
+  m_Name: ""
+  m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Boss.StoneWallObstacle
+  advanceSpeed: 3
+  maxHealth: 8
+  contactDamage: 2
+  crushInterval: 0.65
+  playerHalfWidth: 0.55
+  playerHalfHeight: 0.4
+  damageFlashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
 --- !u!1 &8135845277068299387
 GameObject:
   m_ObjectHideFlags: 0
@@ -212,3 +232,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Boss.StoneWallObstacle
   advanceSpeed: 3
+  maxHealth: 8
+  contactDamage: 2
+  crushInterval: 0.65
+  playerHalfWidth: 0.55
+  playerHalfHeight: 0.4
+  damageFlashColor: {r: 1, g: 0.35, b: 0.35, a: 1}

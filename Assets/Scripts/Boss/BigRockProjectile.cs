@@ -4,7 +4,7 @@ using WitchShmup.Combat;
 
 namespace WitchShmup.Boss
 {
-    [RequireComponent(typeof(Collider2D))]
+    [RequireComponent(typeof(SpriteRenderer), typeof(Collider2D))]
     public class BigRockProjectile : MonoBehaviour
     {
         [Header("Movement")]
@@ -20,11 +20,10 @@ namespace WitchShmup.Boss
         private void Awake()
         {
             var sr = GetComponent<SpriteRenderer>();
-            if (sr == null) sr = gameObject.AddComponent<SpriteRenderer>();
 
             // Carrega o sprite principal de pedra (ataqueBoss2_4) da planilha fatiada
             var all = Resources.LoadAll<Sprite>("Sprites/ataqueBoss2");
-            if (all != null && all.Length > 0)
+            if (sr != null && sr.sprite == null && all != null && all.Length > 0)
             {
                 Sprite mainRock = null;
                 foreach (var s in all)
@@ -43,13 +42,9 @@ namespace WitchShmup.Boss
             }
 
             // Aumenta o tamanho do projétil conforme pedido
-            transform.localScale = new Vector3(rockScale, rockScale, 1f);
+            if (transform.localScale == Vector3.one && rockScale != 1f)
+                transform.localScale = new Vector3(rockScale, rockScale, 1f);
 
-            var circleCol = GetComponent<CircleCollider2D>();
-            if (circleCol != null)
-            {
-                circleCol.radius = 0.55f;
-            }
         }
 
         public void Initialize(Vector2 dir, float spd, float dmg = 2f)

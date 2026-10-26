@@ -1,25 +1,45 @@
 using System.Collections;
 using UnityEngine;
 using WitchShmup.Combat;
+using WitchShmup.Player;
 
 namespace WitchShmup.Boss
 {
-    [RequireComponent(typeof(Collider2D))]
-    public class OrbitingStone : MonoBehaviour, IDamageable
+    /// <summary>
+    /// Pedra orbital ao redor do Boss Golem.
+    ///
+    /// Comportamento:
+    ///   - Orbita ao redor do boss (centerPoint = transform.parent por padrao).
+    ///   - Ao encostar no jogador: causa 1 de dano.
+    ///   - Ao receber tiro do jogador: perde vida (mini-vida) e pisca vermelho.
+    ///   - Quando a vida chega a 0: explode e desaparece.
+    ///   - Tiros que não encostam nas pedras podem atravessar os vãos e atingir o boss.
+    ///
+    /// Como ajustar no Inspector (via prefab Boss_OrbitingStone):
+    ///   - maxHealth:    vida de cada pedra (padrao 3.5 = 3 ou 4 tiros de gelo)
+    ///   - contactDamage: dano ao encostar no player (padrao 1)
+    ///   - orbitRadius:  distancia do boss (ajustado pelo GolemBoss)
+    ///   - orbitSpeed:   velocidade em graus/segundo (90 = uma volta em 4s)
+    /// </summary>
+    [RequireComponent(typeof(CircleCollider2D), typeof(Rigidbody2D))]
+    public class OrbitingStone : MonoBehaviour
     {
-        [Header("Orbit Config")]
+        [Header("Configuracao de Orbita")]
+        [Tooltip("Ponto central da orbita (deixe vazio = usa o pai)")]
         [SerializeField] private Transform centerPoint;
+        [Tooltip("Distancia do centro (raio da orbita)")]
         [SerializeField] private float orbitRadius = 3f;
-        [SerializeField] private float orbitSpeed = 90f; // Graus por segundo
+        [Tooltip("Velocidade em graus por segundo")]
+        [SerializeField] private float orbitSpeed = 90f;
         [SerializeField] private float currentAngle = 0f;
 
-        [Header("Health & Defense (Mini-Vida da Pedra Orbital)")]
-        [Tooltip("Vida desta pedra orbital. O jogador precisa destruí-la para abrir caminho até o Boss!")]
+        [Header("Vida da Pedra (Mini-Vida)")]
+        [Tooltip("Vida desta pedra orbital. Precisa destruir para chegar ao boss!")]
         [SerializeField] private float maxHealth = 3.5f;
         [SerializeField] private float currentHealth = 3.5f;
 
-        [Header("Damage")]
-        [Tooltip("Dano ao encostar no jogador (1 de dano)")]
+        [Header("Dano ao Jogador")]
+        [Tooltip("Dano causado ao encostar no jogador (padrao: 1)")]
         [SerializeField] private float contactDamage = 1f;
 
         [Header("Feedback Visual")]
@@ -29,6 +49,7 @@ namespace WitchShmup.Boss
         private SpriteRenderer sr;
         private Color originalColor = Color.white;
         private Coroutine flashCoroutine;
+        private bool isDead = false;
 
         public float MaxHealth => maxHealth;
         public float CurrentHealth => currentHealth;
@@ -38,56 +59,32 @@ namespace WitchShmup.Boss
             currentHealth = maxHealth;
 
             sr = GetComponent<SpriteRenderer>();
-            if (sr == null) sr = gameObject.AddComponent<SpriteRenderer>();
 
-            // Adiciona Rigidbody2D cinemático para física de colisões consistente
+            // Garante Rigidbody2D cinematico para fisicas de colisao
             var rb = GetComponent<Rigidbody2D>();
-            if (rb == null)
+            if (rb != null)
             {
-                rb = gameObject.AddComponent<Rigidbody2D>();
                 rb.bodyType = RigidbodyType2D.Kinematic;
                 rb.gravityScale = 0f;
             }
 
-            // Usa o mesmo sprite da pedra de ataque (ataqueBoss2_4)
-            var all = Resources.LoadAll<Sprite>("Sprites/ataqueBoss2");
-            if (all != null && all.Length > 0)
-            {
-                Sprite rockSpr = null;
-                foreach (var s in all)
-                {
-                    if (s.name.Equals("ataqueBoss2_4", System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        rockSpr = s;
-                        break;
-                    }
-                }
-                if (rockSpr == null) rockSpr = all[0];
+            // Garante que o collider esta como Trigger
+            var col = GetComponent<CircleCollider2D>();
+            if (col != null) col.isTrigger = true;
 
-                sr.sprite = rockSpr;
-                sr.color = Color.white;
-                sr.sortingOrder = 9;
-            }
-            originalColor = sr.color;
-
-            transform.localScale = new Vector3(1.15f, 1.15f, 1f);
-
-            var boxCol = GetComponent<BoxCollider2D>();
-            if (boxCol != null)
-            {
-                boxCol.isTrigger = true;
-                boxCol.size = new Vector2(0.9f, 0.9f);
-            }
+            if (sr != null) originalColor = sr.color;
         }
 
         private void Start()
         {
+            // Centro = pai por padrao (o GolemBoss)
             if (centerPoint == null && transform.parent != null)
             {
                 centerPoint = transform.parent;
             }
         }
 
+        /// <summary>Inicializa orbita via codigo (chamado pelo GolemBoss).</summary>
         public void Initialize(Transform center, float radius, float speed, float startAngle)
         {
             centerPoint = center;
@@ -104,7 +101,7 @@ namespace WitchShmup.Boss
 
         private void Update()
         {
-            if (centerPoint == null) return;
+            if (isDead || centerPoint == null) return;
 
             currentAngle += orbitSpeed * Time.deltaTime;
             if (currentAngle >= 360f) currentAngle -= 360f;
@@ -115,17 +112,16 @@ namespace WitchShmup.Boss
         private void UpdatePosition()
         {
             if (centerPoint == null) return;
-
             float rad = currentAngle * Mathf.Deg2Rad;
-            Vector3 offset = new Vector3(Mathf.Cos(rad), Mathf.Sin(rad), 0f) * orbitRadius;
-            transform.position = centerPoint.position + offset;
+            transform.position = centerPoint.position +
+                new Vector3(Mathf.Cos(rad), Mathf.Sin(rad), 0f) * orbitRadius;
         }
 
         public void TakeDamage(float amount, ElementType element = ElementType.None)
         {
-            if (currentHealth <= 0) return;
+            if (isDead) return;
 
-            // Fogo dá 1.25x mais dano em pedras
+            // Fogo faz 1.25x mais dano em pedras
             float mult = (element == ElementType.Fire) ? 1.25f : 1.0f;
             currentHealth -= amount * mult;
 
@@ -135,7 +131,7 @@ namespace WitchShmup.Boss
                 flashCoroutine = StartCoroutine(FlashRoutine());
             }
 
-            if (currentHealth <= 0)
+            if (currentHealth <= 0f)
             {
                 Break();
             }
@@ -143,45 +139,61 @@ namespace WitchShmup.Boss
 
         private IEnumerator FlashRoutine()
         {
-            if (sr != null)
-            {
-                sr.color = damageFlashColor;
-                yield return new WaitForSeconds(0.06f);
-                if (sr != null) sr.color = originalColor;
-            }
+            if (sr != null) sr.color = damageFlashColor;
+            yield return new WaitForSeconds(0.07f);
+            if (sr != null && !isDead) sr.color = originalColor;
             flashCoroutine = null;
         }
 
         private void Break()
         {
+            isDead = true;
+
+            var col = GetComponent<Collider2D>();
+            if (col != null) col.enabled = false;
+
             if (breakEffectPrefab != null)
-            {
                 Instantiate(breakEffectPrefab, transform.position, Quaternion.identity);
-            }
-            Destroy(gameObject);
+
+            Destroy(gameObject, 0.08f);
         }
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            // 1. Dano de contato ao encostar no jogador (1 de dano)
-            if (other.CompareTag("Player"))
+            if (isDead) return;
+
+            // 1. Dano ao jogador ao encostar
+            var playerHp = other.GetComponent<PlayerHealth>()
+                ?? other.GetComponentInParent<PlayerHealth>();
+            if (playerHp != null)
             {
-                var damageable = other.GetComponent<IDamageable>();
-                if (damageable != null)
-                {
-                    damageable.TakeDamage(contactDamage, ElementType.Enemy);
-                }
+                playerHp.TakeDamage(contactDamage, ElementType.Enemy);
+                return;
             }
-            // 2. Projéteis do jogador: a pedra toma dano e o tiro é bloqueado/destruído
-            else if (other.GetComponent<Projectile>() != null)
+
+            // 2. Projeteis do jogador: absorve o tiro e perde vida
+            var proj = other.GetComponent<Projectile>();
+            if (proj != null && proj.IsPlayerProjectile)
             {
-                var proj = other.GetComponent<Projectile>();
-                if (proj != null && proj.IsPlayerProjectile)
-                {
-                    TakeDamage(proj.Damage, proj.Element);
-                    Destroy(proj.gameObject);
-                }
+                proj.HitOrbitingStone(this);
             }
+        }
+
+        /// <summary>Resolve a colisão de pedra antes do dano ao boss no mesmo quadro.</summary>
+        public bool TryConsumeProjectile(Projectile projectile)
+        {
+            if (isDead || projectile == null || !projectile.IsPlayerProjectile) return false;
+
+            Collider2D stoneCollider = GetComponent<Collider2D>();
+            Collider2D projectileCollider = projectile.GetComponent<Collider2D>();
+            if (stoneCollider == null || projectileCollider == null ||
+                !stoneCollider.enabled || !projectileCollider.enabled ||
+                !stoneCollider.Distance(projectileCollider).isOverlapped)
+            {
+                return false;
+            }
+
+            return projectile.HitOrbitingStone(this);
         }
     }
 }
