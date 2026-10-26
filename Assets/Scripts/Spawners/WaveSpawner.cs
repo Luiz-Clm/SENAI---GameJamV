@@ -118,6 +118,12 @@ namespace WitchShmup.Spawners
 
         [SerializeField] private GameObject octopusBossPrefab;
 
+        [Tooltip("Nome exibido na barra de vida do chefe da Fase 2")]
+        [SerializeField] private string octopusBossDisplayName = "POLVO DAS PROFUNDEZAS";
+
+        [Tooltip("Barra sobre o polvo editável na Hierarchy da cena Fase 2")]
+        [SerializeField] private GameObject octopusSceneOverheadHealthBar;
+
         [Tooltip("Ative durante desenvolvimento para chamar o boss pela tecla B. Desative no Inspector antes de criar a build.")]
         [SerializeField] private bool enableDebugBossShortcut;
 
@@ -463,7 +469,11 @@ namespace WitchShmup.Spawners
                         ? Instantiate(octopusBossPrefab, GetBossSpawnPosition(), Quaternion.identity)
                         : CreateFallbackOctopus(GetBossSpawnPosition());
                     var octopus = bossObject.GetComponent<WitchShmup.Boss.OctopusBoss>();
-                    if (octopus != null) octopus.BeginEncounter();
+                    if (octopus != null)
+                    {
+                        octopus.UseSceneOverheadHealthBar(octopusSceneOverheadHealthBar);
+                        octopus.BeginEncounter(octopusBossDisplayName);
+                    }
                     else Debug.LogError("O prefab do polvo precisa ter o componente OctopusBoss.", bossObject);
                 }
                 else
@@ -478,7 +488,11 @@ namespace WitchShmup.Spawners
                     ? Instantiate(octopusBossPrefab, GetBossSpawnPosition(), Quaternion.identity)
                     : CreateFallbackOctopus(GetBossSpawnPosition());
                 var octopus = bossObject.GetComponent<WitchShmup.Boss.OctopusBoss>();
-                if (octopus != null) octopus.BeginEncounter();
+                if (octopus != null)
+                {
+                    octopus.UseSceneOverheadHealthBar(octopusSceneOverheadHealthBar);
+                    octopus.BeginEncounter(octopusBossDisplayName);
+                }
             }
 
         }
