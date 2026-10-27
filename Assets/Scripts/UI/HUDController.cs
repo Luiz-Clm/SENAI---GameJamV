@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using WitchShmup.Combat;
+using WitchShmup.Core;
 using WitchShmup.Player;
 
 namespace WitchShmup.UI
@@ -83,6 +84,21 @@ namespace WitchShmup.UI
         [Header("Potion Inventory HUD")]
         [SerializeField] private TextMeshProUGUI potionCountText;
         [SerializeField] private GameObject potionIconContainer;
+
+        [Header("Skill Points HUD")]
+        [Tooltip("Texto persistente com a quantidade de pontos de habilidade disponíveis")]
+        [SerializeField] private TextMeshProUGUI skillPointsCountText;
+        [Tooltip("Instrução para abrir a árvore; pisca ao ganhar pontos")]
+        [SerializeField] private TextMeshProUGUI skillPointsPromptText;
+        [SerializeField] private string skillPointsCountFormat = "Skill Points disponíveis: {0}";
+        [SerializeField] private string skillPointsPrompt = "Pressione T para abrir a árvore de habilidades";
+        [SerializeField, Min(0.1f)] private float skillPointsPromptBlinkDuration = 4f;
+        [SerializeField, Min(0.05f)] private float skillPointsPromptBlinkInterval = 0.3f;
+
+        private GameManager subscribedGameManager;
+        private Coroutine skillPointsBlinkCoroutine;
+        private int lastDisplayedSkillPoints;
+        private bool skillPointsHudInitialized;
 
         private void Awake()
         {
@@ -207,6 +223,7 @@ namespace WitchShmup.UI
         private void Start()
         {
             AutoFindReferences();
+            InitializeSkillPointsHUD();
 
             if (playerHealth == null)
             {
@@ -257,8 +274,162 @@ namespace WitchShmup.UI
             UpdatePotionCount(0);
         }
 
+        private void InitializeSkillPointsHUD()
+        {
+            FindSkillPointsTextsIfNeeded();
+            subscribedGameManager = GameManager.Instance;
+            if (subscribedGameManager == null)
+                subscribedGameManager = FindFirstObjectByType<GameManager>();
+            if (subscribedGameManager == null)
+            {
+                RefreshSkillPointsHUD(0);
+                return;
+            }
+
+            subscribedGameManager.OnSkillPointsChanged += HandleSkillPointsChanged;
+            lastDisplayedSkillPoints = subscribedGameManager.SkillPoints;
+            skillPointsHudInitialized = true;
+            RefreshSkillPointsHUD(lastDisplayedSkillPoints);
+            if (lastDisplayedSkillPoints > 0)
+                StartSkillPointsPromptBlink();
+        }
+
+        private void Update()
+        {
+            FindSkillPointsTextsIfNeeded();
+
+            if (subscribedGameManager == null)
+            {
+                subscribedGameManager = GameManager.Instance;
+                if (subscribedGameManager == null)
+                    subscribedGameManager = FindFirstObjectByType<GameManager>();
+
+                if (subscribedGameManager != null)
+                {
+                    subscribedGameManager.OnSkillPointsChanged += HandleSkillPointsChanged;
+                    lastDisplayedSkillPoints = subscribedGameManager.SkillPoints;
+                    skillPointsHudInitialized = true;
+                    RefreshSkillPointsHUD(lastDisplayedSkillPoints);
+                    if (lastDisplayedSkillPoints > 0)
+                        StartSkillPointsPromptBlink();
+                }
+                return;
+            }
+
+            // Keep the HUD in sync even if another system changes the total
+            // without raising the notification event.
+            int currentTotal = subscribedGameManager.SkillPoints;
+            if (!skillPointsHudInitialized)
+            {
+                lastDisplayedSkillPoints = currentTotal;
+                skillPointsHudInitialized = true;
+                RefreshSkillPointsHUD(currentTotal);
+            }
+            else if (currentTotal != lastDisplayedSkillPoints)
+            {
+                HandleSkillPointsChanged(currentTotal);
+            }
+        }
+
+        private void FindSkillPointsTextsIfNeeded()
+        {
+            if (skillPointsCountText != null && skillPointsPromptText != null) return;
+
+            foreach (TextMeshProUGUI candidate in GetComponentsInChildren<TextMeshProUGUI>(true))
+            {
+                if (skillPointsCountText == null && candidate.gameObject.name == "SkillPointsCountText")
+                    skillPointsCountText = candidate;
+                else if (skillPointsPromptText == null && candidate.gameObject.name == "SkillPointsPromptText")
+                    skillPointsPromptText = candidate;
+            }
+        }
+
+        private void HandleSkillPointsChanged(int newTotal)
+        {
+            bool gainedPoints = newTotal > lastDisplayedSkillPoints;
+            lastDisplayedSkillPoints = newTotal;
+            RefreshSkillPointsHUD(newTotal);
+
+            if (newTotal <= 0)
+            {
+                if (skillPointsBlinkCoroutine != null)
+                    StopCoroutine(skillPointsBlinkCoroutine);
+                skillPointsBlinkCoroutine = null;
+                SetSkillPointsHUDVisible(false);
+            }
+            else if (gainedPoints)
+            {
+                StartSkillPointsPromptBlink();
+            }
+        }
+
+        private void RefreshSkillPointsHUD(int total)
+        {
+            bool hasPoints = total > 0;
+            if (skillPointsCountText != null)
+            {
+                skillPointsCountText.text = string.Format(skillPointsCountFormat, total);
+                skillPointsCountText.gameObject.SetActive(true);
+                skillPointsCountText.enabled = true;
+            }
+
+            if (skillPointsPromptText != null)
+            {
+                skillPointsPromptText.text = skillPointsPrompt;
+                skillPointsPromptText.gameObject.SetActive(hasPoints);
+                skillPointsPromptText.enabled = true;
+            }
+        }
+
+        private void SetSkillPointsHUDVisible(bool visible)
+        {
+            if (skillPointsCountText != null)
+            {
+                skillPointsCountText.gameObject.SetActive(true);
+                skillPointsCountText.enabled = true;
+            }
+            if (skillPointsPromptText != null) skillPointsPromptText.gameObject.SetActive(visible);
+        }
+
+        public void HideSkillPointsHUD()
+        {
+            if (skillPointsBlinkCoroutine != null)
+                StopCoroutine(skillPointsBlinkCoroutine);
+            skillPointsBlinkCoroutine = null;
+            if (skillPointsCountText != null) skillPointsCountText.gameObject.SetActive(false);
+            if (skillPointsPromptText != null) skillPointsPromptText.gameObject.SetActive(false);
+        }
+
+        private void StartSkillPointsPromptBlink()
+        {
+            if (skillPointsBlinkCoroutine != null)
+                StopCoroutine(skillPointsBlinkCoroutine);
+            skillPointsBlinkCoroutine = StartCoroutine(SkillPointsPromptBlinkRoutine());
+        }
+
+        private System.Collections.IEnumerator SkillPointsPromptBlinkRoutine()
+        {
+            float elapsed = 0f;
+            bool visible = true;
+            while (elapsed < skillPointsPromptBlinkDuration)
+            {
+                visible = !visible;
+                if (skillPointsPromptText != null) skillPointsPromptText.enabled = visible;
+                if (skillPointsCountText != null) skillPointsCountText.enabled = visible;
+                yield return new WaitForSeconds(skillPointsPromptBlinkInterval);
+                elapsed += skillPointsPromptBlinkInterval;
+            }
+
+            if (skillPointsPromptText != null) skillPointsPromptText.enabled = true;
+            if (skillPointsCountText != null) skillPointsCountText.enabled = true;
+            skillPointsBlinkCoroutine = null;
+        }
+
         private void OnDestroy()
         {
+            if (subscribedGameManager != null)
+                subscribedGameManager.OnSkillPointsChanged -= HandleSkillPointsChanged;
+
             if (playerHealth != null)
             {
                 playerHealth.OnHealthChanged -= UpdateHearts;

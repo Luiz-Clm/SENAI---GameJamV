@@ -352,6 +352,9 @@ namespace WitchShmup.Core
 
         private void Update()
         {
+            // Depois de morrer, só os botões da tela de Game Over continuam ativos.
+            if (IsGameOver || IsVictory) return;
+
             // O atalho configurado abre ou fecha a tela de evolução e árvore.
             if (ControlBindings.WasSkillBookPressedThisFrame())
             {
@@ -713,6 +716,8 @@ namespace WitchShmup.Core
 
         public void ToggleEvolutionPanel()
         {
+            if (IsGameOver || IsVictory) return;
+
             if (evolutionPanel == null)
             {
                 var evoUi = FindFirstObjectByType<EvolutionUI>(FindObjectsInactive.Include);
@@ -752,7 +757,35 @@ namespace WitchShmup.Core
 
         public void TriggerGameOver()
         {
+            if (IsGameOver) return;
             IsGameOver = true;
+
+            if (evolutionPanel != null)
+                evolutionPanel.SetActive(false);
+            if (PauseUI.Instance != null && PauseUI.Instance.IsPaused)
+                PauseUI.Instance.Resume();
+
+            if (hudController == null)
+                hudController = FindFirstObjectByType<HUDController>();
+            if (hudController != null)
+                hudController.HideSkillPointsHUD();
+
+            var playerController = FindFirstObjectByType<PlayerController>();
+            if (playerController != null) playerController.enabled = false;
+            var playerShooting = FindFirstObjectByType<PlayerShooting>();
+            if (playerShooting != null) playerShooting.enabled = false;
+
+            var waveSpawner = FindFirstObjectByType<WaveSpawner>();
+            if (waveSpawner != null) waveSpawner.enabled = false;
+            var infiniteWaves = FindFirstObjectByType<InfiniteWaveManager>();
+            if (infiniteWaves != null) infiniteWaves.enabled = false;
+
+            if (gameOverPanel == null)
+            {
+                var gameOverUI = FindFirstObjectByType<GameOverUI>(FindObjectsInactive.Include);
+                if (gameOverUI != null) gameOverPanel = gameOverUI.gameObject;
+            }
+
             Time.timeScale = 0f;
             if (gameOverPanel != null)
             {
