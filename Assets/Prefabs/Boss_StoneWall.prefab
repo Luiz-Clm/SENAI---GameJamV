@@ -177,7 +177,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eacbe3957b486624ca4b6959af7803ba, type: 3}
-  m_Name: ""
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Boss.StoneWallObstacle
   advanceSpeed: 3
   maxHealth: 8
@@ -232,7 +232,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Boss.StoneWallObstacle
   advanceSpeed: 3
-  maxHealth: 8
+  maxHealth: 10
   contactDamage: 2
   crushInterval: 0.65
   playerHalfWidth: 0.55

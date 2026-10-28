@@ -169,6 +169,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34ab25d892164da58483d5c000c83ff1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Boss.OctopusAirBubble
-  oxygenFraction: 0.4
+  oxygenFraction: 1
   riseSpeed: 1.1
-  lifetime: 12
+  lifetime: 15

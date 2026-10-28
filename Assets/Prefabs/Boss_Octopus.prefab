@@ -206,6 +206,7 @@ MonoBehaviour:
   maximumBubblesOnScreen: 6
   smallBubbleOxygen: 0.4
   largeBubbleOxygen: 0.9
+  bubbleSpawnBossClearance: 1
   undertowDuration: 1.5
   undertowDownwardSpeed: 4
   undertowChance: 0.28

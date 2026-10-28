@@ -2878,9 +2878,9 @@ MonoBehaviour:
     customNodeSize: {x: 0, y: 0}
     customIconSize: {x: 0, y: 0}
   - id: t_dup
-    displayName: 9. Tiro Duplo Angular
-    description: "A cada 3 disparos, solta um segundo tiro em leque de 15\xBA."
-    effectText: Disparo Duplo a cada 3 tiros
+    displayName: 9. Tiro em Fileiras
+    description: Dispara duas fileiras paralelas na vertical ao mesmo tempo.
+    effectText: 2 fileiras verticais de projéteis
     requirementId: t_hit
     maxLevel: 1
     cost: 4
@@ -14809,8 +14809,8 @@ MonoBehaviour:
   skillPointsPromptText: {fileID: 0}
   skillPointsCountFormat: "Skill Points dispon\xEDveis: {0}"
   skillPointsPrompt: "Pressione T para abrir a \xE1rvore de habilidades"
-  skillPointsPromptBlinkDuration: 4
-  skillPointsPromptBlinkInterval: 0.3
+  skillPointsPromptBlinkDuration: 5
+  skillPointsPromptBlinkInterval: 1
 --- !u!114 &867635785
 MonoBehaviour:
   m_ObjectHideFlags: 0

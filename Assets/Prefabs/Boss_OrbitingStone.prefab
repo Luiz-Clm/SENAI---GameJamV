@@ -137,8 +137,8 @@ MonoBehaviour:
   orbitRadius: 3
   orbitSpeed: 90
   currentAngle: 0
-  maxHealth: 5
-  currentHealth: 5
+  maxHealth: 7
+  currentHealth: 7
   contactDamage: 1
   damageFlashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
   breakEffectPrefab: {fileID: 0}

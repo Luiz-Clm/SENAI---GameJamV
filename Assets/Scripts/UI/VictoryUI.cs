@@ -40,175 +40,47 @@ namespace WitchShmup.UI
         private void SetupButtons()
         {
             bool isFinal = IsFinalPhase();
-            // Quando o painel final já tem os dois botões salvos na cena,
-            // mantém seus rótulos editáveis no Inspector.
-            bool hasStaticFinalButtons = isFinal && restartButton != null && menuButton != null;
-
-            // Localiza botões filhos caso não estejam assinalados no Inspector
             var existingButtons = GetComponentsInChildren<Button>(true);
+            // Referências da cena são a fonte de verdade. O script só conecta ações;
+            // não cria botões nem altera textos, posições ou tamanhos do Canvas.
+            if (nextPhaseButton == null && existingButtons.Length > 0) nextPhaseButton = existingButtons[0];
+            if (restartButton == null)
+                foreach (var button in existingButtons)
+                    if (button.gameObject.name.Contains("Restart") || button.gameObject.name.Contains("PlayAgain")) { restartButton = button; break; }
+            if (menuButton == null)
+                foreach (var button in existingButtons)
+                    if (button.gameObject.name.Contains("Menu")) { menuButton = button; break; }
 
-            // Se for Fase 2 (final): exibe APENAS Reiniciar Fase e Voltar ao Menu
             if (isFinal)
             {
-                // Se o nextPhaseButton existir, esconde-o
-                if (nextPhaseButton != null)
-                {
-                    nextPhaseButton.gameObject.SetActive(false);
-                }
-
-                // 1. Botão Reiniciar Fase
-                if (restartButton == null)
-                {
-                    foreach (var b in existingButtons)
-                    {
-                        if (b != null && (b.gameObject.name.Contains("Restart") || b.gameObject.name.Contains("PlayAgain")))
-                        {
-                            restartButton = b;
-                            break;
-                        }
-                    }
-
-                    if (restartButton == null && existingButtons.Length > 0)
-                    {
-                        restartButton = existingButtons[0];
-                    }
-                }
-
+                if (nextPhaseButton != null) nextPhaseButton.gameObject.SetActive(false);
                 if (restartButton != null)
                 {
                     restartButton.gameObject.SetActive(true);
                     restartButton.onClick.RemoveAllListeners();
                     restartButton.onClick.AddListener(OnRestartClicked);
-
-                    var txt = restartButton.GetComponentInChildren<TextMeshProUGUI>(true);
-                    if (txt != null && !hasStaticFinalButtons)
-                    {
-                        txt.text = "REINICIAR FASE";
-                    }
-
-                    if (!hasStaticFinalButtons)
-                    {
-                        var rt = restartButton.GetComponent<RectTransform>();
-                        if (rt != null)
-                        {
-                            rt.anchoredPosition = new Vector2(0f, -240f);
-                            rt.sizeDelta = new Vector2(300f, 56f);
-                        }
-                    }
-
                 }
-
-                // 2. Botão Voltar ao Menu
-                if (menuButton == null)
-                {
-                    foreach (var b in existingButtons)
-                    {
-                        if (b != null && b.gameObject.name.Contains("Menu") && b != restartButton)
-                        {
-                            menuButton = b;
-                            break;
-                        }
-                    }
-
-                    if (menuButton == null && restartButton != null)
-                    {
-                        var menuGo = Instantiate(restartButton.gameObject, restartButton.transform.parent);
-                        menuGo.name = "Btn_Menu";
-                        menuButton = menuGo.GetComponent<Button>();
-                    }
-                }
-
                 if (menuButton != null)
                 {
                     menuButton.gameObject.SetActive(true);
                     menuButton.onClick.RemoveAllListeners();
                     menuButton.onClick.AddListener(OnMenuClicked);
-
-                    var txt = menuButton.GetComponentInChildren<TextMeshProUGUI>(true);
-                    if (txt != null && !hasStaticFinalButtons)
-                    {
-                        txt.text = "VOLTAR AO MENU";
-                    }
-
-                    if (!hasStaticFinalButtons)
-                    {
-                        var rt = menuButton.GetComponent<RectTransform>();
-                        if (rt != null)
-                        {
-                            rt.anchoredPosition = new Vector2(0f, -315f);
-                            rt.sizeDelta = new Vector2(300f, 56f);
-                        }
-                    }
-
                 }
             }
             else
             {
-                // Fase 1: Próxima Fase + Menu
-                if (restartButton != null)
-                {
-                    restartButton.gameObject.SetActive(false);
-                }
-
-                if (nextPhaseButton == null && existingButtons.Length > 0)
-                {
-                    nextPhaseButton = existingButtons[0];
-                }
-
+                if (restartButton != null && restartButton != nextPhaseButton) restartButton.gameObject.SetActive(false);
                 if (nextPhaseButton != null)
                 {
                     nextPhaseButton.gameObject.SetActive(true);
                     nextPhaseButton.onClick.RemoveAllListeners();
                     nextPhaseButton.onClick.AddListener(OnNextPhaseClicked);
-
-                    var txt = nextPhaseButton.GetComponentInChildren<TextMeshProUGUI>(true);
-                    if (txt != null)
-                    {
-                        txt.text = "PRÓXIMA FASE";
-                    }
-
-                    var rt = nextPhaseButton.GetComponent<RectTransform>();
-                    if (rt != null)
-                    {
-                        rt.anchoredPosition = new Vector2(0f, -240f);
-                        rt.sizeDelta = new Vector2(300f, 56f);
-                    }
-
                 }
-
-                if (menuButton == null)
-                {
-                    if (existingButtons.Length > 1 && existingButtons[1] != nextPhaseButton)
-                    {
-                        menuButton = existingButtons[1];
-                    }
-                    else if (nextPhaseButton != null)
-                    {
-                        var menuGo = Instantiate(nextPhaseButton.gameObject, nextPhaseButton.transform.parent);
-                        menuGo.name = "Btn_Menu";
-                        menuButton = menuGo.GetComponent<Button>();
-                    }
-                }
-
                 if (menuButton != null)
                 {
                     menuButton.gameObject.SetActive(true);
                     menuButton.onClick.RemoveAllListeners();
                     menuButton.onClick.AddListener(OnMenuClicked);
-
-                    var txt = menuButton.GetComponentInChildren<TextMeshProUGUI>(true);
-                    if (txt != null)
-                    {
-                        txt.text = "MENU";
-                    }
-
-                    var rt = menuButton.GetComponent<RectTransform>();
-                    if (rt != null)
-                    {
-                        rt.anchoredPosition = new Vector2(0f, -315f);
-                        rt.sizeDelta = new Vector2(300f, 56f);
-                    }
-
                 }
             }
         }
@@ -219,19 +91,6 @@ namespace WitchShmup.UI
 
             if (GameManager.Instance != null)
             {
-                int phase = GameManager.Instance.CurrentPhase;
-                if (victoryTitleText != null)
-                {
-                    if (IsFinalPhase())
-                    {
-                        victoryTitleText.text = "VITÓRIA!\nFASE 2 CONCLUÍDA";
-                    }
-                    else
-                    {
-                        victoryTitleText.text = $"VITÓRIA!\nFASE {phase} CONCLUÍDA";
-                    }
-                }
-
                 if (finalScoreText != null)
                 {
                     finalScoreText.text = $"PONTUAÇÃO FINAL: {GameManager.Instance.CurrentScore:D7}\nRECORDE: {GameManager.Instance.HighScore:D7}";

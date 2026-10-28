@@ -333,6 +333,27 @@ namespace WitchShmup.Core
                 {
                     ApplyStaffEvolutionBonus();
                 }
+
+                // Efeitos de melhorias da árvore que são salvas por ID próprio.
+                // Elas precisam ser reaplicadas ao iniciar cada fase, não apenas no momento da compra.
+                foreach (var skill in customSkillLevels)
+                {
+                    int level = Mathf.Max(0, skill.Value);
+                    if (level == 0) continue;
+
+                    switch (skill.Key)
+                    {
+                        case "f_cha":
+                            pShooting.BoostElementDamage(WitchShmup.Combat.ElementType.Fire, Mathf.Pow(1.15f, level));
+                            break;
+                        case "g_lan":
+                            pShooting.BoostElementDamage(WitchShmup.Combat.ElementType.Ice, Mathf.Pow(1.15f, level));
+                            break;
+                        case "t_dup":
+                            pShooting.SetMultiShotLevel(Mathf.Min(level, 2));
+                            break;
+                    }
+                }
             }
 
             if (pMana != null)
@@ -658,7 +679,13 @@ namespace WitchShmup.Core
 
                 default:
                     customSkillLevels[id] = GetSkillLevel(id) + 1;
-                    if (id.StartsWith("f_") && pShooting != null) pShooting.AddBonusDamage(0.6f);
+                    if (id == "f_cha" && pShooting != null)
+                        pShooting.BoostElementDamage(WitchShmup.Combat.ElementType.Fire, 1.15f);
+                    else if (id == "g_lan" && pShooting != null)
+                        pShooting.BoostElementDamage(WitchShmup.Combat.ElementType.Ice, 1.15f);
+                    else if (id == "t_dup" && pShooting != null)
+                        pShooting.SetMultiShotLevel(Mathf.Min(customSkillLevels[id], 2));
+                    else if (id.StartsWith("f_") && pShooting != null) pShooting.AddBonusDamage(0.6f);
                     else if (id.StartsWith("g_") && pShooting != null) pShooting.AddBonusDamage(0.6f);
                     else if (id.StartsWith("t_") && pShooting != null) pShooting.AddFireRateBonus(0.08f);
                     else if (id.StartsWith("v_") && pHealth != null) pHealth.IncreaseMaxHealth(2);
