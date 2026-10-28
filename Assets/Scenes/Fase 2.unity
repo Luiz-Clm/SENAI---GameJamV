@@ -2234,9 +2234,9 @@ MonoBehaviour:
     customNodeSize: {x: 0, y: 0}
     customIconSize: {x: 0, y: 0}
   - id: t_dup
-    displayName: 9. Tiro Duplo Angular
-    description: "A cada 3 disparos, solta um segundo tiro em leque de 15\xBA."
-    effectText: Disparo Duplo a cada 3 tiros
+    displayName: 9. Tiro em Fileiras
+    description: Dispara duas fileiras paralelas na vertical ao mesmo tempo.
+    effectText: "2 fileiras verticais de proj\xE9teis"
     requirementId: t_hit
     maxLevel: 1
     cost: 4
@@ -3317,7 +3317,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -240}
+  m_AnchoredPosition: {x: 0, y: -307}
   m_SizeDelta: {x: 300, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &254840193
@@ -3420,7 +3420,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &265876992
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5042,7 +5042,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Parab\xE9ns, voc\xEA completou a fase!"
+  m_text: "Parab\xE9ns, voc\xEA completou a primeira fase!"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -10779,7 +10779,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &727068220
 RectTransform:
   m_ObjectHideFlags: 0
@@ -16884,8 +16884,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 200, y: 50}
+  m_AnchoredPosition: {x: 0, y: 43}
+  m_SizeDelta: {x: 200, y: 99.7775}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1085196913
 MonoBehaviour:
@@ -23407,7 +23407,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.000019073, y: 299}
+  m_AnchoredPosition: {x: -0.000019073, y: 376}
   m_SizeDelta: {x: 311.2881, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1468586776
@@ -24719,7 +24719,7 @@ MonoBehaviour:
     element: 1
     projectilePrefab: {fileID: 6907729001500122334, guid: 7cb00360e18838d41b6d9ba22cb204fa, type: 3}
     fireRate: 0.16
-    damage: 1
+    damage: 100
     projectileSpeed: 18
     pierceCount: 1
     elementColor: {r: 0.35, g: 0.85, b: 1, a: 1}
@@ -25214,7 +25214,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 137}
+  m_AnchoredPosition: {x: 0, y: 222}
   m_SizeDelta: {x: 270.2269, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1549332121
@@ -35539,7 +35539,7 @@ MonoBehaviour:
   transitionDuration: 5
   initialSurfaceOffset: 0
   surfaceLineThickness: 0.055
-  oxygenCapacity: 8
+  oxygenCapacity: 10
   oxygenRecoveryRate: 2.5
   damageInterval: 1.5
   headOffset: 0.45
@@ -36563,7 +36563,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -315}
+  m_AnchoredPosition: {x: 0, y: -382}
   m_SizeDelta: {x: 300, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &9000000000000001002

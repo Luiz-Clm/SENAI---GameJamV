@@ -258,9 +258,12 @@ namespace WitchShmup.Environment
         {
             if (oxygenStatusText != null)
             {
+                if (!oxygenStatusText.gameObject.activeSelf)
+                    oxygenStatusText.gameObject.SetActive(true);
+                oxygenStatusText.enabled = true;
                 const int bubbleCount = 6;
                 int filled = Mathf.CeilToInt(Oxygen01 * bubbleCount);
-                oxygenStatusText.text = $"AR  {new string('●', filled)}{new string('○', bubbleCount - filled)}";
+                oxygenStatusText.SetText($"AR  {new string('●', filled)}{new string('○', bubbleCount - filled)}");
                 oxygenStatusText.color = Oxygen01 <= 0.25f
                     ? new Color(1f, 0.35f, 0.3f, 1f)
                     : Color.white;

@@ -51,6 +51,7 @@ namespace WitchShmup.Boss
         [SerializeField] private int maximumBubblesOnScreen = 6;
         [SerializeField, Range(0f, 1f)] private float smallBubbleOxygen = 0.4f;
         [SerializeField, Range(0f, 1f)] private float largeBubbleOxygen = 1f;
+        [SerializeField, Min(0f)] private float bubbleSpawnBossClearance = 1f;
 
         [Header("Corrente de afogamento - Fase 3")]
         [SerializeField] private float undertowDuration = 1.5f;
@@ -280,7 +281,16 @@ namespace WitchShmup.Boss
         private void SpawnAirBubble(float oxygenFraction, bool large, float centerX, float centerY, float halfWidth)
         {
             float halfHeight = Camera.main != null && Camera.main.orthographic ? Camera.main.orthographicSize : 5f;
-            float x = Random.Range(centerX - halfWidth + 0.5f, centerX + halfWidth - 0.5f);
+            float leftEdge = centerX - halfWidth + 0.5f;
+            // Bolhas aparecem no lado esquerdo da tela (lado do jogador), sem entrar no espaço do boss.
+            float bossHalfWidth = GetComponent<Collider2D>() != null
+                ? GetComponent<Collider2D>().bounds.extents.x
+                : 0f;
+            float rightEdge = Mathf.Min(
+                centerX - 0.5f,
+                transform.position.x - bossHalfWidth - bubbleSpawnBossClearance);
+            rightEdge = Mathf.Max(leftEdge, rightEdge);
+            float x = Random.Range(leftEdge, rightEdge);
             float y = Random.Range(centerY - halfHeight + 0.5f, centerY + 0.25f);
             GameObject bubbleObject = airBubblePrefab != null
                 ? Instantiate(airBubblePrefab, new Vector3(x, y, 0f), Quaternion.identity)

@@ -353,7 +353,7 @@ namespace WitchShmup.UI
                 // ── 3. Asa de Tiro (Coluna Externa Esquerda) ───────────────────
                 new NodeData { id="t_cad", displayName="7. Cadência Constante", description="Acelera a velocidade de recarga e disparo do mago.", effectText="+12% de Velocidade de Ataque", requirementId="f_cha", maxLevel=1, cost=2, canvasPos=new Vector2(-240, -40) },
                 new NodeData { id="t_hit", displayName="8. Cajado Ampliado", description="Aumenta a área de contato de todos os projéteis.", effectText="+20% no Tamanho dos Projéteis", requirementId="t_cad", maxLevel=1, cost=3, canvasPos=new Vector2(-280, 70) },
-                new NodeData { id="t_dup", displayName="9. Tiro Duplo Angular", description="A cada 3 disparos, solta um segundo tiro em leque de 15º.", effectText="Disparo Duplo a cada 3 tiros", requirementId="t_hit", maxLevel=1, cost=4, canvasPos=new Vector2(-280, 180) },
+                new NodeData { id="t_dup", displayName="9. Tiro em Fileiras", description="Dispara duas fileiras paralelas na vertical ao mesmo tempo.", effectText="2 fileiras verticais de projéteis", requirementId="t_hit", maxLevel=1, cost=4, canvasPos=new Vector2(-280, 180) },
                 new NodeData { id="t_rit", displayName="10. Ritmo Bélico", description="Atirar continuamente por 2s concede um surto de rapidez.", effectText="+10% de Cadência em Combate", requirementId="t_dup", maxLevel=1, cost=4, canvasPos=new Vector2(-210, 280) },
 
                 // ── 4. Ramo de Gelo (Coluna Interna Direita) ────────────────────
@@ -1232,6 +1232,12 @@ namespace WitchShmup.UI
                     if (lvl == 0) cardEffect.text = "2 Fileiras de Tiro Verticais";
                     else if (lvl == 1) cardEffect.text = "3 Fileiras de Tiro Verticais (MÁXIMO)";
                     else cardEffect.text = "3 Fileiras Verticais Ativas (Nível Máximo)";
+                }
+                else if (n.id == "t_dup")
+                {
+                    cardEffect.text = lvl == 0
+                        ? "2 fileiras verticais de projéteis"
+                        : "2 fileiras verticais ativas";
                 }
                 else
                 {

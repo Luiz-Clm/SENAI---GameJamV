@@ -169,7 +169,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dfe8fef9260990d47a323123cd1a7e5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Boss.BigRockProjectile
-  speed: 9
+  speed: 10
   direction: {x: -1, y: 0}
   rotationSpeed: 120
   damage: 2
