@@ -2880,7 +2880,7 @@ MonoBehaviour:
   - id: t_dup
     displayName: 9. Tiro em Fileiras
     description: Dispara duas fileiras paralelas na vertical ao mesmo tempo.
-    effectText: 2 fileiras verticais de projéteis
+    effectText: "2 fileiras verticais de proj\xE9teis"
     requirementId: t_hit
     maxLevel: 1
     cost: 4
@@ -35791,7 +35791,7 @@ MonoBehaviour:
   maxY: 3.5
   phaseOneParallaxSprite: {fileID: -192906985781391278, guid: 7a3f4bade387c574494a649214baf592, type: 3}
   phaseTwoParallaxSprite: {fileID: -175520952676956400, guid: 004cb958b44bc74429fa10ca33e7c482, type: 3}
-  enableWaveSkipKey: 1
+  enableWaveSkipKey: 0
   waveSkipKey: 289
 --- !u!1 &1988080699
 GameObject:

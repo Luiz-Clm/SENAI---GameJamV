@@ -1812,7 +1812,7 @@ MonoBehaviour:
   octopusBossPrefab: {fileID: 980000000000001, guid: c94e178f54fb4ba8b51b7c8aa9423a0e, type: 3}
   octopusBossDisplayName: POLVO DAS PROFUNDEZAS
   octopusSceneOverheadHealthBar: {fileID: 7200000000000000100}
-  enableDebugBossShortcut: 1
+  enableDebugBossShortcut: 0
   delayBeforeBossIntro: 0
 --- !u!4 &122176173
 Transform:
