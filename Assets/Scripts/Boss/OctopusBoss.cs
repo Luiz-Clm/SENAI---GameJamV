@@ -5,11 +5,12 @@ using WitchShmup.Core;
 using WitchShmup.Environment;
 using WitchShmup.Player;
 using WitchShmup.UI;
+using WitchShmup.Endless;
 
 namespace WitchShmup.Boss
 {
     [RequireComponent(typeof(Collider2D), typeof(Rigidbody2D), typeof(SpriteRenderer))]
-    public class OctopusBoss : MonoBehaviour, WitchShmup.Combat.IDamageable
+    public class OctopusBoss : MonoBehaviour, WitchShmup.Combat.IDamageable, IInfiniteModeBoss
     {
         [Header("Vida e entrada")]
         [SerializeField, Min(1f)] private float maxHealth = 300f;
@@ -85,6 +86,9 @@ namespace WitchShmup.Boss
         private Transform overheadFillTransform;
         private SpriteRenderer overheadFillRenderer;
         private Vector3 overheadFillBasePosition;
+        private bool infiniteEncounter;
+
+        public event System.Action InfiniteBossDefeated;
 
         public float CurrentHealth => currentHealth;
         public float MaxHealth => maxHealth;
@@ -141,6 +145,12 @@ namespace WitchShmup.Boss
             if (ParallaxBackgroundController.Instance != null)
                 ParallaxBackgroundController.Instance.StopScrolling();
             encounterRoutine = StartCoroutine(EnterArena());
+        }
+
+        public void StartInfiniteFight()
+        {
+            infiniteEncounter = true;
+            BeginEncounter();
         }
 
         public void BeginEncounter(string displayName)
@@ -534,7 +544,11 @@ namespace WitchShmup.Boss
             foreach (var projectile in FindObjectsByType<OctopusProjectile>(FindObjectsSortMode.None))
                 if (projectile != null) Destroy(projectile.gameObject);
 
-            if (GameManager.Instance != null)
+            if (infiniteEncounter)
+            {
+                InfiniteBossDefeated?.Invoke();
+            }
+            else if (GameManager.Instance != null)
             {
                 GameManager.Instance.StartCoroutine(GameManager.Instance.WaitAndTriggerVictory(1.8f));
             }

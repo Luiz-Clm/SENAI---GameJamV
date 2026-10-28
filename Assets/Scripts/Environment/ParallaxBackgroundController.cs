@@ -70,6 +70,16 @@ namespace WitchShmup.Environment
             baseScrollSpeed = originalScrollSpeed;
         }
 
+        public void SetScenarioSprite(Sprite sprite)
+        {
+            if (sprite == null) return;
+            if (layers == null || layers.Count == 0)
+                layers = new List<ParallaxLayer>(GetComponentsInChildren<ParallaxLayer>(true));
+
+            for (int i = 0; i < layers.Count; i++)
+                if (layers[i] != null) layers[i].SetSegmentSprite(sprite);
+        }
+
         public void TransitionScrollSpeed(float targetSpeed, float duration)
         {
             if (speedTransitionCoroutine != null)

@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using System.Collections;
+using UnityEngine.UI;
 using WitchShmup.Player;
 
 namespace WitchShmup.Environment
@@ -34,6 +35,7 @@ namespace WitchShmup.Environment
         [SerializeField] private SpriteRenderer waterSurfaceRenderer;
         [SerializeField] private TextMeshProUGUI oxygenStatusText;
         [SerializeField] private TextMeshProUGUI tideStatusText;
+        private GameObject runtimeHudCanvas;
 
         private PlayerHealth playerHealth;
         private float centerY;
@@ -57,6 +59,13 @@ namespace WitchShmup.Environment
         public bool IsBossArenaTransitioning => bossArenaTransitioning;
         public bool IsBossFightActive => bossFightActive;
 
+        public void SetScenarioActive(bool isActive)
+        {
+            if (underwaterTintRenderer != null) underwaterTintRenderer.enabled = isActive;
+            if (waterSurfaceRenderer != null) waterSurfaceRenderer.enabled = isActive;
+            if (runtimeHudCanvas != null) runtimeHudCanvas.SetActive(isActive);
+        }
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -72,6 +81,58 @@ namespace WitchShmup.Environment
             oxygen = oxygenCapacity;
             if (underwaterTintRenderer == null) underwaterTintRenderer = transform.Find("Underwater_Tint")?.GetComponent<SpriteRenderer>();
             if (waterSurfaceRenderer == null) waterSurfaceRenderer = transform.Find("Water_Surface")?.GetComponent<SpriteRenderer>();
+            if (underwaterTintRenderer == null || waterSurfaceRenderer == null || oxygenStatusText == null || tideStatusText == null)
+                CreateInfiniteModeVisuals();
+        }
+
+        private void CreateInfiniteModeVisuals()
+        {
+            Sprite tile = Resources.Load<Sprite>("Sprites/Water_Tile");
+            if (underwaterTintRenderer == null)
+            {
+                var tint = new GameObject("Underwater_Tint");
+                tint.transform.SetParent(transform, false);
+                underwaterTintRenderer = tint.AddComponent<SpriteRenderer>();
+                underwaterTintRenderer.sprite = tile;
+            }
+            if (waterSurfaceRenderer == null)
+            {
+                var surface = new GameObject("Water_Surface");
+                surface.transform.SetParent(transform, false);
+                waterSurfaceRenderer = surface.AddComponent<SpriteRenderer>();
+                waterSurfaceRenderer.sprite = tile;
+            }
+
+            if (oxygenStatusText != null && tideStatusText != null) return;
+            var canvasObject = new GameObject("InfiniteWaterHUD", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
+            var canvas = canvasObject.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvasObject.transform.SetParent(transform, false);
+            runtimeHudCanvas = canvasObject;
+            var scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+            oxygenStatusText = CreateStatusLabel(canvas.transform, "OxygenStatus", new Vector2(815f, -1008f), TextAlignmentOptions.Left);
+            tideStatusText = CreateStatusLabel(canvas.transform, "TideStatus", new Vector2(815f, -1040f), TextAlignmentOptions.Left);
+        }
+
+        private static TextMeshProUGUI CreateStatusLabel(Transform parent, string labelName, Vector2 position, TextAlignmentOptions alignment)
+        {
+            var labelObject = new GameObject(labelName, typeof(RectTransform), typeof(TextMeshProUGUI));
+            labelObject.transform.SetParent(parent, false);
+            var rect = labelObject.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = new Vector2(340f, 30f);
+            var text = labelObject.GetComponent<TextMeshProUGUI>();
+            text.fontSize = 20f;
+            text.alignment = alignment;
+            text.color = Color.white;
+            text.raycastTarget = false;
+            return text;
         }
 
         private void Start()

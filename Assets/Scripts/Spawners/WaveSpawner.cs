@@ -146,6 +146,18 @@ namespace WitchShmup.Spawners
             return choices.ToArray();
         }
 
+        /// <summary>Fase 2 enemy pool used by the endless scenario rotation.</summary>
+        public GameObject[] GetInfiniteModePhaseTwoEnemyPrefabs()
+        {
+            var choices = new System.Collections.Generic.List<GameObject>(3);
+            if (eyePrefab != null) choices.Add(eyePrefab);
+            if (wingedBookPrefab != null) choices.Add(wingedBookPrefab);
+            if (lanternFishPrefab != null) choices.Add(lanternFishPrefab);
+            return choices.ToArray();
+        }
+
+        public GameObject GetInfiniteModePhaseTwoBossPrefab() => octopusBossPrefab;
+
 
 
         private void Start()

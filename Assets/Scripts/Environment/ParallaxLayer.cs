@@ -70,6 +70,21 @@ namespace WitchShmup.Environment
             }
         }
 
+        public void SetSegmentSprite(Sprite sprite)
+        {
+            AutoSetupSegments();
+            if (sprite == null || segments == null) return;
+
+            for (int i = 0; i < segments.Length; i++)
+            {
+                if (segments[i] == null) continue;
+                var renderer = segments[i].GetComponent<SpriteRenderer>();
+                if (renderer != null) renderer.sprite = sprite;
+            }
+
+            AutoSetupSegments();
+        }
+
         public void Scroll(float baseSpeed, float deltaTime)
         {
             if (segments == null || segments.Length == 0) return;

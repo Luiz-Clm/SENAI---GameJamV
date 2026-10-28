@@ -25,6 +25,16 @@ namespace WitchShmup.Endless
         [SerializeField] private float minY = -3.5f;
         [SerializeField] private float maxY = 3.5f;
 
+        [Header("Cenários")]
+        [SerializeField] private Sprite phaseOneParallaxSprite;
+        [SerializeField] private Sprite phaseTwoParallaxSprite;
+
+        [Header("Debug - Pular Onda")]
+        [SerializeField, Tooltip("Habilita uma tecla de teste para encerrar a onda atual e avançar para a próxima.")]
+        private bool enableWaveSkipKey;
+        [SerializeField, Tooltip("Tecla que encerra a onda atual quando o teste está habilitado.")]
+        private KeyCode waveSkipKey = KeyCode.F8;
+
         private readonly Dictionary<GameObject, Queue<EnemyBase>> enemyPools = new Dictionary<GameObject, Queue<EnemyBase>>();
         private readonly Dictionary<EnemyBase, GameObject> enemySources = new Dictionary<EnemyBase, GameObject>();
         private readonly HashSet<EnemyBase> activeEnemies = new HashSet<EnemyBase>();
@@ -40,6 +50,8 @@ namespace WitchShmup.Endless
         private MonoBehaviour activeBossBehaviour;
         private GameObject activeBackground;
         private InfiniteModeContentPack currentPack;
+        private bool currentPhaseTwo;
+        private PhaseTwoWaterSystem phaseTwoWater;
         private Coroutine waveRoutine;
         private int currentWave = 1;
         private bool bossFightActive;
@@ -66,6 +78,17 @@ namespace WitchShmup.Endless
 
             contentPacks.AddRange(Resources.LoadAll<InfiniteModeContentPack>("InfiniteMode"));
             contentPacks.Sort((a, b) => a.startingWave.CompareTo(b.startingWave));
+            if (campaignSpawner != null)
+            {
+                phaseTwoWater = FindFirstObjectByType<PhaseTwoWaterSystem>();
+                if (phaseTwoWater == null)
+                {
+                    var waterObject = new GameObject("Infinite_PhaseTwoWaterSystem");
+                    phaseTwoWater = waterObject.AddComponent<PhaseTwoWaterSystem>();
+                }
+                phaseTwoWater.SetScenarioActive(false);
+                phaseTwoWater.enabled = false;
+            }
         }
 
         private void Start()
@@ -85,13 +108,20 @@ namespace WitchShmup.Endless
         private void Update()
         {
             if (Time.timeScale <= 0f) return;
-            if (waveStatusText == null || waveRoutine != null || bossFightActive) return;
             if (GameManager.Instance != null && GameManager.Instance.IsGameOver) return;
+
+            if (enableWaveSkipKey && Input.GetKeyDown(waveSkipKey))
+            {
+                SkipCurrentWave();
+                return;
+            }
+
+            if (waveStatusText == null || waveRoutine != null || bossFightActive) return;
 
             // A scaled delta means the countdown pauses with Escape and the evolution screen.
             if (intermissionRemaining > 0f)
             {
-                if (InfiniteModeSession.AutoStartNextWave)
+                if (InfiniteModeSession.AutoStartNextWave && !forceIntermissionWait)
                 {
                     intermissionRemaining = 0f;
                 }
@@ -105,17 +135,77 @@ namespace WitchShmup.Endless
             if (intermissionRemaining <= 0f && isIntermission)
             {
                 isIntermission = false;
+                forceIntermissionWait = false;
                 BeginWave(currentWave + 1);
             }
         }
 
         private float intermissionRemaining;
         private bool isIntermission;
+        private bool forceIntermissionWait;
+
+        private void SkipCurrentWave()
+        {
+            if (isIntermission)
+            {
+                isIntermission = false;
+                forceIntermissionWait = false;
+                BeginWave(currentWave + 1);
+                return;
+            }
+
+            if (waveRoutine != null)
+            {
+                StopCoroutine(waveRoutine);
+                waveRoutine = null;
+            }
+
+            foreach (EnemyBase enemy in new List<EnemyBase>(activeEnemies))
+                ReturnEnemyToPool(enemy);
+
+            if (activeBoss != null)
+            {
+                activeBoss.InfiniteBossDefeated -= OnBossDefeated;
+                if (activeBossBehaviour != null)
+                {
+                    if (activeBossBehaviour is GolemBoss golem && golem == sceneGolem)
+                        golem.PrepareForInfiniteFight();
+                    else
+                        Destroy(activeBossBehaviour.gameObject);
+                }
+                activeBoss = null;
+                activeBossBehaviour = null;
+            }
+
+            bossFightActive = false;
+            if (phaseTwoWater != null) phaseTwoWater.EndBossFight();
+            var skippedBossParallax = FindFirstObjectByType<ParallaxBackgroundController>();
+            if (skippedBossParallax != null) skippedBossParallax.ResumeScrolling();
+            if (hud != null) hud.HideBossBar();
+            if (GameManager.Instance != null && GameManager.Instance.BGM != null)
+                GameManager.Instance.BGM.PlayNormalMusic();
+
+            foreach (var projectile in FindObjectsByType<WitchShmup.Combat.Projectile>(FindObjectsSortMode.None))
+                if (projectile != null) Destroy(projectile.gameObject);
+            foreach (var projectile in FindObjectsByType<OctopusProjectile>(FindObjectsSortMode.None))
+                if (projectile != null) Destroy(projectile.gameObject);
+            foreach (var bubble in FindObjectsByType<OctopusAirBubble>(FindObjectsSortMode.None))
+                if (bubble != null) Destroy(bubble.gameObject);
+
+            Debug.Log($"[InfiniteWaveManager] Onda {currentWave} pulada pelo atalho de teste ({waveSkipKey}).");
+            StartIntermission();
+        }
 
         private void BeginWave(int wave)
         {
             currentWave = wave;
             InfiniteModeSession.RecordWave(currentWave);
+            currentPhaseTwo = ((currentWave - 1) / 10) % 2 == 1;
+            if (phaseTwoWater != null)
+            {
+                phaseTwoWater.enabled = currentPhaseTwo;
+                phaseTwoWater.SetScenarioActive(currentPhaseTwo);
+            }
             UpdateWaveLabel();
             currentPack = GetContentPackForWave(currentWave);
             ApplyScenarioBackground(currentPack);
@@ -168,6 +258,15 @@ namespace WitchShmup.Endless
             isIntermission = false;
             bossFightActive = true;
             waveStatusText.text = $"ONDA {currentWave} — CHEFE";
+
+            if (currentPhaseTwo && campaignSpawner != null && campaignSpawner.GetInfiniteModePhaseTwoBossPrefab() != null)
+            {
+                var octopusObject = Instantiate(campaignSpawner.GetInfiniteModePhaseTwoBossPrefab(), new Vector3(12f, 0f, 0f), Quaternion.identity);
+                StartConfiguredBoss(octopusObject);
+                var octopus = octopusObject.GetComponent<OctopusBoss>();
+                if (octopus != null) octopus.StartInfiniteFight();
+                return;
+            }
 
             if (currentPack != null && currentPack.bossPrefab != null)
             {
@@ -225,17 +324,20 @@ namespace WitchShmup.Endless
             activeBoss = null;
             activeBossBehaviour = null;
             bossFightActive = false;
+            var parallax = FindFirstObjectByType<ParallaxBackgroundController>();
+            if (parallax != null) parallax.ResumeScrolling();
             if (GameManager.Instance != null && GameManager.Instance.BGM != null)
                 GameManager.Instance.BGM.PlayNormalMusic();
-            StartIntermission();
+            StartIntermission(forceWait: true);
         }
 
-        private void StartIntermission()
+        private void StartIntermission(bool forceWait = false)
         {
             isIntermission = true;
-            intermissionRemaining = InfiniteModeSession.AutoStartNextWave ? 0f : intermissionSeconds;
+            forceIntermissionWait = forceWait;
+            intermissionRemaining = forceWait || !InfiniteModeSession.AutoStartNextWave ? intermissionSeconds : 0f;
             if (waveStatusText != null)
-                waveStatusText.text = InfiniteModeSession.AutoStartNextWave
+                waveStatusText.text = InfiniteModeSession.AutoStartNextWave && !forceWait
                     ? $"ONDA {currentWave} concluída"
                     : $"Nova onda em {Mathf.CeilToInt(intermissionRemaining)} segundos";
         }
@@ -312,6 +414,11 @@ namespace WitchShmup.Endless
 
         private GameObject[] GetEnemyChoices(InfiniteModeContentPack pack)
         {
+            if (currentPhaseTwo && campaignSpawner != null)
+            {
+                var phaseTwoChoices = campaignSpawner.GetInfiniteModePhaseTwoEnemyPrefabs();
+                if (phaseTwoChoices.Length > 0) return phaseTwoChoices;
+            }
             if (pack != null && pack.enemyPrefabs != null && pack.enemyPrefabs.Length > 0)
                 return pack.enemyPrefabs;
 
@@ -334,6 +441,10 @@ namespace WitchShmup.Endless
 
         private void ApplyScenarioBackground(InfiniteModeContentPack pack)
         {
+            var parallax = FindFirstObjectByType<ParallaxBackgroundController>();
+            if (parallax != null)
+                parallax.SetScenarioSprite(currentPhaseTwo ? phaseTwoParallaxSprite : phaseOneParallaxSprite);
+
             if (pack == null || pack.backgroundPrefab == null) return;
 
             if (activeBackground != null) Destroy(activeBackground);
@@ -351,7 +462,9 @@ namespace WitchShmup.Endless
         private void UpdateWaveLabel()
         {
             SetStageTitle();
-            if (waveStatusText != null) waveStatusText.text = $"ONDA {currentWave}";
+            if (waveStatusText != null) waveStatusText.text = currentPhaseTwo
+                ? $"ONDA {currentWave} — BIBLIOTECA SUBMERSA"
+                : $"ONDA {currentWave}";
         }
 
         private TextMeshProUGUI CreateWaveStatusText()

@@ -2086,9 +2086,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Spawners.WaveSpawner
   rusherPrefab: {fileID: 4988725476289440318, guid: d823b2f7f1536eb40b3eb9e5d96c9668, type: 3}
   batPrefab: {fileID: 3838460074559408029, guid: 354e1b3b57888cf44ae879216b279ea9, type: 3}
-  eyePrefab: {fileID: 0}
-  wingedBookPrefab: {fileID: 0}
-  lanternFishPrefab: {fileID: 0}
+  eyePrefab: {fileID: 3838460074559408029, guid: c14d6508b0a7462aa6e65c53955c09a1, type: 3}
+  wingedBookPrefab: {fileID: 2200000, guid: aabbccddeeff00112233445566778899, type: 3}
+  lanternFishPrefab: {fileID: 1100000, guid: 11223344556677889900aabbccddeeff, type: 3}
   stageDuration: 150
   phaseOverride: 0
   autoScaleByPhase: 1
@@ -2108,7 +2108,7 @@ MonoBehaviour:
   minY: -3.5
   maxY: 3.5
   bossCutscene: {fileID: 187509}
-  octopusBossPrefab: {fileID: 0}
+  octopusBossPrefab: {fileID: 980000000000001, guid: c94e178f54fb4ba8b51b7c8aa9423a0e, type: 3}
   octopusBossDisplayName: POLVO DAS PROFUNDEZAS
   octopusSceneOverheadHealthBar: {fileID: 0}
   enableDebugBossShortcut: 0
@@ -35740,6 +35740,59 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1986542017}
   m_CullTransparentMesh: 1
+--- !u!1 &1987654321
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1987654322}
+  - component: {fileID: 1987654323}
+  m_Layer: 0
+  m_Name: InfiniteWaveManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1987654322
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1987654321}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1987654323
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1987654321}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4de276899f7240a19cf44f43827a69f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WitchShmup.Endless.InfiniteWaveManager
+  intermissionSeconds: 15
+  spawnInterval: 0.65
+  spawnX: 11.5
+  minY: -3.5
+  maxY: 3.5
+  phaseOneParallaxSprite: {fileID: -192906985781391278, guid: 7a3f4bade387c574494a649214baf592, type: 3}
+  phaseTwoParallaxSprite: {fileID: -175520952676956400, guid: 004cb958b44bc74429fa10ca33e7c482, type: 3}
+  enableWaveSkipKey: 1
+  waveSkipKey: 289
 --- !u!1 &1988080699
 GameObject:
   m_ObjectHideFlags: 0
@@ -41685,3 +41738,4 @@ SceneRoots:
   - {fileID: 1777938156}
   - {fileID: 1857939567}
   - {fileID: 3000000099}
+  - {fileID: 1987654322}

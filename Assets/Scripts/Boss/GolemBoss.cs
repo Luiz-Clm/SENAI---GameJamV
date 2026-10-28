@@ -66,6 +66,7 @@ namespace WitchShmup.Boss
         private Transform playerTarget;
         private float hoverBaseY = 0f;
         private bool isEnraged = false;
+        private bool isInfiniteModeFight;
         private Coroutine attackRoutine;
         private Coroutine flashCoroutine;
         private Color originalBodyColor = Color.white;
@@ -252,6 +253,8 @@ namespace WitchShmup.Boss
 
         public void PrepareForInfiniteFight()
         {
+            if (!gameObject.activeSelf) gameObject.SetActive(true);
+            isInfiniteModeFight = true;
             if (attackRoutine != null) StopCoroutine(attackRoutine);
             attackRoutine = null;
             currentHealth = maxHealth;
@@ -264,6 +267,7 @@ namespace WitchShmup.Boss
 
         public void StartInfiniteFight()
         {
+            isInfiniteModeFight = true;
             StartFight();
         }
 
@@ -508,12 +512,15 @@ namespace WitchShmup.Boss
             InfiniteBossDefeated?.Invoke();
             OnAnyBossFightDefeated?.Invoke();
 
-            if (GameManager.Instance != null)
+            if (!isInfiniteModeFight && GameManager.Instance != null)
             {
                 GameManager.Instance.StartCoroutine(GameManager.Instance.WaitAndTriggerVictory(1.8f));
             }
 
-            Destroy(gameObject);
+            if (isInfiniteModeFight)
+                gameObject.SetActive(false);
+            else
+                Destroy(gameObject);
         }
 
         private void OnTriggerEnter2D(Collider2D other)
